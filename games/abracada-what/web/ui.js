@@ -18,7 +18,8 @@ let actionEpoch=0;
 let dieRolling=false;
 
 function lifePips(life){return `<span class="life-pips" aria-label="${life} 点生命">${Array.from({length:6},(_,index)=>`<i class="${index<life?'live':''}"></i>`).join('')}</span>`;}
-function stone(spell,{back=false,small=false}={}){const info=spell?SPELLS[spell-1]:null;return `<span class="magic-stone${back?' back':''}${small?' small':''}"${info?` title="${esc(info.name)}"`:''}><b>${back?'?':info?.id||'?'}</b>${!back&&info?`<small>${esc(info.icon)}</small>`:''}</span>`;}
+function spellArt(spell,className=''){return `<img class="spell-art${className?` ${className}`:''}" src="./assets/spells/spell-${spell}.svg" alt="" aria-hidden="true">`;}
+function stone(spell,{back=false,small=false}={}){const info=spell?SPELLS[spell-1]:null;return `<span class="magic-stone${back?' back':''}${small?' small':''}"${info?` title="${esc(info.name)}"`:''}>${!back&&info?spellArt(info.id):''}<b>${back?'?':info?.id||'?'}</b>${!back&&info?`<small>${esc(info.icon)}</small>`:''}</span>`;}
 function miniStones(values){return values.length?values.map(value=>`<span class="mini-stone" title="${esc(SPELLS[value-1].name)}">${value}</span>`).join(''):'<span class="empty-label">暂无</span>';}
 
 function renderLineup(){
@@ -187,7 +188,7 @@ async function flyStone(source,target,{spell=null,back=false,secret=false,delay=
   }
   const token=document.createElement('span');
   token.className=`motion-stone${back?' back':''}${secret?' secret':''}`;
-  token.innerHTML=back?'<b>?</b>':`<b>${spell}</b><small>${esc(SPELLS[spell-1]?.icon||'✧')}</small>`;
+  token.innerHTML=back?'<b>?</b>':`${spellArt(spell)}<b>${spell}</b><small>${esc(SPELLS[spell-1]?.icon||'✧')}</small>`;
   token.style.left=`${origin.x-17}px`;
   token.style.top=`${origin.y-24.5}px`;
   document.body.append(token);
@@ -352,7 +353,7 @@ function renderSpells(){
     const illegal=spell.id<view.minimumSpell;
     const disabled=!humanTurn||illegal;
     const publicCount=publicValues.filter(value=>value===spell.id).length;
-    return `<button class="spell-button${illegal?' illegal':''}" data-spell="${spell.id}" type="button" ${disabled?'disabled':''} title="${esc(spell.description)}"><span class="spell-symbol">${esc(spell.icon)}</span><span class="spell-copy"><b>${esc(spell.name)}</b><small>${esc(spell.tag)} · ${esc(spell.description)}</small></span><span class="spell-number">${spell.id}<small>公开 ${publicCount}/${spell.copies}</small></span></button>`;
+    return `<button class="spell-button${illegal?' illegal':''}" data-spell="${spell.id}" type="button" ${disabled?'disabled':''} title="${esc(spell.description)}"><span class="spell-symbol">${spellArt(spell.id)}</span><span class="spell-copy"><b>${esc(spell.name)}</b><small>${esc(spell.tag)} · ${esc(spell.description)}</small></span><span class="spell-number">${spell.id}<small>公开 ${publicCount}/${spell.copies}</small></span></button>`;
   }).join('');
   document.querySelectorAll('[data-spell]').forEach(button=>button.addEventListener('click',()=>humanCast(Number(button.dataset.spell))));
   $('stopBtn').classList.toggle('hidden',!view.canStop||busy);

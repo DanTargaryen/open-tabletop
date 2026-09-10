@@ -1,5 +1,5 @@
 export const SPELLS = Object.freeze([
-  { id: 1, name: '远古巨龙', icon: '龙', copies: 1, tag: '群体重击', description: '投掷特殊骰（1/1/1/2/2/3），其他所有玩家失去等同点数的生命；施放失败时，自己失去骰子点数再加 1 点生命。' },
+  { id: 1, name: '远古巨龙', icon: '龙', copies: 1, tag: '群体重击', description: '投掷特殊骰（1/1/1/2/2/3），其他所有玩家失去等同点数的生命；施放失败时，除常规失去 1 点生命外，额外受到骰子点数的伤害。' },
   { id: 2, name: '暗夜行者', icon: '影', copies: 2, tag: '群伤吸取', description: '其他所有玩家失去 1 点生命，你恢复 1 点生命。' },
   { id: 3, name: '甜美梦境', icon: '梦', copies: 3, tag: '强力治疗', description: '投掷特殊骰（1/1/1/2/2/3），恢复等同点数的生命，最多恢复到 6。' },
   { id: 4, name: '夜之歌者', icon: '月', copies: 4, tag: '秘密奖励', description: '取得并查看一枚秘密石；存活到本轮结束时额外获得 1 分。' },

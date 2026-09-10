@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 336" role="img" aria-labelledby="title">
+  <title id="title">远古巨龙</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#3f172e"/><stop offset=".55" stop-color="#21152f"/><stop offset="1" stop-color="#130f22"/></linearGradient>
+    <radialGradient id="glow"><stop stop-color="#ffb55d" stop-opacity=".9"/><stop offset="1" stop-color="#ed5068" stop-opacity="0"/></radialGradient>
+    <filter id="blur"><feGaussianBlur stdDeviation="10"/></filter>
+  </defs>
+  <rect width="240" height="336" rx="42" fill="url(#bg)"/>
+  <path d="M23 87Q120 29 217 87M23 249q97 58 194 0" fill="none" stroke="#f2ca78" stroke-opacity=".18" stroke-width="2"/>
+  <circle cx="120" cy="169" r="92" fill="url(#glow)" filter="url(#blur)" opacity=".55"/>
+  <circle cx="120" cy="169" r="79" fill="none" stroke="#f2ca78" stroke-opacity=".25" stroke-width="2" stroke-dasharray="3 9"/>
+  <path d="M53 210c15-5 22-18 26-37-15-12-23-30-20-53 20 14 34 15 48 10 6-28 28-49 61-56-14 17-17 33-12 47 18 6 31 19 37 39-12-7-24-9-37-7 4 12 2 25-5 38-8-18-20-30-37-37-6 13-7 27-2 42-25-5-43 0-59 14Z" fill="#b7334f" stroke="#ffd38a" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M108 130c14-4 27-1 39 10l-18 5 16 14-24-2-8 23-8-28-21 7 15-19-18-13Z" fill="#ff7c55" opacity=".88"/>
+  <path d="m146 121 17-12-6 21 18 9-22 2" fill="none" stroke="#ffd38a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="150" cy="130" r="3.5" fill="#fff1be"/>
+  <path d="M120 261c24-15 40-36 48-64M119 261c-22-14-36-33-43-56" fill="none" stroke="#ef8b62" stroke-opacity=".48" stroke-width="3"/>
+  <g fill="#f2ca78"><circle cx="42" cy="60" r="2"/><circle cx="199" cy="61" r="2"/><circle cx="37" cy="276" r="2"/><circle cx="201" cy="277" r="2"/></g>
+  <rect x="8" y="8" width="224" height="320" rx="35" fill="none" stroke="#f2ca78" stroke-opacity=".55" stroke-width="3"/>
+</svg>
