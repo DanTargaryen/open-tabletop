@@ -31,10 +31,12 @@
 
 ## 本地美术
 
-`web/assets/pokemon-atlas.png` 为本项目使用内置 imagegen 绘制的原创同人图集，不是官方卡面截图或网上下载的插画。它包含 20 种宝可梦；其余 35 种使用有名称、图鉴编号、成本与加成的原创排版卡面。页面不依赖任何远程图片或字体。
+全部 55 种角色统一使用 [The Artificial Pokémon Icons](https://theartificial.github.io/pokemon-icons/) 的作者自绘矢量同人图标。选取普通形态、普通颜色，尼多兰使用雌性。55 个 SVG 原样保存在 `web/assets/pokemon/`，用于全部 90 张卡；没有数字、通用图形或他种宝可梦替补。
 
-这份图集涉及的宝可梦角色权利仍归各自权利人；不将角色授权包含在项目 MIT 许可中。不得以本项目署名替换角色权利声明，或将页面描述为官方产品。
+上游固定提交：`132142217e40990f694142d9efb28ecde1e2976e`。素材目录 [_icons/README](https://github.com/TheArtificial/pokemon-icons/blob/132142217e40990f694142d9efb28ecde1e2976e/_icons/README) 明确说明图案由作者从零绘制，并允许按 CC-BY 署名分享。原文完整保留在 [素材 README](web/assets/pokemon/README.txt)。作者未指定 CC-BY 版本号，本项目不擅自补写版本，也不以仓库代码的 ISC 或本项目 MIT 替代美术授权。
 
-生成方式：内置 imagegen。成功图集提示词：original clean playful collectible Pokemon fan-art sprite atlas; gouache softness, crisp silhouette edges; flat pale ice-blue backdrop; 5 columns and 4 rows, one complete character per tile; no official scans, card layouts, text, logos, watermarks, borders or grid lines. Row order: Pidgeotto, Nidorina, Gloom, Poliwhirl, Kadabra / Machoke, Weepinbell, Graveler, Haunter, Dragonair / Venusaur, Charizard, Blastoise, Butterfree, Beedrill / Pidgeot, Nidoqueen, Vileplume, Poliwrath, Alakazam.
+署名：**The Artificial — Pokémon Icons**。未修改 SVG 内容，只在页面中缩放展示；`web/artwork.js` 逐种记录文件、图鉴编号与 SHA-256，测试核对每张卡的映射和文件哈希。网页页脚也保留作者链接。来源图片不依赖网络外链，离线静态资源包含完整图包。
 
-原始图集 1402×1122；浏览器使用记录的分格边界展示，不改动原图。未使用或提交官方 logo、卡图、训练师画像、完整规则书、模型 API Key、托管账户 ID 或运行房间数据。
+此授权覆盖作者绘制的图标及其署名分享条件，不授予 Pokémon 角色、名称或商标的额外权利。不得将页面描述为官方授权产品；角色相关权利仍归原权利人，排除于代码 MIT 许可之外。
+
+旧版的 20 种生成图集已停止使用，数字图鉴替补分支已删除。图片缺失时启动页明确提示重新加载，不会用数字卡面悄悄降级。

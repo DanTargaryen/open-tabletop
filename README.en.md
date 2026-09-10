@@ -28,7 +28,7 @@ Brand names and marks remain the property of their respective owners. They do no
 
 An unofficial implementation of the published Pokémon edition: 2–4 seats, 90 cards, evolution, special cards, and an 18-point final round. Solo opponents use local heuristics. Online rooms include readiness, optional AI filling, refresh recovery, private hands, and separate persistence.
 
-Numeric data is community-transcribed and has not been checked card-by-card against a physical copy. Original fan illustrations cover 20 species; the remaining 35 use designed name and Pokédex-number faces. See [game documentation](games/splendor/README.md) and [sources and notices](games/splendor/SOURCES.md). Pokémon multiplayer currently requires the Node server; the existing poker demo and optional Cloudflare adapter do not serve its rooms.
+Numeric data is community-transcribed and has not been checked card-by-card against a physical copy. All 55 species have local illustrations from The Artificial’s creator-authored Pokémon Icons, shared with attribution under their stated CC-BY permission. No numeric placeholders are used. See [game documentation](games/splendor/README.md) and [sources and notices](games/splendor/SOURCES.md). Pokémon multiplayer currently requires the Node server; the existing poker demo and optional Cloudflare adapter do not serve its rooms.
 
 ## Run locally
 
