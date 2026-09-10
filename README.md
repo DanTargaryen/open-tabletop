@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/DanTargaryen/open-tabletop/actions/workflows/ci.yml/badge.svg)](https://github.com/DanTargaryen/open-tabletop/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/Code-MIT-d2b77c)](LICENSE)
 
-一个可以自己运行、继续扩展的开源网页桌游合集。**现已包含德州扑克与璀璨宝石·宝可梦特别款**：单人对战本地 AI，也可以创建房间与朋友联机。
+一个可以自己运行、继续扩展的开源网页桌游合集。**现已包含德州扑克与璀璨宝石·宝可梦特别款**：单人对战本地 AI，也可以创建房间与朋友联机。两款游戏的好友房都允许一个人直接开局，空位自动补 AI。
 
 [English](README.en.md) · [添加游戏](docs/adding-a-game.md) · [架构说明](docs/architecture.md) · [参与贡献](CONTRIBUTING.md)
 

@@ -96,7 +96,7 @@ export class SplendorRooms {
         } else if(operation==='start') {
           requireThat(member.id===room.ownerId && room.status==='waiting',403,'只有房主可以开始等待中的对局。');
           requireThat(active(room).every(m=>m.ready),409,'请等待所有玩家准备。');
-          requireThat(active(room).length===room.capacity || input.fillAI===true,409,'还有空位，可以选择由 AI 补齐。');
+          requireThat(active(room).length===1 || active(room).length===room.capacity || input.fillAI===true,409,'还有空位，可以选择由 AI 补齐。');
           const names=Array.from({length:room.capacity},(_,seat)=>active(room).find(m=>m.seat===seat)?.name || AI_STYLES[seat%3].name+' · AI');
           room.game=createGame(names,{first:Math.floor(random()*room.capacity)});room.status='playing';setDeadline(room,now);
         } else if(operation==='action') {
