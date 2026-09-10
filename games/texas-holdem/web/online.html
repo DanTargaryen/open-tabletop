@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#141713"><meta name="description" content="丝绒牌局 · 一张属于你的德州扑克桌。离线可玩的单人筹码锦标赛。">
+<meta name="theme-color" content="#141713"><meta name="description" content="丝绒牌局 · 一个人即可与 AI 开局，也可以邀请朋友联机。仅使用虚拟筹码。">
 <title>丝绒牌局 · 好友联机</title>
 <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="online.css">
 </head>
@@ -13,12 +13,12 @@
   <div class="header-right"><span class="offline-tag"><i></i> PRIVATE TABLE</span><button class="rank-guide-button" id="ranksBtn" title="牌型大小与比牌规则">牌型大小</button><button class="icon-btn" id="soundBtn" title="开启声音" aria-label="开启声音">♫<span class="sound-slash"></span></button><button class="icon-btn" id="helpBtn" title="玩法说明" aria-label="玩法说明">?</button></div>
  </header>
  <main id="lobby" class="online-lobby">
- <section id="onlineSetup" class="online-setup"><div class="eyebrow">VELVET POKER · FRIENDS TABLE</div><h1>好友，来一局。</h1><p class="online-intro">创建房间，把邀请链接发给朋友。2–6 位真人，空位由 AI 补齐。</p>
+ <section id="onlineSetup" class="online-setup"><div class="eyebrow">VELVET POKER · FRIENDS TABLE</div><h1>好友，来一局。</h1><p class="online-intro">创建房间，把邀请链接发给朋友。1–6 位真人，一个人也能开局，空位由 AI 补齐。</p>
  <label class="field-label" for="onlineName">你的牌桌昵称</label><input id="onlineName" class="online-input" maxlength="16" placeholder="输入昵称，朋友会在牌桌上看到" autocomplete="nickname">
  <div class="room-entry-grid"><section class="room-entry-card"><h2>开一张新牌桌</h2><label class="field-label" for="roomMode">玩法</label><select id="roomMode" class="online-input"><option value="practice">轻松练习 · 每手 2,000 筹码</option><option value="tournament">单桌锦标赛 · 筹码延续、逐级升盲</option></select><label class="field-label" for="roomDifficulty">AI 补位难度</label><select id="roomDifficulty" class="online-input"><option value="casual">休闲</option><option value="standard" selected>标准</option><option value="expert">挑战</option></select><button id="createRoomBtn" class="primary-btn">创建好友房 <span>↗</span></button></section>
  <section class="room-entry-card"><h2>加入朋友的房间</h2><label class="field-label" for="joinCode">六位房间码</label><input id="joinCode" class="online-input room-code-input" maxlength="6" placeholder="例如 ABC234" autocomplete="off" autocapitalize="characters"><p class="field-hint">打开邀请链接会自动填入房间码。</p><button id="joinRoomBtn" class="primary-btn">加入房间 <span>→</span></button><button id="resumeRoomBtn" class="continue-btn hidden">恢复上次座位</button></section></div>
  <div class="opponent-lineup" id="opponentLineup" aria-label="AI 补位对手"></div><p class="field-hint">虚拟筹码 · 房间码仅分享给朋友 · 每次行动有 45 秒</p><p id="netError" class="online-error" role="status"></p></section>
- <section id="roomWaiting" class="room-waiting hidden"><div class="eyebrow">YOUR PRIVATE TABLE</div><h1>等朋友入座。</h1><div class="invite-row"><div><span class="field-label">房间码</span><strong id="waitingCode" class="room-code"></strong></div><button id="copyInviteBtn" class="secondary-btn">复制邀请链接</button></div><p id="waitingDescription" class="online-intro"></p><div id="roomRoster" class="room-roster"></div><p id="waitingHint" class="field-hint" aria-live="polite"></p><div class="waiting-actions"><button id="readyRoomBtn" class="secondary-btn">准备好了</button><button id="startRoomBtn" class="primary-btn">开始牌局 <span>→</span></button></div><button id="leaveWaitingBtn" class="text-btn">离开房间</button><p class="field-hint">房主负责开局；牌桌上的庄家 D 仍按德州扑克规则轮换。</p></section>
+ <section id="roomWaiting" class="room-waiting hidden"><div class="eyebrow">YOUR PRIVATE TABLE</div><h1 id="waitingTitle">你的牌桌</h1><div class="invite-row"><div><span class="field-label">房间码</span><strong id="waitingCode" class="room-code"></strong></div><button id="copyInviteBtn" class="secondary-btn">复制邀请链接</button></div><p id="waitingDescription" class="online-intro"></p><div id="roomRoster" class="room-roster"></div><p id="waitingHint" class="field-hint" aria-live="polite"></p><div class="waiting-actions"><button id="readyRoomBtn" class="secondary-btn">准备好了</button><button id="startRoomBtn" class="primary-btn">开始牌局 <span>→</span></button></div><button id="leaveWaitingBtn" class="text-btn">离开房间</button><p class="field-hint">房主负责开局；牌桌上的庄家 D 仍按德州扑克规则轮换。</p></section>
  <div hidden><button id="startBtn"></button><button id="continueBtn"></button><button id="achievementsBtn"></button><div id="difficulty"></div><span id="lobbyHands"></span><span id="lobbyWins"></span><span id="lobbyTitles"></span></div>
  </main>
  <main id="game" class="game hidden">

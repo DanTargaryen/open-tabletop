@@ -4,7 +4,7 @@
 
 ![Open Tabletop collection](docs/collection-preview.jpg)
 
-An open-source collection of browser tabletop games that you can run yourself and extend. **The first release currently contains Texas Hold’em only**, with solo play against local AI and online rooms for friends.
+An open-source collection of browser tabletop games that you can run yourself and extend. **The collection contains Texas Hold’em and an unofficial Splendor: Pokémon implementation**, with solo play against local AI and online rooms for friends.
 
 [中文](README.md) · [Add a game](docs/adding-a-game.md) · [Architecture](docs/architecture.md) · [Contributing](CONTRIBUTING.md)
 
@@ -12,7 +12,7 @@ An open-source collection of browser tabletop games that you can run yourself an
 
 [Open the existing Texas Hold’em demo](https://velvet-poker-friends.linming-dracarys.chatgpt.site)
 
-This link points to the existing poker demo, not a deployment of this repository’s collection homepage. When you run this repository, its homepage lists available games from the game catalog.
+The public root URL is now the game-selection homepage, with solo and friend-room links for both games. Existing poker URLs and root room invitations remain supported.
 
 Texas Hold’em includes:
 
@@ -23,6 +23,12 @@ Texas Hold’em includes:
 - Automatic check or fold after a 45 second action timeout, with a 24 hour room activity TTL.
 
 Brand names and marks remain the property of their respective owners. They do not imply participation or endorsement, and the project’s MIT license does not grant rights to those marks. See [third-party notices](THIRD_PARTY_NOTICES.md).
+
+## Splendor: Pokémon
+
+An unofficial implementation of the published Pokémon edition: 2–4 seats, 90 cards, evolution, special cards, and an 18-point final round. Solo opponents use local heuristics. Online rooms include readiness, optional AI filling, refresh recovery, private hands, and separate persistence.
+
+Numeric data is community-transcribed and has not been checked card-by-card against a physical copy. All 55 species have local illustrations from The Artificial’s creator-authored Pokémon Icons, shared with attribution under their stated CC-BY permission. No numeric placeholders are used. See [game documentation](games/splendor/README.md) and [sources and notices](games/splendor/SOURCES.md). Pokémon multiplayer supports the Node server or Cloudflare Workers with migrated D1 storage. Pokémon rooms and rate limits use separate tables from poker.
 
 ## Run locally
 
@@ -41,6 +47,8 @@ Open <http://127.0.0.1:18772>.
 | Game catalog | `/` |
 | Solo Texas Hold’em | `/games/texas-holdem/index.html` |
 | Online Texas Hold’em | `/games/texas-holdem/online.html` |
+| Solo Splendor: Pokémon | `/games/splendor/index.html` |
+| Online Splendor: Pokémon | `/games/splendor/online.html` |
 
 To play with friends on the same local network:
 
@@ -75,7 +83,7 @@ npm test
 npm run build:static
 ```
 
-Tests cover the poker engine, room behavior, synchronization, and the root server. The static build copies assets to `.dist/public`. Online play also requires a backend serving `/api/poker`; static hosting alone does not provide rooms.
+Tests cover both game engines, room behavior, synchronization, and the root server. The static build copies assets to `.dist/public`. Online play also requires a Node or Worker + D1 backend serving `/api/poker` and `/api/splendor`; static hosting alone does not provide rooms.
 
 The default entry point, `server/index.mjs`, runs in a Node environment you control. An optional Cloudflare adapter is included:
 
@@ -86,7 +94,7 @@ Database settings in the example configuration are placeholders. Create and bind
 
 ## Extend the collection
 
-Each game lives in `games/<game-id>/` and appears on the homepage through `games/catalog.json`. The catalog currently contains only `texas-holdem`; additional games will be added as they are implemented and contributed.
+Each game lives in `games/<game-id>/` and appears on the homepage through `games/catalog.json`. The catalog contains `texas-holdem` and `splendor`; additional games will be added as they are implemented and contributed.
 
 ```text
 games/

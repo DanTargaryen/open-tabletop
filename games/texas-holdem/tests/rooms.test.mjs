@@ -16,7 +16,9 @@ function assertPrivate(payload){const text=JSON.stringify(payload);for(const key
 
 test('room membership, readiness, unique seats, full table and host permissions',async()=>{
  const store=new MemoryRoomStore(),s=new RoomService(store);const h=await s.create({name:'主人'}),c=h.room.code;
- await assert.rejects(s.request(c,h.token,'start'),/至少需要两位/);
+ await s.request(c,h.token,'ready',{ready:false});
+ await assert.rejects(s.request(c,h.token,'start'),/准备/);
+ await s.request(c,h.token,'ready',{ready:true});
  const p=await s.request(c,null,'join',{seatKey:crypto.randomUUID().replaceAll('-','')+'0123456789abcdef',name:'访客'});
  await assert.rejects(s.request(c,p.token,'start'),/房主/);
  await assert.rejects(s.request(c,h.token,'start'),/准备/);
@@ -117,4 +119,33 @@ test('twenty six-human hands finish with conserved chips and private history',as
   if(h<19){for(const p of t.people)await t.service.request(t.code,p.token,'ready',{ready:true});t.tick(1600);await t.service.request(t.code,t.host.token,'state');}
  }
  assert.equal(t.room().engine.handNumber,20);assert.equal(t.room().history.length,12);assert.ok(actions>=400);
+});
+
+
+test('one human starts with five private AI opponents and can play the next hand alone',async()=>{
+ const t=await table(1);
+ assert.equal(t.start.room.roster.length,1);assert.equal(t.start.room.aiCount,5);
+ assert.equal(t.start.game.players.length,6);assert.equal(t.start.game.players.filter(p=>p.isBot).length,5);
+ for(const p of t.start.game.players.slice(1))assert.deepEqual(p.hole,[null,null]);assertPrivate(t.start);
+ await ownTurn(t);assert.equal(t.room().engine.currentPlayerIndex,0);
+ assert.equal(t.room().deadline-t.now,TURN_MS);
+ let decisions=0;
+ while(t.room().engine.phase!=='complete'&&decisions++<150){
+  if(t.room().engine.currentPlayerIndex===0){const v=await t.service.request(t.code,t.host.token,'state');await t.service.request(t.code,t.host.token,'action',{version:v.room.version,requestId:crypto.randomUUID(),type:v.game.legalActions.canCheck?'check':'call'});}
+  else{t.time(t.room().deadline+1);await t.service.request(t.code,t.host.token,'state');}
+ }
+ assert.equal(t.room().engine.phase,'complete');assert.equal(t.room().engine.players.reduce((n,p)=>n+p.stack+p.contribution,0),12000);
+ await t.service.request(t.code,t.host.token,'ready',{ready:true});t.tick(1600);
+ const next=await t.service.request(t.code,t.host.token,'state');assert.equal(next.game.handNumber,2);assert.equal(next.room.roster.length,1);assert.equal(next.room.aiCount,5);
+ const restored=await new RoomService(t.store,()=>t.now).request(t.code,t.host.token,'state');assert.equal(restored.game.handNumber,2);
+ await assert.rejects(t.service.request(t.code,null,'join',{name:'迟到',seatKey:'d'.repeat(48)}),/已经开始/);
+});
+
+test('one-host support still rejects an offline or unready real guest',async()=>{
+ let now=100000;const service=new RoomService(new MemoryRoomStore(),()=>now),host=await service.create({name:'Host'}),code=host.room.code;
+ const guest=await service.request(code,null,'join',{name:'Guest',seatKey:'f'.repeat(48)});
+ await assert.rejects(service.request(code,host.token,'start'),/准备/);
+ await service.request(code,guest.token,'ready',{ready:true});now+=21000;
+ await assert.rejects(service.request(code,host.token,'start'),/在线/);
+ await service.request(code,guest.token,'state');assert.equal((await service.request(code,host.token,'start')).room.status,'playing');
 });

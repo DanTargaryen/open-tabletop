@@ -151,7 +151,6 @@ export class RoomService{
      member.ready=!!input.ready;member.lastSeen=now;room.version++;changed=true;
     }else if(operation==='start'){
      requireThat(member.id===room.ownerId,403,'只有房主能开始。');requireThat(room.status==='waiting',409,'牌局已经开始。');
-     requireThat(activeMembers(room).length>=2,409,'至少需要两位真人，其他空位会由 AI 补齐。');
      requireThat(activeMembers(room).every(m=>m.ready&&now-m.lastSeen<OFFLINE_MS),409,'请等待所有玩家在线并准备。');
      begin(room,now);changed=true;
     }else if(operation==='new-round'){

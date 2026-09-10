@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/DanTargaryen/open-tabletop/actions/workflows/ci.yml/badge.svg)](https://github.com/DanTargaryen/open-tabletop/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/Code-MIT-d2b77c)](LICENSE)
 
-一个可以自己运行、继续扩展的开源网页桌游合集。**首发目前只有德州扑克**：单人对战本地 AI，也可以创建房间与朋友联机。
+一个可以自己运行、继续扩展的开源网页桌游合集。**现已包含德州扑克与璀璨宝石·宝可梦特别款**：单人对战本地 AI，也可以创建房间与朋友联机。两款游戏的好友房都允许一个人直接开局，空位自动补 AI。
 
 [English](README.en.md) · [添加游戏](docs/adding-a-game.md) · [架构说明](docs/architecture.md) · [参与贡献](CONTRIBUTING.md)
 
@@ -10,9 +10,11 @@
 
 ## 先玩一局
 
-[打开现有德州扑克试玩](https://velvet-poker-friends.linming-dracarys.chatgpt.site)
+**[打开游戏大厅](https://velvet-poker-friends.linming-dracarys.chatgpt.site/)**，选择德州扑克或宝可梦，再选择单人模式或好友房。
 
-这个链接是已有的扑克试玩站，并非本仓库合集首页的部署。自行运行本仓库后，首页会从游戏目录读取可用游戏。
+[宝可梦特别款 · 单人冒险](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/splendor/) · [宝可梦特别款 · 好友联机](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/splendor/online) · [德州扑克试玩](https://velvet-poker-friends.linming-dracarys.chatgpt.site)
+
+统一首页已部署到现有 Sites 域名；两款游戏均支持单人 AI 和远端好友房。原游戏直达路径及旧的扑克房间邀请链接继续可用。
 
 德州扑克包含：
 
@@ -23,6 +25,12 @@
 - 45 秒行动超时后自动过牌或弃牌；房间活动 TTL 为 24 小时。
 
 品牌名称与标识的权利归原权利人所有，不代表品牌参与或背书，也不因本仓库的 MIT 许可而转让。详见 [第三方声明](THIRD_PARTY_NOTICES.md)。
+
+## 璀璨宝石 · 宝可梦特别款
+
+已发行宝可梦特别版规则的非官方实现：2–4 个座位、90 张卡、捕捉与进化、特殊卡和 18 分终局。支持单人本地 AI、好友准备开局、AI 补位、刷新恢复与独立房间存储。
+
+卡表来自社区转录，尚未逐张核对实体版；55 种宝可梦均有本地角色图片，采用 The Artificial 作者自绘、允许署名分享的统一图标，无数字替补。详见 [玩法与运行](games/splendor/README.md) 及 [规则与素材来源](games/splendor/SOURCES.md)。宝可梦联机支持 Node 服务或 Cloudflare Workers + D1；Worker 需要应用独立的宝可梦房间与限流表迁移。
 
 ## 本地运行
 
@@ -41,6 +49,8 @@ npm start
 | 桌游目录 | `/` |
 | 德州扑克单人模式 | `/games/texas-holdem/index.html` |
 | 德州扑克联机模式 | `/games/texas-holdem/online.html` |
+| 宝可梦特别款单人 AI | `/games/splendor/index.html` |
+| 宝可梦特别款好友房 | `/games/splendor/online.html` |
 
 与同一局域网内的朋友一起玩：
 
@@ -75,18 +85,19 @@ npm test
 npm run build:static
 ```
 
-测试覆盖扑克引擎、房间逻辑、同步和根服务器。静态构建会将资源复制到 `.dist/public`；联机功能还需要提供 `/api/poker` 的后端，单独托管静态文件不能提供房间服务。
+测试覆盖两款游戏的规则引擎、房间逻辑、同步和根服务器。静态构建会将资源复制到 `.dist/public`；联机功能还需要提供 `/api/poker` 与 `/api/splendor` 的 Node 或 Worker + D1 后端，单独托管静态文件不能提供房间服务。
 
 默认入口是 `server/index.mjs`，适合在自己的 Node 环境中运行。仓库也提供可选的 Cloudflare 适配器：
 
 - `deploy/cloudflare/worker.mjs`
 - `deploy/cloudflare/wrangler.example.jsonc`
+- `deploy/cloudflare/migrations/`：扑克原有表与新增宝可梦表的顺序迁移；两款游戏使用独立表和限流。
 
 示例配置中的数据库信息是占位符。使用前需要自行创建并绑定资源；本仓库不附带任何可复用的托管账户或数据库 ID。具体边界见 [架构说明](docs/architecture.md)。
 
 ## 扩展合集
 
-每个游戏放在 `games/<game-id>/`，通过 `games/catalog.json` 出现在首页。当前目录只有 `texas-holdem`；未来游戏由实际实现和贡献逐步加入。
+每个游戏放在 `games/<game-id>/`，通过 `games/catalog.json` 出现在首页。当前目录包含 `texas-holdem` 与 `splendor`；未来游戏由实际实现和贡献逐步加入。
 
 ```text
 games/

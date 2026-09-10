@@ -1,0 +1,109 @@
+/* Comfortable cards flow with the page. Compact mode and full-screen dialogs
+   keep their own styles; no viewport height or collection scrollport is imposed. */
+.game-active:not(.compact-table) .topbar { height: 68px; }
+.game-active:not(.compact-table) #app { max-width: 1480px; padding: 20px 24px 32px; }
+.game-active:not(.compact-table) #app .game-layout { grid-template-columns: minmax(0, 1fr) 252px; gap: 20px; }
+.game-active:not(.compact-table) #app .console { position: static; }
+.game-active:not(.compact-table) #app .finished { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 16px; padding: 16px 20px; }
+.game-active:not(.compact-table) #app .finished .eyebrow,
+.game-active:not(.compact-table) #app .finished h2,
+.game-active:not(.compact-table) #app .finished p { grid-column: 1; margin: 0; }
+.game-active:not(.compact-table) #app .finished h2 { font-size: 22px; }
+.game-active:not(.compact-table) #app .finished button { grid-column: 2; grid-row: 1 / span 3; align-self: center; }
+.game-active:not(.compact-table) #app .players { gap: 10px; margin-bottom: 18px; }
+.game-active:not(.compact-table) #app .player { padding: 10px; }
+.game-active:not(.compact-table) #app .player-resources { gap: 5px; }
+.game-active:not(.compact-table) #app .tier-row { grid-template-columns: 42px repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.game-active:not(.compact-table) #app .pokemon-card {
+  height: 232px; padding: 12px; border-radius: 14px;
+  background: #fff; box-shadow: 0 3px 0 #d7e4e8, 0 6px 14px #18354a06;
+}
+.game-active:not(.compact-table) #app .pokemon-card .card-top { top: 12px; left: 12px; right: 12px; }
+.game-active:not(.compact-table) #app .card-points { font-size: 28px; line-height: 1.1; }
+.game-active:not(.compact-table) #app .card-points small { display: block; font-size: 10px; margin-top: 3px; }
+.game-active:not(.compact-table) #app .bonus { gap: 4px; }
+.game-active:not(.compact-table) #app .bonus .ball { height: 24px; min-width: 24px; font-size: 12px; }
+.game-active:not(.compact-table) #app .bonus > small { font-size: 12px; }
+.game-active:not(.compact-table) #app .pokemon-card > .portrait {
+  width: min(122px, 78%); height: 108px; top: 40px;
+  border-radius: 12px; background: linear-gradient(150deg, #eef7f6, #e7f1f5);
+}
+.game-active:not(.compact-table) #app .pokemon-card .evo-cost { top: 154px; left: 12px; font-size: 11px; }
+.game-active:not(.compact-table) #app .pokemon-card .card-bottom { bottom: 12px; left: 12px; right: 10px; }
+.game-active:not(.compact-table) #app .card-name { font-size: 15px; line-height: 1.3; }
+.game-active:not(.compact-table) #app .card-id { display: none; }
+.game-active:not(.compact-table) #app .costs { margin-top: 6px; gap: 4px; }
+.game-active:not(.compact-table) #app .costs .ball { height: 22px; min-width: 22px; font-size: 12px; }
+.game-active:not(.compact-table) #app .pokemon-card.affordable { border-color: #4d9277; }
+.game-active:not(.compact-table) #app .owned-card { border-color: #b8d5c9; background: #fbfefd; }
+.game-active:not(.compact-table) #app .owned-marker { display: none; }
+
+.game-active:not(.compact-table) #app .special-box { padding: 9px; gap: 10px; }
+.game-active:not(.compact-table) #app .special-label { min-width: 56px; font-size: 13px; }
+.game-active:not(.compact-table) #app .special-box .pokemon-card {
+  height: 110px; min-height: 110px; grid-template-columns: 72px minmax(0, 1fr);
+  grid-template-rows: 26px 1fr; padding: 8px; gap: 5px 8px;
+}
+.game-active:not(.compact-table) #app .special-box .pokemon-card > .portrait { width: 70px; height: 76px; top: auto; border-radius: 9px; }
+.game-active:not(.compact-table) #app .special-box .card-points { font-size: 24px; }
+.game-active:not(.compact-table) #app .special-box .card-points small { display: none; }
+.game-active:not(.compact-table) #app .special-box .card-name { font-size: 14px; }
+.game-active:not(.compact-table) #app .special-box .costs { gap: 3px; }
+.game-active:not(.compact-table) #app .special-box .costs .ball { min-width: 19px; height: 19px; font-size: 11px; }
+
+.game-active:not(.compact-table) #app .your-team { padding: 20px; }
+.game-active:not(.compact-table) #app .hand-heading { margin-bottom: 12px; }
+.game-active:not(.compact-table) #app .hand-tokens { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.game-active:not(.compact-table) #app .held-token { padding: 10px 8px; gap: 8px; justify-content: center; }
+.game-active:not(.compact-table) #app .permanent-bonuses { padding: 12px 0 16px; margin-bottom: 20px; }
+.game-active:not(.compact-table) #app .team-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 14px; max-width: none; max-height: none; overflow: visible; margin-bottom: 24px;
+}
+.game-active:not(.compact-table) #app .reserved-row { gap: 14px; }
+.game-active:not(.compact-table) #app .reserved-row .pokemon-card { width: 180px; }
+
+@media (max-width: 1100px) and (min-width: 761px) {
+  .game-active:not(.compact-table) #app .game-layout { grid-template-columns: minmax(0, 1fr) 226px; gap: 14px; }
+  .game-active:not(.compact-table) #app .tier-row { gap: 8px; grid-template-columns: 32px repeat(4, minmax(0, 1fr)); }
+  .game-active:not(.compact-table) #app .special-label { min-width: 40px; }
+  .game-active:not(.compact-table) #app .special-box { gap: 6px; padding: 6px; }
+  .game-active:not(.compact-table) #app .special-box .pokemon-card { grid-template-columns: 48px minmax(0, 1fr); gap: 4px; padding: 6px; }
+  .game-active:not(.compact-table) #app .special-box .pokemon-card > .portrait { width: 46px; height: 64px; }
+  .game-active:not(.compact-table) #app .card-name { font-size: 14px; }
+}
+@media (max-width: 760px) {
+  .game-active:not(.compact-table) .topbar { padding: 0 12px; gap: 10px; }
+  .game-active:not(.compact-table) .brand { font-size: 17px; }
+  .game-active:not(.compact-table) .brand-symbol { display: none; }
+  .game-active:not(.compact-table) .top-actions { gap: 9px; font-size: 12px; }
+  .game-active:not(.compact-table) #app { padding: 14px 12px 28px; }
+  .game-active:not(.compact-table) #app .game-layout { display: flex; gap: 20px; }
+  .game-active:not(.compact-table) #app .your-team { padding: 14px; width: 100%; }
+  .game-active:not(.compact-table) #app .hand-tokens { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .game-active:not(.compact-table) #app .team-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .game-active:not(.compact-table) #app .reserved-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .game-active:not(.compact-table) #app .reserved-row .pokemon-card { width: 100%; }
+  .game-active:not(.compact-table) #app .special-box { padding: 8px; }
+  .game-active:not(.compact-table) #app .special-box .pokemon-card { grid-template-columns: 64px minmax(0, 1fr); grid-template-rows: 34px 1fr; height: 128px; }
+  .game-active:not(.compact-table) #app .special-box .pokemon-card > .portrait { width: 60px; height: 64px; }
+}
+@media (max-width: 620px) {
+  .game-active:not(.compact-table) #app .tier-row { grid-template-columns: 28px repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .game-active:not(.compact-table) #app .tier-row .deck { grid-column: 1; grid-row: 1 / span 2; padding: 12px 1px; }
+  .game-active:not(.compact-table) #app .tier-row .pokemon-card > .portrait { width: min(140px, 78%); }
+  .game-active:not(.compact-table) .back { display: none; }
+}
+@media (max-width: 400px) {
+  .game-active:not(.compact-table) .brand { font-size: 15px; }
+  .game-active:not(.compact-table) .brand small { font-size: 9px; letter-spacing: 0; }
+  .game-active:not(.compact-table) .top-actions { gap: 7px; font-size: 11px; }
+  .game-active:not(.compact-table) .top-actions button { font-size: 11px; }
+  .game-active:not(.compact-table) .top-actions a { padding-left: 7px; }
+  .game-active:not(.compact-table) #app .card-name { font-size: 14px; }
+  .game-active:not(.compact-table) #app .pokemon-card .card-bottom { left: 9px; right: 7px; }
+}
+@media (min-width: 761px) and (max-width: 879px) {
+  .game-active:not(.compact-table) #app .tier-row { grid-template-columns: 32px repeat(2, minmax(0, 1fr)); }
+  .game-active:not(.compact-table) #app .tier-row .deck { grid-column: 1; grid-row: 1 / span 2; }
+}

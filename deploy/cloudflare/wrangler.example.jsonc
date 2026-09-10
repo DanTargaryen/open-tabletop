@@ -5,6 +5,6 @@
   "compatibility_flags": ["nodejs_compat"],
   "assets": {"directory": "../../.dist/public", "binding": "ASSETS", "run_worker_first": ["/api/*", "/health"]},
   "d1_databases": [
-    {"binding": "DB", "database_name": "open-tabletop-poker", "database_id": "REPLACE_WITH_YOUR_DATABASE_ID", "migrations_dir": "../../games/texas-holdem/server/migrations"}
+    {"binding": "DB", "database_name": "open-tabletop-poker", "database_id": "REPLACE_WITH_YOUR_DATABASE_ID", "migrations_dir": "./migrations"}
   ]
 }

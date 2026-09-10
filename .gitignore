@@ -17,3 +17,6 @@ deploy/cloudflare/wrangler.jsonc
 *.sqlite*
 *.db
 *.tmp
+artifacts/
+.playwright-cli/
+output/playwright/

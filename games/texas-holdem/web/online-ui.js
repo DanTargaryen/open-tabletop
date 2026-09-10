@@ -392,8 +392,10 @@ function renderWaiting(){
  $('roomRoster').innerHTML=roster.map((p,i)=>p?`<div class="roster-seat"><span class="roster-avatar">${esc(p.name.slice(0,1))}</span><div><b>${esc(p.name)}${p.id===room.selfId?' · 你':''}</b><small>${p.owner?'房主 · ':''}${p.connected?(p.ready?'已准备':'等待准备'):'暂时离线'}</small></div><span class="roster-ready ${p.ready?'on':''}">${p.ready?'✓':'·'}</span>${room.isOwner&&p.id!==room.selfId?`<button class="roster-remove" data-kick="${p.id}" aria-label="移出 ${esc(p.name)}" title="移出房间">×</button>`:''}</div>`:`<div class="roster-seat empty"><span class="roster-avatar">+</span><div><b>等待好友</b><small>开局时由 AI 补位</small></div></div>`).join('');
  document.querySelectorAll('[data-kick]').forEach(button=>button.onclick=()=>roomCommand('kick',{memberId:button.dataset.kick}));
  $('readyRoomBtn').textContent=room.selfReady?'取消准备':'准备好了';$('readyRoomBtn').disabled=busy||net.lost;
- $('startRoomBtn').classList.toggle('hidden',!room.isOwner);$('startRoomBtn').disabled=busy||room.roster.length<2||!room.roster.every(p=>p.ready&&p.connected);
- $('waitingHint').textContent=net.lost?'连接暂时中断，正在重连…':room.roster.length<2?'至少两位真人即可开局。复制邀请链接给朋友。':room.roster.every(p=>p.ready&&p.connected)?(room.isOwner?'人齐了，可以开局。':'大家都已准备，等房主开局。'):'等大家准备好，房主就可以开局。';
+ $('waitingTitle').textContent=room.roster.length===1?'你的牌桌':'等朋友入座。';
+ $('startRoomBtn').innerHTML=room.roster.length===1?'一个人开局 <span>→</span>':'开始牌局 <span>→</span>';
+ $('startRoomBtn').classList.toggle('hidden',!room.isOwner);$('startRoomBtn').disabled=busy||!room.roster.every(p=>p.ready&&p.connected);
+ $('waitingHint').textContent=net.lost?'连接暂时中断，正在重连…':room.roster.length===1?(room.selfReady?'你已就位，可以与 5 位 AI 直接开局。':'准备好后就能一个人开局，AI 会补齐空位。'):room.roster.every(p=>p.ready&&p.connected)?(room.isOwner?'人齐了，可以开局。':'大家都已准备，等房主开局。'):'等大家准备好，房主就可以开局。';
 }
 function paintRoomStatus(){
  if(!net.data)return;const room=net.data.room;
@@ -412,8 +414,8 @@ function paintRoomStatus(){
  }
  if(isComplete()){
   if(room.status==='finished'){$('nextBtn').innerHTML=room.isOwner?'新开一场 <span>→</span>':'等待房主新开一场';$('nextBtn').disabled=!room.isOwner||busy;}
-  else if(view.players[0].eliminated){$('nextBtn').textContent='已出局 · 观战中';$('nextBtn').disabled=true;$('turnMessage').textContent='你已出局，可以继续观战；其余玩家准备后进入下一手。';}
-  else{$('nextBtn').innerHTML=room.selfReady?'已准备，等待朋友':'准备下一手 <span>→</span>';$('nextBtn').disabled=room.selfReady||busy||net.lost;$('turnMessage').textContent=`本手结束 · ${room.roster.filter(p=>p.ready).length} / ${room.roster.length} 人已准备`;}
+  else if(view.players[0].eliminated){$('nextBtn').textContent='已出局 · 观战中';$('nextBtn').disabled=true;$('turnMessage').textContent=room.roster.length===1?'你已出局，AI 将继续对局，可以留在这里观战。':'你已出局，可以继续观战；其余玩家准备后进入下一手。';}
+  else{$('nextBtn').innerHTML=room.selfReady?(room.roster.length===1?'正在开始下一手…':'已准备，等待朋友'):'准备下一手 <span>→</span>';$('nextBtn').disabled=room.selfReady||busy||net.lost;$('turnMessage').textContent=`本手结束 · ${room.roster.filter(p=>p.ready).length} / ${room.roster.length} 人已准备`;}
  }
  document.querySelector('.save-caption').innerHTML='<i></i> 房间进度保存在服务器';
 }
