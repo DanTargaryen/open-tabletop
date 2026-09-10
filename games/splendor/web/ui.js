@@ -69,6 +69,7 @@ function syncLayout() {
   document.body.classList.toggle('game-active',Boolean(state));
   document.body.classList.toggle('compact-table',Boolean(state)&&compact);
   document.body.classList.toggle('game-complete',state?.phase==='complete');
+  app.style.minHeight='';
   const toggle=document.querySelector('#layout-mode');
   toggle.hidden=!state;
   toggle.textContent=compact?'舒展布局':'紧凑布局';
@@ -76,6 +77,7 @@ function syncLayout() {
   toggle.setAttribute('aria-label',compact?'当前紧凑布局，切换到舒展布局':'当前舒展布局，切换到紧凑布局');
 }
 function fitCompactLayout() {
+  app.style.minHeight='';
   const zone=app.querySelector('.captured-zone'),list=app.querySelector('.team-list');
   if(!zone||!list||!compact)return;
   const count=list.querySelectorAll('[data-card]').length;
@@ -83,7 +85,16 @@ function fitCompactLayout() {
   const rows=Math.min(2,Math.ceil(count/columns));
   list.style.setProperty('--team-columns',columns);
   list.classList.toggle('two-rows',rows>1);
-  app.style.setProperty('--personal-card-height',rows>1?'162px':'112px');
+  const cardHeight=rows>1?162:112;
+  app.style.setProperty('--personal-card-height',cardHeight+'px');
+  // If a short window cannot fit the table, let the whole page grow. Otherwise
+  // the grid's minimum rows would overflow into the footer and hide card edges.
+  if(matchMedia('(min-width: 900px) and (min-height: 660px)').matches){
+    const styles=getComputedStyle(app),fixed=[...app.children].filter(el=>!el.classList.contains('game-layout'));
+    const chrome=fixed.reduce((sum,el)=>sum+Math.max(el.scrollHeight,el.getBoundingClientRect().height),0)
+      +parseFloat(styles.paddingTop)+parseFloat(styles.paddingBottom)+parseFloat(styles.rowGap)*fixed.length;
+    app.style.minHeight=Math.ceil(chrome+326+8+cardHeight+71)+'px';
+  }
 }
 function render() {
   syncLayout();

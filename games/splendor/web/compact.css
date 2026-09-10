@@ -29,7 +29,7 @@
   .compact-table #app .player-name small { font-size: 10px; line-height: 1.2; white-space: nowrap; }
   .compact-table #app .score { font-size: 23px; }
   .compact-table #app .score small { font-size: 10px; }
-  .compact-table #app .player-resources { margin-top: 5px; gap: 5px; flex-wrap: nowrap; justify-content: space-between; }
+  .compact-table #app .player-resources { margin-top: 5px; gap: 5px; flex-wrap: wrap; justify-content: space-between; }
   .compact-table #app .tiny-resource { gap: 2px; }
   .compact-table #app .tiny-resource .ball { height: 15px; min-width: 15px; font-size: 9px; }
   .compact-table #app .tiny-resource b { font-size: 11px; }
@@ -37,7 +37,7 @@
   .compact-table #app .game-layout {
     flex: 1; min-height: 0; display: grid; align-items: stretch; gap: 8px;
     grid-template-columns: minmax(0, 1fr) 200px;
-    grid-template-rows: minmax(260px, 1fr) calc(var(--personal-card-height, 112px) + 71px);
+    grid-template-rows: minmax(326px, 1fr) calc(var(--personal-card-height, 112px) + 71px);
     grid-template-areas: 'market console' 'personal personal';
   }
   .compact-table #app .market { grid-area: market; display: grid; grid-template-rows: 56px repeat(3, minmax(0, 1fr)); gap: 6px; min-height: 0; }
@@ -52,7 +52,7 @@
   .compact-table #app .market .pokemon-card {
     height: 100%; min-height: 0; padding: 5px 7px; border-radius: 9px;
     display: grid; grid-template-columns: minmax(38px, 35%) minmax(0, 1fr);
-    grid-template-rows: 20px minmax(0, 1fr) 18px; column-gap: 5px;
+    grid-template-rows: 18px minmax(0, 1fr) 16px; column-gap: 5px;
   }
   .compact-table #app .market .pokemon-card .card-top { position: static; grid-column: 1 / -1; grid-row: 1; align-items: center; }
   .compact-table #app .market .card-points { font-size: 21px; line-height: 1; }
@@ -127,7 +127,7 @@
   .compact-table #app .inventory-bonus { font-size: 12px; padding: 2px 4px; gap: 3px; }
   .compact-table #app .inventory-bonus .ball { height: 18px; min-width: 18px; font-size: 10px; }
   .compact-table #app .permanent-bonuses > small { display: none; }
-  .compact-table #app .personal-cards { display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--reserved-count) * 86px + (var(--reserved-count) - 1) * 6px); gap: 14px; }
+  .compact-table #app .personal-cards { display: grid; grid-template-columns: minmax(0, 1fr) max(150px, calc(var(--reserved-count) * 86px + (var(--reserved-count) - 1) * 6px)); gap: 14px; }
   .compact-table #app .captured-zone, .compact-table #app .reserved-zone { min-width: 0; }
   .compact-table #app .reserved-zone { border-left: 1px solid var(--line); padding-left: 10px; }
   .compact-table #app .team-list {
@@ -160,6 +160,7 @@
   .compact-table #app .reserved-row .costs { margin-top: 4px; gap: 2px; }
   .compact-table #app .reserved-row .costs .ball { min-width: 15px; height: 15px; font-size: 10px; }
   .compact-table #app .reserved-row .empty-slot { width: auto; height: 108px; text-align: center; padding: 5px; }
+  .compact-table #app .team-list:has(.team-empty) { max-width: none; display: block; }
   .compact-table #app .team-empty { grid-column: 1 / -1; padding: 12px 6px; font-size: 12px; }
   .compact-table #app .finished { display: flex; align-items: center; gap: 12px; padding: 6px 10px; margin: 0; flex-shrink: 0; border-radius: 8px; }
   .compact-table #app .finished .eyebrow { display: none; }
