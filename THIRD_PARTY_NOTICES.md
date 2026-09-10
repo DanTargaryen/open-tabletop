@@ -30,3 +30,7 @@ All 55 local SVG character illustrations come from **The Artificial — Pokémon
 ## User-supplied human-player portrait
 
 `games/splendor/web/assets/players/human.png` was supplied by the site owner for the human-player avatar. The image bytes are preserved; CSS frames it within avatar controls. The additional selectable human portraits and their mechanically resized WebP thumbnails are also owner-supplied third-party images. All are excluded from the code MIT license.
+
+## Abracada rules prototype
+
+`games/abracada-what/` is an unofficial rules and interaction prototype inspired by the tabletop game *Abracada...What?*, designed by Gary Kim and originally published by Korea Boardgames. The original game name, localized title, rules terminology, and related rights remain with their respective owners. This repository does not include or license any official illustrations, logos, scans, rulebook text, or other publisher assets. All visual assets in the prototype are original HTML, CSS and SVG under the root MIT license. Inclusion does not imply endorsement, authorization, or affiliation.

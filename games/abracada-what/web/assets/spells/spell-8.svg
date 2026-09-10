@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 336" role="img" aria-labelledby="title">
+  <title id="title">魔力药水</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#164747"/><stop offset=".55" stop-color="#1d2d3c"/><stop offset="1" stop-color="#101721"/></linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d9ffff" stop-opacity=".9"/><stop offset=".5" stop-color="#68d9cf" stop-opacity=".35"/><stop offset="1" stop-color="#74a6d2" stop-opacity=".5"/></linearGradient>
+    <linearGradient id="potion" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#a9ffb4"/><stop offset="1" stop-color="#2fc7a6"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="9"/></filter>
+  </defs>
+  <rect width="240" height="336" rx="42" fill="url(#bg)"/>
+  <circle cx="120" cy="184" r="80" fill="#58e0bd" opacity=".22" filter="url(#glow)"/>
+  <path d="M91 77h58v24l-12 9v31c0 11 8 20 18 31 17 18 28 36 28 57 0 31-25 48-63 48s-63-17-63-48c0-21 11-39 28-57 10-11 18-20 18-31v-31l-12-9Z" fill="url(#glass)" stroke="#dbfff3" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M68 213c15-10 31-11 49-2 18 9 35 8 53-4 5 9 8 18 8 27 0 24-23 37-58 37s-58-13-58-37c0-7 2-14 6-21Z" fill="url(#potion)" opacity=".92"/>
+  <path d="M91 77h58v24H91Z" fill="#896649" stroke="#f2ca78" stroke-width="3"/>
+  <path d="M109 149c8-8 18-8 24-1m-36 43c8-5 16-5 24 0" fill="none" stroke="#efffff" stroke-opacity=".76" stroke-width="4" stroke-linecap="round"/>
+  <g fill="#d9ffcc"><circle cx="101" cy="235" r="7"/><circle cx="138" cy="245" r="5"/><circle cx="148" cy="220" r="3"/><path d="m178 124 5 12 12 5-12 5-5 12-5-12-12-5 12-5Z"/><path d="m60 153 3 8 8 3-8 3-3 8-3-8-8-3 8-3Z"/></g>
+  <circle cx="120" cy="169" r="98" fill="none" stroke="#8ff0d3" stroke-opacity=".22" stroke-width="2" stroke-dasharray="4 10"/>
+  <rect x="8" y="8" width="224" height="320" rx="35" fill="none" stroke="#f2ca78" stroke-opacity=".55" stroke-width="3"/>
+</svg>

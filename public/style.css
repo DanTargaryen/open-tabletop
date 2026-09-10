@@ -3,3 +3,58 @@
 @media(max-width:700px){.site-header{height:66px;padding:0 20px}main{padding:0 20px}.hero{padding:26px 0}h1{font-size:34px}.section-heading p{display:none}#game-grid{grid-template-columns:1fr;gap:20px}.game-art{height:164px}.playing-card{top:22px}.art-index{bottom:10px}.game-copy{padding:21px}.game-copy h3{font-size:28px}.pokemon-team{inset:0 26px 20px}.pokemon-team img{height:114px}.pokemon-team img:nth-child(2){height:136px}footer{padding:24px 20px;flex-direction:column;gap:6px}}
 @media(max-width:400px){.wordmark{font-size:12px;letter-spacing:1px}nav{gap:16px;font-size:13px}h1{font-size:31px}.hero-copy{font-size:15px}.game-copy h3{font-size:25px}.button{font-size:14px;padding:11px 13px}.game-tags{gap:6px}.game-tags span{font-size:11px}}
 @media(prefers-reduced-motion:reduce){.button{transition:none}.button:hover{transform:none}}
+
+
+.game-card--arcane{grid-template-columns:1fr 1.05fr;border-color:#aa9be944;background:#19172a;box-shadow:0 22px 70px #08061266,0 0 0 1px #89e3d908 inset}
+.game-card--arcane .game-art{order:2}
+.game-card--arcane .game-copy{order:1;position:relative;background:radial-gradient(circle at 12% 12%,#46396732,transparent 32%),linear-gradient(145deg,#211d37,#181628);overflow:hidden}
+.game-card--arcane .game-copy:before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.22;background-image:linear-gradient(#b8a9ef12 1px,transparent 1px),linear-gradient(90deg,#b8a9ef12 1px,transparent 1px);background-size:38px 38px;mask-image:linear-gradient(115deg,#000,transparent 72%)}
+.game-card--arcane .game-copy>*{position:relative}
+.game-card--arcane .eyebrow{color:#9ee9df}
+.game-card--arcane .game-copy h3{color:#f4edff;text-shadow:0 0 28px #b596e947}
+.game-card--arcane .game-description{color:#bbb6cf}
+.game-card--arcane .game-tags span{border-color:#a898d84f;color:#d3cbea;background:#a999dc0b}
+.game-card--arcane .secondary{border:1px solid #a9eee080;color:#121726;background:linear-gradient(115deg,#a9eee0,#c2a8ff);box-shadow:0 10px 30px #866ed132}
+.game-card--arcane .secondary:hover{background:linear-gradient(115deg,#c1f7ed,#d3c1ff);box-shadow:0 13px 34px #866ed14d}
+.game-card--arcane .game-note{color:#837e9c}
+.arcane-art{background:radial-gradient(circle at 50% 48%,#5c4b8c52 0 16%,transparent 42%),radial-gradient(circle at 25% 18%,#326d7752,transparent 28%),linear-gradient(145deg,#17162c,#262044 58%,#111827)}
+.arcane-art:before{content:"";position:absolute;inset:-25%;background:conic-gradient(from 35deg at 50% 50%,transparent,#72d7d20d,transparent 20%,#b498ec12,transparent 43%);animation:arcane-drift 22s linear infinite}
+.arcane-art .art-caption{color:#b5eee684;letter-spacing:2.1px}
+.arcane-art .art-index{color:#aaa2c7}
+.arcane-halo{position:absolute;left:50%;top:49%;width:310px;height:310px;transform:translate(-50%,-50%)}
+.arcane-ring{position:absolute;border-radius:50%;left:50%;top:50%;transform:translate(-50%,-50%)}
+.ring-outer{width:276px;height:276px;border:1px solid #a7ece052;box-shadow:0 0 34px #73ddd01c,inset 0 0 30px #6cd9d014}
+.ring-outer:before,.ring-outer:after{content:"";position:absolute;inset:15px;border:1px dashed #b9a4f94f;border-radius:50%}
+.ring-outer:after{inset:34px;border-style:solid;border-color:#d8c9ff26}
+.ring-inner{width:154px;height:154px;border:1px solid #d6c3ff4d;box-shadow:0 0 60px #9d80e02b}
+.ring-inner:before,.ring-inner:after{content:"";position:absolute;left:50%;top:50%;width:109px;height:109px;border:1px solid #b9f5e832;transform:translate(-50%,-50%) rotate(45deg)}
+.ring-inner:after{width:76px;height:76px;transform:translate(-50%,-50%) rotate(22.5deg)}
+.sigil{position:absolute;color:#c7b7fa8c;font:18px Georgia,serif;text-shadow:0 0 14px #a9eee0;z-index:2}
+.sigil-one{left:18px;top:70px;transform:rotate(-18deg)}
+.sigil-two{right:18px;top:76px;transform:rotate(18deg)}
+.sigil-three{left:50%;bottom:4px;transform:translateX(-50%)}
+.rune-orbit{position:absolute;inset:0;z-index:3}
+.rune-stone{--angle:0deg;--counter:0deg;position:absolute;left:50%;top:50%;width:34px;height:42px;border:1px solid #b9abdf;border-radius:48% 48% 42% 42%;display:grid;place-items:center;color:#201c35;background:linear-gradient(145deg,#eee9da,#bfb3d4);box-shadow:0 0 0 3px #28213e,0 5px 12px #05040d8c,0 0 18px #9ee9df2e;font:600 15px Georgia,serif;transform:translate(-50%,-50%) rotate(var(--angle)) translateY(-123px) rotate(var(--counter))}
+.rune-stone:nth-child(1){--angle:0deg;--counter:0deg}.rune-stone:nth-child(2){--angle:45deg;--counter:-45deg}.rune-stone:nth-child(3){--angle:90deg;--counter:-90deg}.rune-stone:nth-child(4){--angle:135deg;--counter:-135deg}.rune-stone:nth-child(5){--angle:180deg;--counter:-180deg}.rune-stone:nth-child(6){--angle:225deg;--counter:-225deg}.rune-stone:nth-child(7){--angle:270deg;--counter:-270deg}.rune-stone:nth-child(8){--angle:315deg;--counter:-315deg}
+.spellbook{position:absolute;left:50%;top:50%;width:120px;height:151px;transform:translate(-50%,-50%) rotate(-2deg);display:flex;flex-direction:column;align-items:center;justify-content:center;clip-path:polygon(50% 7%,94% 0,100% 88%,52% 100%,0 88%,6% 0);color:#d7f6ef;background:linear-gradient(90deg,#282342 0 48%,#151329 49% 51%,#302a4e 52%);box-shadow:0 18px 32px #05040cb3}
+.spellbook:before{content:"";position:absolute;inset:9px 10px 14px;border:1px solid #a9eee04a;clip-path:inherit}
+.spellbook:after{content:"";position:absolute;left:50%;top:15px;bottom:11px;width:1px;background:linear-gradient(transparent,#ad98e5,#a9eee0,transparent);opacity:.55}
+.book-rune{position:relative;z-index:1;width:48px;height:48px;border:1px solid #a9eee077;border-radius:50%;display:grid;place-items:center;font:32px Georgia,serif;box-shadow:0 0 24px #9fe9df3d}
+.spellbook i{position:relative;z-index:1;width:23px;height:1px;background:#bdaef06b;margin:13px 0 9px}
+.spellbook b{position:relative;z-index:1;font-size:6px;letter-spacing:2.5px;color:#bfb4db}
+.arcane-whisper{position:absolute;left:50%;bottom:27px;transform:translateX(-50%);white-space:nowrap;font-size:6px;letter-spacing:2.5px;color:#9ae4db70}
+.arcane-stars i{position:absolute;width:2px;height:2px;border-radius:50%;background:#c8fff8;box-shadow:0 0 8px #b6fff5}
+.arcane-stars i:nth-child(1){left:13%;top:19%}.arcane-stars i:nth-child(2){left:22%;top:67%;width:1px;height:1px}.arcane-stars i:nth-child(3){left:76%;top:17%}.arcane-stars i:nth-child(4){left:86%;top:61%;width:3px;height:3px}.arcane-stars i:nth-child(5){left:63%;top:81%;width:1px;height:1px}.arcane-stars i:nth-child(6){left:40%;top:13%;width:1px;height:1px}
+.fallback-piece{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:120px Georgia,serif;color:#d2b77c}
+.game-card--arcane:hover .ring-outer{transform:translate(-50%,-50%) rotate(8deg)}
+.ring-outer{transition:transform 1s ease}
+@keyframes arcane-drift{to{transform:rotate(360deg)}}
+@media(max-width:800px){.arcane-halo{transform:translate(-50%,-50%) scale(.9)}.game-card--arcane .game-copy{padding-left:28px;padding-right:28px}}
+@media(max-width:580px){body{overflow-x:hidden}#games,#game-grid,.game-card,.game-art,.game-copy{min-width:0;max-width:100%}.game-card{grid-template-columns:minmax(0,1fr);width:100%}.game-copy{overflow:hidden}.game-actions .button{min-width:0}.game-card--arcane{grid-template-columns:minmax(0,1fr)}.game-card--arcane .game-art{order:1;min-height:310px}.game-card--arcane .game-copy{order:2}.arcane-halo{top:50%;transform:translate(-50%,-50%) scale(.78)}.arcane-whisper{bottom:19px}}
+@media(prefers-reduced-motion:reduce){.arcane-art:before{animation:none}.game-card--arcane:hover .ring-outer{transform:translate(-50%,-50%)}}
+
+.game-card--arcane .game-art{order:0;height:184px;min-height:0}
+.game-card--arcane .game-copy{order:1}
+.arcane-art .art-caption,.arcane-whisper{display:none}
+.arcane-halo{top:46%;transform:translate(-50%,-50%) scale(.5)}
+@media(max-width:700px){.game-card--arcane .game-art{height:164px}.arcane-halo{transform:translate(-50%,-50%) scale(.45)}}

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 336" role="img" aria-labelledby="title">
+  <title id="title">炽热火球</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#54253b"/><stop offset=".52" stop-color="#2e1c33"/><stop offset="1" stop-color="#16101f"/></linearGradient>
+    <radialGradient id="fire"><stop stop-color="#fff4a7"/><stop offset=".35" stop-color="#ffbd4d"/><stop offset=".72" stop-color="#f45b3f"/><stop offset="1" stop-color="#9d2344"/></radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="11"/></filter>
+  </defs>
+  <rect width="240" height="336" rx="42" fill="url(#bg)"/>
+  <circle cx="131" cy="165" r="84" fill="#ff674f" opacity=".25" filter="url(#glow)"/>
+  <path d="M41 230c35-28 42-59 25-91 24 11 37 28 39 52 16-25 18-56 7-92 42 24 61 58 58 103 15-15 23-33 24-53 24 39 17 80-20 111-35 29-92 24-117-9-6-7-11-14-16-21Z" fill="#e5443f" stroke="#ffcb69" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M81 236c22-20 28-44 18-71 21 13 31 29 31 49 12-15 18-33 17-52 25 29 23 62-7 86-20 16-46 13-59-12Z" fill="#ff9c3f"/>
+  <circle cx="118" cy="226" r="33" fill="url(#fire)"/>
+  <path d="M51 118c26-24 60-36 101-37M45 145c17-13 34-21 53-25" fill="none" stroke="#ffba72" stroke-opacity=".48" stroke-width="4" stroke-linecap="round"/>
+  <g fill="#ffd588"><circle cx="179" cy="87" r="3"/><circle cx="194" cy="111" r="2"/><circle cx="55" cy="91" r="2"/></g>
+  <circle cx="120" cy="169" r="97" fill="none" stroke="#ffad69" stroke-opacity=".22" stroke-width="2" stroke-dasharray="3 10"/>
+  <rect x="8" y="8" width="224" height="320" rx="35" fill="none" stroke="#f2ca78" stroke-opacity=".55" stroke-width="3"/>
+</svg>
