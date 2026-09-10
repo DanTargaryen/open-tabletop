@@ -10,9 +10,9 @@
 
 ## 先玩一局
 
-[打开现有德州扑克试玩](https://velvet-poker-friends.linming-dracarys.chatgpt.site)
+[宝可梦特别款 · 单人冒险](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/splendor/) · [宝可梦特别款 · 好友联机](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/splendor/online) · [德州扑克试玩](https://velvet-poker-friends.linming-dracarys.chatgpt.site)
 
-这个链接是已有的扑克试玩站，并非本仓库合集首页的部署。自行运行本仓库后，首页会从游戏目录读取可用游戏。
+宝可梦特别款已部署到原有 Sites 域名，支持单人 AI 和远端 D1 好友房。原扑克入口保留；站点根路径仍进入扑克，尚未替换为合集首页。
 
 德州扑克包含：
 

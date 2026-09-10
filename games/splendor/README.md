@@ -4,6 +4,8 @@
 
 在仓库根目录运行 `npm start`，打开 `/games/splendor/index.html`（单人）或 `/games/splendor/online.html`（好友房）。没有 npm 运行依赖。
 
+线上试玩：[单人冒险](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/splendor/) · [好友联机](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/splendor/online)。托管于现有 Sites 域名，好友房数据由远端 D1 保存。
+
 ## 怎么玩
 
 1. 选择人数与昵称。单人模式的其余座位为 AI；好友房由玩家准备后开局，房主可选择用 AI 补齐空位。
@@ -41,6 +43,6 @@
 - 自动对局覆盖 2、3、4 人各 12 个固定种子；逐步检查 90 张卡、精灵球、加成和分数。
 - 数值卡池是 **35 / 30 / 15 / 5 / 5**，共 90 张、55 种。来源为社区转录；已核对分布和引用完整性，**尚未逐张对照实体盒**。
 - 本地和静态单人都能运行。Cloudflare 适配器通过独立 `splendor_rooms`、`splendor_limits` 表支持宝可梦联机；需要应用 `deploy/cloudflare/migrations/`。健康检查实际查询表，缺少绑定或迁移时返回 503。静态构建本身不代表后端已部署。
-- 本地双浏览器验证不等于异地公网实测。现有扑克试玩站不包含本游戏。
+- 公网已完成两身份建房、加入、准备、操作及隐私检查；这仍不等于两台实体设备的长时间对战。
 
 全部 55 种角色均有本地图片，覆盖 90 张卡。素材由 The Artificial 绘制，按作者署名分享授权使用，不含数字或通用替补。规则出处和许可见 [SOURCES.md](SOURCES.md)。
