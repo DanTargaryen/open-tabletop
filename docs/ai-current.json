@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "engine": {
+    "module": "engine.js",
+    "sha256": "f81345b1b27cc72979011f5e5bd5a5913b6ed71e2e0e54b5593fe2064f86dea2"
+  },
+  "scenario": {
+    "mode": "practice",
+    "difficulty": "standard",
+    "handsRequested": 250,
+    "seed": "open-tabletop-ai-measure-v1",
+    "seedMode": "One fixed-seed practice session; normal dealer rotation; the engine resets stacks each hand.",
+    "humanPolicy": "Seat 0 checks whenever legal and otherwise calls.",
+    "botPolicy": "Seats 1–5 execute the imported engine botAction() without intervention."
+  },
+  "definitions": {
+    "rates": "Fractions from 0 to 1; null when the denominator is zero.",
+    "hands": "Hands dealt to the brand. Practice mode keeps all six seats in every hand.",
+    "vpip": "Hands with a voluntary preflop chip payment, excluding posted blinds; divided by hands.",
+    "pfr": "Hands containing a preflop raise, including a short all-in raise; divided by hands.",
+    "actions": "Actual engine log categories; all-in calls remain call, all-in raises are all-in.",
+    "postflopOpenBet": "Decision opportunities on flop/turn/river with currentBet=0 and both check and raise legal; the rate is opening bets divided by these opportunities.",
+    "allIn": "Actions paying the entire pre-action stack, including all-in calls; action rate divides by totalActions and hand rate divides by hands.",
+    "scope": "Descriptive behavior against a passive human in six-seat practice games, not a win-rate or playing-strength benchmark."
+  },
+  "brands": [
+    {
+      "seat": 1,
+      "brand": "doubao",
+      "name": "豆包",
+      "hands": 250,
+      "vpipHands": 100,
+      "pfrHands": 33,
+      "actions": {
+        "fold": 182,
+        "call": 146,
+        "check": 102,
+        "raise": 131,
+        "all-in": 15
+      },
+      "totalActions": 576,
+      "postflopOpenBetOpportunities": 199,
+      "postflopOpenBets": 100,
+      "allInActions": 20,
+      "allInHands": 20,
+      "vpipRate": 0.4,
+      "pfrRate": 0.132,
+      "postflopOpenBetRate": 0.5025125628140703,
+      "allInActionRate": 0.034722222222222224,
+      "allInHandRate": 0.08
+    },
+    {
+      "seat": 2,
+      "brand": "chatgpt",
+      "name": "ChatGPT",
+      "hands": 250,
+      "vpipHands": 99,
+      "pfrHands": 56,
+      "actions": {
+        "fold": 185,
+        "call": 97,
+        "check": 79,
+        "raise": 167,
+        "all-in": 18
+      },
+      "totalActions": 546,
+      "postflopOpenBetOpportunities": 190,
+      "postflopOpenBets": 113,
+      "allInActions": 25,
+      "allInHands": 25,
+      "vpipRate": 0.396,
+      "pfrRate": 0.224,
+      "postflopOpenBetRate": 0.5947368421052631,
+      "allInActionRate": 0.045787545787545784,
+      "allInHandRate": 0.1
+    },
+    {
+      "seat": 3,
+      "brand": "claude",
+      "name": "Claude",
+      "hands": 250,
+      "vpipHands": 40,
+      "pfrHands": 29,
+      "actions": {
+        "fold": 214,
+        "call": 23,
+        "check": 46,
+        "raise": 89,
+        "all-in": 9
+      },
+      "totalActions": 381,
+      "postflopOpenBetOpportunities": 103,
+      "postflopOpenBets": 66,
+      "allInActions": 11,
+      "allInHands": 11,
+      "vpipRate": 0.16,
+      "pfrRate": 0.116,
+      "postflopOpenBetRate": 0.6407766990291263,
+      "allInActionRate": 0.028871391076115485,
+      "allInHandRate": 0.044
+    },
+    {
+      "seat": 4,
+      "brand": "glm",
+      "name": "GLM",
+      "hands": 250,
+      "vpipHands": 128,
+      "pfrHands": 93,
+      "actions": {
+        "fold": 146,
+        "call": 99,
+        "check": 77,
+        "raise": 302,
+        "all-in": 25
+      },
+      "totalActions": 649,
+      "postflopOpenBetOpportunities": 290,
+      "postflopOpenBets": 218,
+      "allInActions": 35,
+      "allInHands": 35,
+      "vpipRate": 0.512,
+      "pfrRate": 0.372,
+      "postflopOpenBetRate": 0.7517241379310344,
+      "allInActionRate": 0.053929121725731895,
+      "allInHandRate": 0.14
+    },
+    {
+      "seat": 5,
+      "brand": "deepseek",
+      "name": "DeepSeek",
+      "hands": 250,
+      "vpipHands": 63,
+      "pfrHands": 41,
+      "actions": {
+        "fold": 211,
+        "call": 48,
+        "check": 77,
+        "raise": 98,
+        "all-in": 6
+      },
+      "totalActions": 440,
+      "postflopOpenBetOpportunities": 127,
+      "postflopOpenBets": 54,
+      "allInActions": 9,
+      "allInHands": 9,
+      "vpipRate": 0.252,
+      "pfrRate": 0.164,
+      "postflopOpenBetRate": 0.4251968503937008,
+      "allInActionRate": 0.020454545454545454,
+      "allInHandRate": 0.036
+    }
+  ],
+  "integrity": {
+    "completedHands": 250,
+    "actionLimitPerHand": 1000,
+    "maxActionsInHand": 25,
+    "totalActions": 3933,
+    "actionLimitViolations": 0,
+    "chipConservationChecks": 4184,
+    "chipConservationViolations": 0,
+    "identityChecks": 4184,
+    "identityViolations": 0
+  }
+}

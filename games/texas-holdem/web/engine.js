@@ -15,11 +15,11 @@ const PHASE_NAMES = { preflop: '翻牌前', flop: '翻牌', turn: '转牌', rive
 const LIVE_PHASES = new Set(['preflop', 'flop', 'turn', 'river']);
 const BLIND_LEVELS = [[10, 20], [15, 30], [25, 50], [40, 80], [60, 120], [100, 200], [150, 300], [250, 500], [400, 800], [600, 1200], [1000, 2000], [1500, 3000], [2500, 5000], [4000, 8000], [8000, 16000]];
 export const PERSONALITIES = Object.freeze([
-  { brand: 'doubao', name: '豆包', label: '轻松稳健', style: 'balanced', tightness: .04, aggression: .58, bluff: .10, sticky: .00 },
-  { brand: 'chatgpt', name: 'ChatGPT', label: '灵活应变', style: 'loose', tightness: -.055, aggression: .65, bluff: .18, sticky: .05 },
-  { brand: 'claude', name: 'Claude', label: '温和谨慎', style: 'tight', tightness: .075, aggression: .49, bluff: .05, sticky: -.015 },
-  { brand: 'glm', name: 'GLM', label: '主动果断', style: 'aggressive', tightness: -.005, aggression: .82, bluff: .20, sticky: .02 },
-  { brand: 'deepseek', name: 'DeepSeek', label: '沉着推演', style: 'tricky', tightness: .025, aggression: .63, bluff: .16, sticky: .00 },
+  { brand: 'doubao', name: '豆包', label: '宽松跟进', style: 'loose', tightness: -.02, aggression: .68, bluff: .12, sticky: .07, open: .48, steal: .16, threeBet: .05, cbet: .55, semiBluff: .44, trap: .02, sizing: .45 },
+  { brand: 'chatgpt', name: 'ChatGPT', label: '位置进攻', style: 'balanced', tightness: -.025, aggression: .82, bluff: .21, sticky: .025, open: .50, steal: .38, threeBet: .11, cbet: .78, semiBluff: .62, trap: .04, sizing: .56 },
+  { brand: 'claude', name: 'Claude', label: '精选强攻', style: 'tight', tightness: .045, aggression: .87, bluff: .09, sticky: .005, open: .59, steal: .16, threeBet: .06, cbet: .64, semiBluff: .42, trap: .025, sizing: .72 },
+  { brand: 'glm', name: 'GLM', label: '主动施压', style: 'aggressive', tightness: -.055, aggression: .95, bluff: .29, sticky: .035, open: .43, steal: .55, threeBet: .19, cbet: .86, semiBluff: .79, trap: .01, sizing: .68 },
+  { brand: 'deepseek', name: 'DeepSeek', label: '埋伏反击', style: 'tricky', tightness: .005, aggression: .80, bluff: .22, sticky: .035, open: .51, steal: .31, threeBet: .12, cbet: .65, semiBluff: .86, trap: .22, sizing: .54 },
 ]);
 
 export function cardRank(card) { return RANK_VALUE[card?.[0]] || 0; }
@@ -27,6 +27,32 @@ export function cardSuit(card) { return card?.[1] || ''; }
 export function cardLabel(card) { return card ? `${card[0] === 'T' ? '10' : card[0]}${SUIT_SYMBOL[card[1]] || ''}` : ''; }
 const clone = value => JSON.parse(JSON.stringify(value));
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+// A starting-hand heuristic for opening ranges. This is not a solver chart.
+function startingHandStrength(hole) {
+  const [high, low] = hole.map(cardRank).sort((a, b) => b - a);
+  if (high === low) return .52 + (high - 2) * .037;
+  const gap = high - low - 1;
+  return .08 + (high - 2) / 12 * .38 + (low - 2) / 12 * .20
+    + (cardSuit(hole[0]) === cardSuit(hole[1]) ? .09 : 0)
+    + (gap === 0 ? .08 : gap === 1 ? .04 : gap >= 4 ? -.06 : 0)
+    + (high >= 12 && low >= 10 ? .07 : 0) + (high === 14 ? .03 : 0);
+}
+
+function drawProfile(hole, board) {
+  if (board.length < 3 || board.length >= 5) return { strong: false, weak: false };
+  const cards = [...hole, ...board], ranks = new Set(cards.map(cardRank)), boardRanks = new Set(board.map(cardRank));
+  if (ranks.has(14)) ranks.add(1);
+  if (boardRanks.has(14)) boardRanks.add(1);
+  const flush = [...SUITS].some(suit => cards.filter(card => cardSuit(card) === suit).length === 4 && hole.some(card => cardSuit(card) === suit));
+  const straightOuts = new Set();
+  for (let high = 5; high <= 14; high++) {
+    const window = Array.from({ length: 5 }, (_, i) => high - i), missing = window.filter(rank => !ranks.has(rank));
+    const contributes = window.some(rank => ranks.has(rank) && !boardRanks.has(rank));
+    if (missing.length === 1 && contributes) straightOuts.add(missing[0] === 1 ? 14 : missing[0]);
+  }
+  return { strong: flush || straightOuts.size >= 2, weak: straightOuts.size === 1 };
+}
 
 function assertCards(cards, min, max) {
   if (!Array.isArray(cards) || cards.length < min || cards.length > max || new Set(cards).size !== cards.length || cards.some(card => typeof card !== 'string' || !/^[2-9TJQKA][cdhs]$/.test(card))) {
@@ -519,7 +545,11 @@ export class PokerGame {
     const iterations = { casual: 56, standard: 88, expert: 144 }[s.difficulty];
     const random = () => this._random(true);
     const rawEquity = estimateEquity(player.hole, s.board, opponents, iterations, random);
-    const recentRaises = s.handHistory.filter(entry => ['raise', 'all-in'].includes(entry.type) && entry.phase === s.phase && entry.playerId !== player.id).length;
+    const street = s.handHistory.filter(entry => entry.phase === s.phase);
+    const raises = street.filter(entry => ['raise', 'all-in'].includes(entry.type));
+    const ownRaises = raises.filter(entry => entry.playerId === player.id).length;
+    const recentRaises = raises.length - ownRaises;
+    const previousAction = street.filter(entry => entry.playerId === player.id).at(-1);
     const noise = (random() - .5) * ({ casual: .24, standard: .10, expert: .035 }[s.difficulty]);
     const rangeDiscount = s.difficulty === 'expert' ? Math.min(.13, recentRaises * .045) : Math.min(.08, recentRaises * .025);
     const equity = clamp(rawEquity + noise - rangeDiscount, .01, .995);
@@ -530,31 +560,95 @@ export class PokerGame {
     const preflop = s.phase === 'preflop';
     const riskPremium = (s.mode === 'tournament' && stackRisk > .45 ? .045 : .01) + personality.tightness;
     const callValue = equity + personality.sticky - riskPremium;
-    const comfortable = equity > fairShare + .07 + personality.tightness;
-    const strong = equity > Math.max(.53, fairShare + .25);
-    const veryStrong = equity > .79;
-    const lastPosition = this._nextSeat(player.id, other => !other.folded && !other.allIn && !other.eliminated) === this._nextSeat(s.dealerIndex, other => !other.folded && !other.allIn && !other.eliminated);
-    const bluffChance = personality.bluff * (opponents === 1 ? 1 : opponents === 2 ? .58 : .23) * (recentRaises ? .30 : 1) * (lastPosition ? 1.2 : .85);
-    const bluff = random() < bluffChance && stackRisk < .15;
+
+    const actingOrder = Array.from({ length: 6 }, (_, i) => (s.dealerIndex + 1 + i) % 6)
+      .filter(id => !s.players[id].folded && !s.players[id].allIn && !s.players[id].eliminated);
+    const position = actingOrder.indexOf(player.id), inPosition = position === actingOrder.length - 1;
+    const latePosition = position >= actingOrder.length - 2;
+    const canWinByFolds = this._actors().length - 1 === opponents;
+    const startStrength = startingHandStrength(player.hole);
+    const raisedPot = preflop && s.currentBet > s.blinds.big;
+    const limpers = preflop && !raisedPot ? new Set(street.filter(entry => entry.type === 'call' && entry.playerId !== player.id).map(entry => entry.playerId)).size : 0;
+    const openingThreshold = personality.open - (inPosition ? .09 : latePosition ? .04 : 0)
+      - (opponents === 1 ? .08 : opponents === 2 ? .03 : 0) + limpers * .015;
+    const goodOpening = startStrength >= openingThreshold;
+    const strong = preflop ? startStrength >= .80 : equity > (opponents === 1 ? .70 : Math.max(.40, fairShare + .21));
+    const monster = preflop ? startStrength >= .90 : equity > (opponents === 1 ? .88 : Math.max(.66, fairShare + .43));
+    const shortShove = preflop && legal.maxRaiseTo <= s.blinds.big * 12 && startStrength >= (opponents <= 2 ? .56 : .66) && raises.length <= 1;
+    let intent = null;
+
+    if (preflop) {
+      if (!raisedPot) {
+        if (goodOpening && random() < personality.aggression) intent = strong ? 'value' : 'open';
+        else if (!limpers && latePosition && canWinByFolds && startStrength > .30 && random() < personality.steal) intent = 'steal';
+      } else if (!ownRaises && raises.length <= 2 && strong && random() < personality.aggression) {
+        intent = 'value';
+      } else if (!ownRaises && raises.length === 1 && inPosition && canWinByFolds && stackRisk < .10
+        && startStrength > .57 && (player.hole.some(card => cardRank(card) === 14) || cardSuit(player.hole[0]) === cardSuit(player.hole[1]))
+        && random() < personality.threeBet) {
+        intent = 'bluff';
+      }
+      if (monster && raises.length < 3 && random() < .96) intent = 'value';
+      if (shortShove && random() < .80) intent = 'value';
+    } else {
+      const made = evaluateUnchecked([...player.hole, ...s.board]);
+      const draw = drawProfile(player.hole, s.board);
+      const ranks = [...new Set(s.board.map(cardRank))].sort((a, b) => a - b);
+      const wetBoard = [...SUITS].some(suit => s.board.filter(card => cardSuit(card) === suit).length >= 3)
+        || ranks.some(rank => ranks.filter(value => value >= rank && value <= rank + 4).length >= 3);
+      const preflopAggressor = s.handHistory.filter(entry => entry.phase === 'preflop' && ['raise', 'all-in'].includes(entry.type)).at(-1)?.playerId;
+      const multiway = opponents === 1 ? 1 : opponents === 2 ? .58 : opponents === 3 ? .25 : .10;
+      const comfortable = equity > (opponents === 1 ? .54 + personality.tightness : fairShare + .065 + personality.tightness * .5);
+      const checkRaise = previousAction?.type === 'check' && s.currentBet > 0 && legal.canRaise;
+      const valueChance = checkRaise ? Math.min(.98, personality.aggression + .10) : personality.aggression;
+      const slowplay = legal.canCheck && monster && opponents <= 2 && !wetBoard && !previousAction && random() < personality.trap;
+      if (!slowplay && (legal.canCheck ? comfortable : strong) && random() < valueChance) intent = 'value';
+      if (!intent && !ownRaises && raises.length <= 1 && canWinByFolds && made.category < 4 && stackRisk < .15) {
+        if ((draw.strong || (draw.weak && inPosition)) && random() < personality.semiBluff * (opponents <= 2 ? 1 : .55) * (checkRaise ? .72 : 1)) intent = 'semi-bluff';
+        else if (legal.canCheck && s.phase === 'flop' && preflopAggressor === player.id && !previousAction
+          && random() < personality.cbet * (opponents === 1 ? 1 : opponents === 2 ? .72 : .35) * (wetBoard ? .65 : 1)) intent = 'cbet';
+        else if (legal.canCheck && inPosition && street.some(entry => entry.type === 'check' && entry.playerId !== player.id)
+          && random() < personality.steal * multiway) intent = 'steal';
+        else if (random() < personality.bluff * multiway * (s.currentBet ? .22 : 1) * (inPosition ? 1.15 : .75)) intent = 'bluff';
+      }
+      // One speculative raise per street; repeated pressure needs exceptional equity.
+      if (ownRaises && !(monster && ownRaises === 1 && raises.length < 4)) intent = null;
+      if (slowplay) intent = null;
+    }
+
     let action;
-    if (legal.canRaise && (veryStrong || (comfortable && random() < personality.aggression) || (bluff && !preflop))) {
+    if (legal.canRaise && intent) {
       let target;
       if (preflop) {
-        target = s.currentBet <= s.blinds.big ? Math.round(s.blinds.big * (2.2 + random() * 1.2)) : Math.round(s.currentBet * (2.1 + random() * .75));
+        target = !raisedPot ? s.blinds.big * (2.25 + personality.sizing * .5 + random() * .35 + limpers * .75)
+          : s.currentBet * (raises.length <= 1 ? (inPosition ? 2.6 : 3) : 2.25);
       } else {
-        const fraction = strong ? .65 + random() * .45 : .35 + random() * .4;
-        target = s.currentBet + Math.round((pot + legal.callAmount) * fraction);
+        const fraction = ['bluff', 'cbet', 'steal'].includes(intent) ? .35 + random() * .18
+          : personality.sizing + random() * .24 + (strong ? .08 : 0);
+        target = s.currentBet + (pot + legal.callAmount) * fraction;
       }
-      if ((veryStrong && player.stack < pot * 1.7) || (preflop && player.stack < s.blinds.big * 10 && comfortable)) target = legal.maxRaiseTo;
-      target = Math.max(legal.minRaiseTo, target);
-      // Marginal hands avoid accidentally committing an entire deep stack.
-      if (target > legal.maxRaiseTo * .72 && !strong && !bluff && legal.canCall) action = { type: 'call' };
-      else action = { type: target >= legal.maxRaiseTo ? 'all-in' : 'raise', amount: Math.min(target, legal.maxRaiseTo) };
+      if (shortShove || (monster && player.stack < pot * 1.25)) target = legal.maxRaiseTo;
+      const step = Math.max(1, Math.round(s.blinds.big / 4));
+      target = Math.max(legal.minRaiseTo, Math.round(target / step) * step);
+      const opponentMaximum = Math.max(...this._actors().filter(other => other.id !== player.id).map(other => other.bet + other.stack));
+      target = Math.min(target, legal.maxRaiseTo, Math.max(legal.minRaiseTo, opponentMaximum));
+      const speculative = intent !== 'value' || (!strong && !shortShove);
+      if (speculative) {
+        const budget = player.bet + Math.min(player.stack * .28, Math.min(legal.maxRaiseTo, opponentMaximum) * .35);
+        // A minimum raise is a rule, not permission to turn a small bluff into a shove.
+        if (legal.isShortAllInOnly || legal.minRaiseTo > budget) target = 0;
+        else target = Math.min(target, Math.floor(budget / step) * step);
+        if (target >= legal.maxRaiseTo || target < legal.minRaiseTo) target = 0;
+      }
+      if (target > s.currentBet) action = { type: target >= legal.maxRaiseTo ? 'all-in' : 'raise', amount: target };
+    }
+    if (action) {
+      // The common action validator still owns all betting and side-pot rules.
     } else if (legal.canCheck) {
       action = { type: 'check' };
     } else if (callValue >= potOdds && (stackRisk < .38 || equity > .47 + riskPremium || legal.callAmount < s.blinds.big * 2)) {
-      // Small preflop calls use both price and relative starting-hand strength.
-      const weakPreflop = preflop && equity < fairShare - .015 + personality.tightness && legal.callAmount > s.blinds.big * 1.1;
+      const continueThreshold = personality.open - (raisedPot ? .08 : .15) - (inPosition ? .04 : 0) + Math.max(0, raises.length - 1) * .07;
+      const weakPreflop = preflop && startStrength < continueThreshold;
       action = { type: weakPreflop ? 'fold' : 'call' };
     } else {
       action = { type: legal.canFold ? 'fold' : 'check' };
@@ -633,7 +727,7 @@ export class PokerGame {
     const oldNames=['NOVA','MILO','VERA','KAI','RUBY'];
     const replacements=Object.fromEntries(oldNames.map((name,i)=>[name,PERSONALITIES[i].name]));
     const renameText=value=>typeof value==='string'?value.replace(/\b(?:NOVA|MILO|VERA|KAI|RUBY)\b/g,name=>name===saved.players[0].name?name:replacements[name]):value;
-    for(const player of saved.players)if(!player.isHuman){player.name=PERSONALITIES[player.id-1].name;player.personality=PERSONALITIES[player.id-1].label;}
+    for(const player of saved.players)if(!player.isHuman){player.name=PERSONALITIES[player.id-1].name;player.personality=PERSONALITIES[player.id-1].label;player.style=PERSONALITIES[player.id-1].style;}
     for(const list of [saved.history,saved.handHistory,saved.lastResult?.actions])if(Array.isArray(list))for(const entry of list)if(entry.playerId!==0)entry.text=renameText(entry.text);
     if(saved.lastResult){
       saved.lastResult.summary=renameText(saved.lastResult.summary);
