@@ -1,6 +1,6 @@
 # 架构与运行边界
 
-Open Tabletop 将合集入口与具体游戏分开。当前只有德州扑克，使用原生浏览器代码与 Node.js 内置能力，没有 npm 运行依赖。
+Open Tabletop 将合集入口与具体游戏分开。当前包含德州扑克与宝可梦版璀璨宝石，使用原生浏览器代码与 Node.js 内置能力，没有 npm 运行依赖。
 
 ## 请求如何流动
 
@@ -9,6 +9,8 @@ Open Tabletop 将合集入口与具体游戏分开。当前只有德州扑克，
   ├─ /                              → public/index.html
   ├─ /games.json                    → games/catalog.json
   ├─ /games/texas-holdem/*           → games/texas-holdem/web/*
+  ├─ /games/splendor/*               → games/splendor/web/*
+  ├─ /api/splendor                   → 宝可梦版独立房间处理器
   └─ /api/poker                     → 扑克房间处理器
                                          ↓
                                   规则引擎与房间状态
@@ -16,7 +18,7 @@ Open Tabletop 将合集入口与具体游戏分开。当前只有德州扑克，
                                   私有运行数据目录
 ```
 
-`server/index.mjs` 是默认 Node 入口，负责静态资源与 API 路由。游戏规则、房间管理和对应测试保留在 `games/texas-holdem/`。首页通过 `games/catalog.json` 展示实际可用的游戏。
+`server/index.mjs` 是默认 Node 入口，负责静态资源与 API 路由。两款游戏的规则、房间管理和对应测试分别保留在 `games/texas-holdem/` 与 `games/splendor/`。首页通过 `games/catalog.json` 展示实际可用的游戏。
 
 服务端源码和数据文件属于内部实现，不应作为静态内容发送给客户端。
 

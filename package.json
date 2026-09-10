@@ -3,9 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Open-source browser board games. Start with Velvet Poker, a solo and multiplayer Texas Hold'em game.",
+  "description": "Open-source browser games: Texas Holdem and unofficial Splendor Pokemon, with local AI and multiplayer rooms.",
   "license": "MIT",
-  "engines": { "node": ">=22.13.0" },
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "start": "node server/index.mjs",
     "lan": "node server/index.mjs --host 0.0.0.0",
@@ -13,5 +15,8 @@
     "build:static": "node scripts/build-static.mjs",
     "measure:poker-sync": "node games/texas-holdem/scripts/measure-sync.mjs"
   },
-  "repository": { "type": "git", "url": "https://github.com/DanTargaryen/open-tabletop.git" }
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DanTargaryen/open-tabletop.git"
+  }
 }

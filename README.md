@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/DanTargaryen/open-tabletop/actions/workflows/ci.yml/badge.svg)](https://github.com/DanTargaryen/open-tabletop/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/Code-MIT-d2b77c)](LICENSE)
 
-一个可以自己运行、继续扩展的开源网页桌游合集。**首发目前只有德州扑克**：单人对战本地 AI，也可以创建房间与朋友联机。
+一个可以自己运行、继续扩展的开源网页桌游合集。**现已包含德州扑克与璀璨宝石·宝可梦特别款**：单人对战本地 AI，也可以创建房间与朋友联机。
 
 [English](README.en.md) · [添加游戏](docs/adding-a-game.md) · [架构说明](docs/architecture.md) · [参与贡献](CONTRIBUTING.md)
 
@@ -24,6 +24,12 @@
 
 品牌名称与标识的权利归原权利人所有，不代表品牌参与或背书，也不因本仓库的 MIT 许可而转让。详见 [第三方声明](THIRD_PARTY_NOTICES.md)。
 
+## 璀璨宝石 · 宝可梦特别款
+
+已发行宝可梦特别版规则的非官方实现：2–4 个座位、90 张卡、捕捉与进化、特殊卡和 18 分终局。支持单人本地 AI、好友准备开局、AI 补位、刷新恢复与独立房间存储。
+
+卡表来自社区转录，尚未逐张核对实体版；20 种宝可梦配有原创同人插画，其余使用图鉴编号卡面。详见 [玩法与运行](games/splendor/README.md) 及 [规则与素材来源](games/splendor/SOURCES.md)。当前宝可梦联机仅接入 Node 服务；现有扑克线上站和 Cloudflare 适配器不提供本游戏联机。
+
 ## 本地运行
 
 需要 **Node.js 22.13 或更新版本**。项目没有 npm 依赖，无需先执行 `npm install`。
@@ -41,6 +47,8 @@ npm start
 | 桌游目录 | `/` |
 | 德州扑克单人模式 | `/games/texas-holdem/index.html` |
 | 德州扑克联机模式 | `/games/texas-holdem/online.html` |
+| 宝可梦特别款单人 AI | `/games/splendor/index.html` |
+| 宝可梦特别款好友房 | `/games/splendor/online.html` |
 
 与同一局域网内的朋友一起玩：
 
@@ -75,7 +83,7 @@ npm test
 npm run build:static
 ```
 
-测试覆盖扑克引擎、房间逻辑、同步和根服务器。静态构建会将资源复制到 `.dist/public`；联机功能还需要提供 `/api/poker` 的后端，单独托管静态文件不能提供房间服务。
+测试覆盖两款游戏的规则引擎、房间逻辑、同步和根服务器。静态构建会将资源复制到 `.dist/public`；联机功能还需要提供 `/api/poker` 与 `/api/splendor` 的 Node 后端，单独托管静态文件不能提供房间服务。
 
 默认入口是 `server/index.mjs`，适合在自己的 Node 环境中运行。仓库也提供可选的 Cloudflare 适配器：
 
@@ -86,7 +94,7 @@ npm run build:static
 
 ## 扩展合集
 
-每个游戏放在 `games/<game-id>/`，通过 `games/catalog.json` 出现在首页。当前目录只有 `texas-holdem`；未来游戏由实际实现和贡献逐步加入。
+每个游戏放在 `games/<game-id>/`，通过 `games/catalog.json` 出现在首页。当前目录包含 `texas-holdem` 与 `splendor`；未来游戏由实际实现和贡献逐步加入。
 
 ```text
 games/

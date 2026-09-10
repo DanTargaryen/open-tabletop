@@ -4,7 +4,7 @@
 
 ![Open Tabletop collection](docs/collection-preview.jpg)
 
-An open-source collection of browser tabletop games that you can run yourself and extend. **The first release currently contains Texas Hold’em only**, with solo play against local AI and online rooms for friends.
+An open-source collection of browser tabletop games that you can run yourself and extend. **The collection contains Texas Hold’em and an unofficial Splendor: Pokémon implementation**, with solo play against local AI and online rooms for friends.
 
 [中文](README.md) · [Add a game](docs/adding-a-game.md) · [Architecture](docs/architecture.md) · [Contributing](CONTRIBUTING.md)
 
@@ -24,6 +24,12 @@ Texas Hold’em includes:
 
 Brand names and marks remain the property of their respective owners. They do not imply participation or endorsement, and the project’s MIT license does not grant rights to those marks. See [third-party notices](THIRD_PARTY_NOTICES.md).
 
+## Splendor: Pokémon
+
+An unofficial implementation of the published Pokémon edition: 2–4 seats, 90 cards, evolution, special cards, and an 18-point final round. Solo opponents use local heuristics. Online rooms include readiness, optional AI filling, refresh recovery, private hands, and separate persistence.
+
+Numeric data is community-transcribed and has not been checked card-by-card against a physical copy. Original fan illustrations cover 20 species; the remaining 35 use designed name and Pokédex-number faces. See [game documentation](games/splendor/README.md) and [sources and notices](games/splendor/SOURCES.md). Pokémon multiplayer currently requires the Node server; the existing poker demo and optional Cloudflare adapter do not serve its rooms.
+
 ## Run locally
 
 Requires **Node.js 22.13 or newer**. There are no npm dependencies, so `npm install` is not required.
@@ -41,6 +47,8 @@ Open <http://127.0.0.1:18772>.
 | Game catalog | `/` |
 | Solo Texas Hold’em | `/games/texas-holdem/index.html` |
 | Online Texas Hold’em | `/games/texas-holdem/online.html` |
+| Solo Splendor: Pokémon | `/games/splendor/index.html` |
+| Online Splendor: Pokémon | `/games/splendor/online.html` |
 
 To play with friends on the same local network:
 
@@ -75,7 +83,7 @@ npm test
 npm run build:static
 ```
 
-Tests cover the poker engine, room behavior, synchronization, and the root server. The static build copies assets to `.dist/public`. Online play also requires a backend serving `/api/poker`; static hosting alone does not provide rooms.
+Tests cover both game engines, room behavior, synchronization, and the root server. The static build copies assets to `.dist/public`. Online play also requires the Node backend serving `/api/poker` and `/api/splendor`; static hosting alone does not provide rooms.
 
 The default entry point, `server/index.mjs`, runs in a Node environment you control. An optional Cloudflare adapter is included:
 
@@ -86,7 +94,7 @@ Database settings in the example configuration are placeholders. Create and bind
 
 ## Extend the collection
 
-Each game lives in `games/<game-id>/` and appears on the homepage through `games/catalog.json`. The catalog currently contains only `texas-holdem`; additional games will be added as they are implemented and contributed.
+Each game lives in `games/<game-id>/` and appears on the homepage through `games/catalog.json`. The catalog contains `texas-holdem` and `splendor`; additional games will be added as they are implemented and contributed.
 
 ```text
 games/

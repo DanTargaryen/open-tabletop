@@ -9,5 +9,16 @@
     "version": "1.3.0",
     "solo": "/games/texas-holdem/index.html",
     "online": "/games/texas-holdem/online.html"
+  },
+  {
+    "id": "splendor",
+    "title": "璀璨宝石 · 宝可梦特别款",
+    "subtitle": "POKÉMON / SPLENDOR",
+    "description": "收集精灵球，捕捉伙伴，用一次进化改变牌局。已发行宝可梦特别版规则的非官方实现，支持单人 AI 与好友同桌。",
+    "players": "1 人对战 AI / 2–4 人联机",
+    "category": "收集与进化",
+    "version": "0.1.0",
+    "solo": "/games/splendor/index.html",
+    "online": "/games/splendor/online.html"
   }
 ]
