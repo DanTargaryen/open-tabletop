@@ -6,6 +6,8 @@ import {networkInterfaces} from 'node:os';
 import {Readable} from 'node:stream';
 import {handlePoker} from '../games/texas-holdem/server/api.mjs';
 import {RoomError} from '../games/texas-holdem/server/rooms.mjs';
+import {handleAbracada} from '../games/abracada-what/server/api.mjs';
+import {AbracadaRoomError} from '../games/abracada-what/server/rooms.mjs';
 import {FileRoomStore} from './room-store.mjs';
 
 const projectRoot=resolve(dirname(fileURLToPath(import.meta.url)),'..');
@@ -14,25 +16,31 @@ const safeHeaders={'X-Content-Type-Options':'nosniff','Referrer-Policy':'same-or
 
 export async function createTabletopServer({dataDir=resolve(projectRoot,'.data'),publicOrigin=null}={}){
  if(publicOrigin){const parsed=new URL(publicOrigin);if(!['http:','https:'].includes(parsed.protocol)||parsed.username||parsed.password||parsed.pathname!=='/'||parsed.search||parsed.hash)throw Error('PUBLIC_ORIGIN must be an http(s) origin');publicOrigin=parsed.origin;}
- const store=await new FileRoomStore(resolve(dataDir,'poker-rooms.json')).init();
+ const pokerStore=await new FileRoomStore(resolve(dataDir,'poker-rooms.json')).init();
+ const abracadaStore=await new FileRoomStore(resolve(dataDir,'abracada-rooms.json')).init();
  const catalog=JSON.parse(await readFile(resolve(projectRoot,'games/catalog.json'),'utf8'));
+ const staticGames=new Map(catalog.map(game=>[`/games/${game.id}/`,resolve(projectRoot,'games',game.id,'web')]));
  const limits=new Map();
- const limit=request=>{
+ const limit=(request,ErrorType)=>{
   const now=Date.now(),bucket=Math.floor(now/60000),key=(request.headers.get('cf-connecting-ip')||'local')+':'+bucket;
   for(const[k,value]of limits)if(value.bucket<bucket)limits.delete(k);
   const count=(limits.get(key)?.count||0)+1;limits.set(key,{bucket,count});
-  if(count>40)throw new RoomError(429,'操作太频繁，请稍后再试。');
+  if(count>40)throw new ErrorType(429,'操作太频繁，请稍后再试。');
  };
  const server=createServer(async(req,res)=>{
   try{
    if(!req.url?.startsWith('/')||req.url.startsWith('//')){res.writeHead(400);res.end();return;}
    const url=new URL(req.url,publicOrigin||'http://'+req.headers.host);
-   if(url.pathname.startsWith('/api/poker/')){
+   if(url.pathname.startsWith('/api/poker/')||url.pathname.startsWith('/api/abracada/')){
+    const abracada=url.pathname.startsWith('/api/abracada/');
+    const handler=abracada?handleAbracada:handlePoker;
+    const roomStore=abracada?abracadaStore:pokerStore;
+    const ErrorType=abracada?AbracadaRoomError:RoomError;
     const headers=new Headers();for(const[k,v]of Object.entries(req.headers))if(v)headers.set(k,Array.isArray(v)?v.join(','):v);
     // Untrusted forwarded IPs cannot evade the local create/join limiter.
     headers.set('cf-connecting-ip',req.socket.remoteAddress||'local');
     const request=new Request(url,{method:req.method,headers,...(!['GET','HEAD'].includes(req.method)?{body:Readable.toWeb(req),duplex:'half'}:{})});
-    const response=await handlePoker(request,null,{store,limit});res.writeHead(response.status,{...safeHeaders,...Object.fromEntries(response.headers)});res.end(Buffer.from(await response.arrayBuffer()));return;
+    const response=await handler(request,null,{store:roomStore,limit:incoming=>limit(incoming,ErrorType)});res.writeHead(response.status,{...safeHeaders,...Object.fromEntries(response.headers)});res.end(Buffer.from(await response.arrayBuffer()));return;
    }
    if(!['GET','HEAD'].includes(req.method)){res.writeHead(405,{'Allow':'GET, HEAD'});res.end();return;}
    if(url.pathname==='/health'||url.pathname==='/games.json'){
@@ -41,10 +49,9 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
    }
    let path=decodeURIComponent(url.pathname);
    if(path.includes('\\')||path.includes('\0')||path.split('/').some(part=>part.startsWith('.'))){res.writeHead(404);res.end();return;}
-   const prefix='/games/texas-holdem/';
-   if(path==='/games/texas-holdem'){res.writeHead(302,{Location:prefix+url.search});res.end();return;}
-   const staticRoot=path.startsWith(prefix)?resolve(projectRoot,'games/texas-holdem/web'):resolve(projectRoot,'public');
-   path=path.startsWith(prefix)?path.slice(prefix.length):path.slice(1);
+   let staticRoot=resolve(projectRoot,'public'),gamePrefix=null;
+   for(const[prefix,root]of staticGames){if(path===prefix.slice(0,-1)){res.writeHead(302,{Location:prefix+url.search});res.end();return;}if(path.startsWith(prefix)){staticRoot=root;gamePrefix=prefix;break;}}
+   path=gamePrefix?path.slice(gamePrefix.length):path.slice(1);
    if(!path)path='index.html';
    if(!extname(path))path+='.html';
    const file=await realpath(resolve(staticRoot,path));
@@ -56,7 +63,7 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
   }
  });
  server.requestTimeout=15000;server.headersTimeout=10000;
- return {server,store,catalog,async close(){await new Promise((done,fail)=>server.close(error=>error?fail(error):done()));await store.close();}};
+ return {server,store:pokerStore,stores:{poker:pokerStore,abracada:abracadaStore},catalog,async close(){await new Promise((done,fail)=>server.close(error=>error?fail(error):done()));await Promise.all([pokerStore.close(),abracadaStore.close()]);}};
 }
 
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){

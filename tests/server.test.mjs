@@ -23,9 +23,9 @@ test('collection serves catalog, both game entries and assets without exposing s
  const dataDir=await mkdtemp(join(tmpdir(),'open-tabletop-web-')),app=await start(dataDir);
  t.after(async()=>{await app.close();await rm(dataDir,{recursive:true,force:true});});
  const home=await fetch(app.url);assert.equal(home.status,200);assert.match(await home.text(),/<title>开桌 · Open Tabletop<\/title>/);
- const {data:catalog}=await call(app,'/games.json');assert.equal(catalog[0].id,'texas-holdem');
- for(const path of [catalog[0].solo,catalog[0].online,'/games/texas-holdem/online-ui.js','/games/texas-holdem/room-sync.js','/games/texas-holdem/style.css','/games/texas-holdem/assets/brands/doubao.png','/app.js','/style.css','/favicon.svg'])assert.equal((await fetch(app.url+path)).status,200,path);
- for(const path of ['/server/index.mjs','/.data/poker-rooms.json','/.git/config','/games/texas-holdem/%2e%2e/server/rooms.mjs','/games/texas-holdem/%2f..%2fserver%2frooms.mjs','/games/texas-holdem/%5c..%5cserver%5crooms.mjs'])assert.equal((await fetch(app.url+path)).status,404,path);
+ const {data:catalog}=await call(app,'/games.json');assert.deepEqual(catalog.map(game=>game.id),['texas-holdem','abracada-what']);
+ for(const path of [catalog[0].solo,catalog[0].online,catalog[1].solo,catalog[1].online,'/games/texas-holdem/online-ui.js','/games/texas-holdem/room-sync.js','/games/texas-holdem/style.css','/games/texas-holdem/assets/brands/doubao.png','/games/abracada-what/engine.js','/games/abracada-what/ui.js','/games/abracada-what/online-ui.js','/games/abracada-what/tower-progress.js','/games/abracada-what/online.css','/games/abracada-what/style.css','/app.js','/style.css','/favicon.svg'])assert.equal((await fetch(app.url+path)).status,200,path);
+ for(const path of ['/server/index.mjs','/.data/poker-rooms.json','/.data/abracada-rooms.json','/.git/config','/games/texas-holdem/%2e%2e/server/rooms.mjs','/games/texas-holdem/%2f..%2fserver%2frooms.mjs','/games/texas-holdem/%5c..%5cserver%5crooms.mjs','/games/abracada-what/%2e%2e/tests/engine.test.mjs','/games/abracada-what/%2e%2e/server/rooms.mjs'])assert.equal((await fetch(app.url+path)).status,404,path);
  const head=await fetch(app.url+'/style.css',{method:'HEAD'});assert.equal(head.status,200);assert.equal(await head.text(),'');
  assert.equal((await fetch(app.url+'/games.json',{method:'POST'})).status,405);
 });
@@ -47,6 +47,22 @@ test('real HTTP friend room, private views, lightweight sync and restart persist
  const {data:restored}=await call(app,path,{token:host.token,cursor:syncCursor(null)});assert.equal(restored.room.code,host.room.code);assert.deepEqual(restored.game.players[0].hole,started.game.players[0].hole);
 });
 
+test('real HTTP magic room fills AI seats, keeps private views, and survives restart',async t=>{
+ const dataDir=await mkdtemp(join(tmpdir(),'open-tabletop-magic-room-'));let app=await start(dataDir);
+ t.after(async()=>{await app.close();await rm(dataDir,{recursive:true,force:true});});
+ const {response:created,data:host}=await call(app,'/api/abracada/rooms',{body:{name:'Host',mode:'score',playerCount:4}});assert.equal(created.status,201);
+ const path='/api/abracada/rooms/'+host.room.code;
+ const {data:guest}=await call(app,path+'/join',{body:{name:'Guest',seatKey:randomBytes(24).toString('hex')}});
+ await call(app,path+'/ready',{token:guest.token,body:{ready:true}});
+ const {data:started}=await call(app,path+'/start',{token:host.token,body:{}});assert.equal(started.room.aiCount,2);assert.ok(started.game.players[0].rack.every(stone=>stone===null));
+ const {data:friend}=await call(app,path,{token:guest.token});assert.equal(friend.game.players[0].name,'Guest');assert.ok(friend.game.players[0].rack.every(stone=>stone===null));assert.ok(friend.game.players.slice(1).every(player=>player.rack.every(Number.isInteger)));
+ const serialized=JSON.stringify(friend);for(const key of ['engine','tokenHash','rng','seed','drawPile','secretPool'])assert.ok(!serialized.includes('"'+key+'":'),key);
+ const {response:denied}=await call(app,path);assert.equal(denied.status,403);
+ const persisted=JSON.parse(await readFile(join(dataDir,'abracada-rooms.json'),'utf8'));assert.equal(persisted.length,1);
+ await app.close();app=await start(dataDir);
+ const {data:restored}=await call(app,path,{token:host.token});assert.equal(restored.room.code,host.room.code);assert.deepEqual(restored.game.players[0].rack,started.game.players[0].rack);
+});
+
 test('explicit public origin supports HTTPS reverse proxies and rejects unrelated origins',async t=>{
  const dataDir=await mkdtemp(join(tmpdir(),'open-tabletop-origin-')),app=await start(dataDir,{publicOrigin:'https://tabletop.example'});
  t.after(async()=>{await app.close();await rm(dataDir,{recursive:true,force:true});});
@@ -59,5 +75,6 @@ test('Cloudflare adapter delegates API calls to the D1-backed game and static re
  let queries=0,assets=0;
  const env={DB:{prepare(){queries++;return {async first(){return null;}};}},ASSETS:{async fetch(){assets++;return new Response('static-page');}}};
  const api=await worker.fetch(new Request('https://example.com/api/poker/health'),env);assert.equal(api.status,200);assert.equal((await api.json()).ok,true);assert.equal(queries,1);
+ const magic=await worker.fetch(new Request('https://example.com/api/abracada/health'),env);assert.equal(magic.status,200);assert.equal((await magic.json()).ok,true);assert.equal(queries,2);
  const page=await worker.fetch(new Request('https://example.com/'),env);assert.equal(await page.text(),'static-page');assert.equal(assets,1);
 });

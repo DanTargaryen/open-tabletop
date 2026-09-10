@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17132a">
+<meta name="description" content="出包魔法师非官方规则原型：看得见别人的法术，却看不见自己的法术。">
+<title>出包魔法师 · 规则原型</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+<header class="site-header">
+ <a class="brand" href="/" aria-label="退出游戏并返回首页" title="退出游戏"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 6 4 12l6 6M4 12h10M14 5h5v14h-5"/></svg></span><span><b>出包魔法师</b><small>UNOFFICIAL RULES PROTOTYPE</small></span></a>
+ <div class="header-actions"><span class="demo-label">LOCAL AI DEMO</span><button class="icon-button" id="helpBtn" data-help type="button" aria-label="打开玩法说明">?</button></div>
+</header>
+
+<main id="lobby" class="lobby-shell">
+ <section class="lobby-copy">
+  <p class="eyebrow"><span></span> CAN YOU READ YOUR OWN MAGIC?</p>
+  <h1>看得见所有咒语，<br><em>除了自己的。</em></h1>
+  <p class="lead">观察对手、计算余量、冒险喊出你认为自己拥有的法术。成功后继续连咏，或者及时收手。</p>
+  <div class="feature-strip"><span>2–5 人</span><i></i><span>本地 AI 补位</span><i></i><span>约 15–30 分钟</span></div>
+ </section>
+ <section class="setup-card" aria-labelledby="setupTitle">
+  <div class="setup-heading"><span>开局设置</span><h2 id="setupTitle">选择你的试炼</h2></div>
+  <fieldset class="mode-picker">
+   <legend>游戏模式</legend>
+   <button class="mode-card active" data-mode="score" type="button"><span class="mode-number">01</span><span><b>积分模式</b><small>多轮进行，率先达到 8 分获胜</small></span><span class="radio-dot"></span></button>
+   <button class="mode-card" data-mode="single" type="button"><span class="mode-number">02</span><span><b>单局模式</b><small>不累计积分，本轮结束即结算</small></span><span class="radio-dot"></span></button>
+  </fieldset>
+  <fieldset class="player-picker">
+   <legend>总玩家人数</legend>
+   <div class="player-options" id="playerOptions">
+    <button type="button" data-players="2">2</button><button type="button" data-players="3">3</button><button class="active" type="button" data-players="4">4</button><button type="button" data-players="5">5</button>
+   </div>
+   <p><b>1 名真人</b>入座，剩余 <strong id="botCount">3</strong> 个席位由本地 AI 填充。</p>
+  </fieldset>
+  <div class="lineup-preview" id="lineupPreview"></div>
+  <div class="setup-actions"><button class="primary-button" id="startBtn" type="button"><span>进入法师塔</span><span>↗</span></button><button class="rules-button" data-help type="button">查看游戏玩法</button></div>
+  <p class="prototype-note">规则与界面原型 · 不使用原版美术 · AI 不调用外部模型</p>
+ </section>
+ <section class="tower-art" aria-hidden="true">
+  <div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="tower-star">✦</div>
+  <div class="floating-stone stone-one"><span>1</span><b>龙</b></div><div class="floating-stone stone-four"><span>4</span><b>月</b></div><div class="floating-stone stone-eight"><span>8</span><b>药</b></div>
+  <p>EVERY SPELL<br>LEAVES A CLUE.</p>
+ </section>
+</main>
+
+<main id="game" class="game-shell hidden">
+ <section class="game-topbar">
+  <div><p class="eyebrow" id="modeEyebrow">SCORE ASCENT</p><h2 id="roundTitle">法师塔 · 第 1 轮</h2></div>
+  <div class="game-facts"><span><small>目标</small><b id="goalLabel">8 分</b></span><span><small>牌堆</small><b id="drawCount">0</b></span><span><small>秘密石</small><b id="secretCount">4</b></span></div>
+  <div class="game-topbar-actions"><button class="rules-button" data-help type="button">游戏玩法</button><button class="quiet-button" id="restartBtn" type="button">重新设置</button></div>
+ </section>
+
+ <div class="game-grid">
+  <section class="table-panel">
+   <div class="opponents" id="opponents"></div>
+   <div class="magic-table">
+    <div class="table-runes">✦　·　✧　·　✦　·　✧　·　✦</div>
+    <div class="table-center">
+     <div class="pile secret-pile"><span class="pile-stone">?</span><small>秘密石</small><b id="secretPileCount">4</b></div>
+     <div class="tower-core"><span id="turnGlyph">✦</span><b id="turnHeadline">准备施法</b><small id="turnDetail">观察其他玩家的法术石</small><div class="die-scene hidden" id="die" role="img" aria-label="魔法骰"><div class="die-cube" id="dieCube"><i class="die-face die-front">1</i><i class="die-face die-back">2</i><i class="die-face die-right">1</i><i class="die-face die-left">3</i><i class="die-face die-top">1</i><i class="die-face die-bottom">2</i></div></div></div>
+     <div class="pile draw-pile"><span class="pile-stone">✧</span><small>补充牌堆</small><b id="drawPileCount">0</b></div>
+    </div>
+    <div class="public-row"><div><span>公开移除</span><div id="removedStones" class="mini-stones"></div></div><div><span>已施放</span><div id="castStones" class="mini-stones"></div></div></div>
+   </div>
+   <div class="human-seat" id="humanSeat"></div>
+  </section>
+
+  <aside class="spell-panel">
+   <div class="spell-heading"><p class="eyebrow">SPELL INDEX</p><h3>法术目录</h3><small id="castRule">首次施法可选择任意编号</small></div>
+   <div class="spell-list" id="spellList"></div>
+   <button class="stop-button hidden" id="stopBtn" type="button">收手并结束回合 <span>→</span></button>
+  </aside>
+
+  <aside class="log-panel">
+   <div class="log-heading"><span>塔内回响</span><button id="clearLogBtn" type="button">回到最新</button></div>
+   <div class="event-log" id="eventLog" aria-live="polite"></div>
+  </aside>
+ </div>
+</main>
+
+<div class="result-layer hidden" id="resultLayer" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+ <section class="result-card"><p class="eyebrow" id="resultEyebrow">ROUND COMPLETE</p><div class="result-glyph" id="resultGlyph">✦</div><h2 id="resultTitle">本轮结束</h2><p id="resultSummary"></p><div class="score-table" id="scoreTable"></div><button class="primary-button" id="resultBtn" type="button"><span>下一轮</span><span>→</span></button><button class="text-button" id="resultExitBtn" type="button">返回设置</button></section>
+</div>
+
+<dialog id="helpDialog" class="help-dialog">
+ <button class="dialog-close" id="helpCloseBtn" type="button" aria-label="关闭">×</button>
+ <p class="eyebrow">HOW TO PLAY</p><h2>你唯一看不见的，<br>是自己的法术。</h2>
+ <ol><li><b>观察</b><span>查看对手、公开移除区和已施放区，推断自己可能持有的编号。</span></li><li><b>宣告</b><span>点击 1–8 号法术。持有对应法术石则成功，否则失去 1 点生命并结束回合；1 号失败还要额外承受骰子点数的惩罚。</span></li><li><b>连咏</b><span>成功后可继续施法或收手；后续编号必须大于或等于上一次成功编号。</span></li><li><b>获胜</b><span>清空自己的法术石，或用攻击令其他玩家生命归零，即结束本轮。</span></li></ol>
+ <p class="help-foot">积分模式中，本轮赢家通常获得 3 分，其他幸存者获得 1 分，秘密石另计；率先达到 8 分获胜。</p>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+<script type="module" src="ui.js"></script>
+</body>
+</html>

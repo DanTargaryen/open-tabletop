@@ -16,3 +16,7 @@ The five AI characters are local game strategies. They do not call the services 
 | `doubao.png` | Public favicon from the official Doubao website. No separate open-source license accompanied this asset; it is excluded from the project's MIT grant. Copyright and trademark rights remain with the relevant rights holders. See [SOURCES.md](games/texas-holdem/web/assets/brands/SOURCES.md) for its exact source and checksum. |
 
 The collection's card illustration and favicon are original HTML/CSS/SVG assets and use the root MIT license. No Sites account configuration, proprietary deployment credentials, or runtime player data are distributed with this repository.
+
+## Abracada rules prototype
+
+`games/abracada-what/` is an unofficial rules and interaction prototype inspired by the tabletop game *Abracada...What?*, designed by Gary Kim and originally published by Korea Boardgames. The original game name, localized title, rules terminology, and related rights remain with their respective owners. This repository does not include or license any official illustrations, logos, scans, rulebook text, or other publisher assets. All visual assets in the prototype are original HTML and CSS under the root MIT license. Inclusion does not imply endorsement, authorization, or affiliation.
