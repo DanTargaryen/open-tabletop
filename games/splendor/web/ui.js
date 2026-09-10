@@ -56,7 +56,7 @@ function showCard(id) {
   const s=view(),p=s.players[self()],card=[...s.market.flat().filter(Boolean),...s.players.flatMap(p=>[...p.cards,...p.reserved.filter(c=>!c.hidden)])].find(c=>c.id===id);
   if(!card)return;
   const actions=myTurn()?legalActions(s):[],buy=actions.some(a=>a.type==='buy'&&a.cardId===id),reserve=actions.some(a=>a.type==='reserve'&&a.cardId===id),due=price(p,card),payment=defaultPayment(p,card);
-  detail.dataset.card=id;
+  detail.dataset.selectedCard=id;
   document.querySelector('#detail-body').innerHTML=`<div class="detail-card">${portrait(card)}<div><span class="eyebrow">NO. ${String(card.dexId).padStart(3,'0')} · ${card.kind==='normal'?'LEVEL '+card.tier:card.kind==='rare'?'RARE':'LEGENDARY'}</span><h2>${escape(card.nameZh)}</h2><p>${escape(card.name)} · ${card.points} 奖杯</p><p>永久加成 ${ball(card.bonus)} × ${card.bonusAmount}</p></div></div><div class="section-label">捕捉费用 <small>卡牌原价</small></div><div class="costs">${costs(card.cost)}</div><p class="action-help">你的永久加成抵扣后：${TOKENS.every(c=>!due[c])?'免费捕捉':costs(due)}</p>${card.evolveCost?`<p class="action-help">进化条件：${costs(card.evolveCost)} 永久加成<br>进化为 ${escape(CARDS.find(c=>c.speciesId===card.evolvesToSpeciesId)?.nameZh||'下一阶')}，需要对应卡在展示区或你的预留中。</p>`:'<p class="action-help">这张卡在本游戏中不能进化。</p>'}${buy?`<details><summary>调整支付方式</summary><p class="fine">减少彩色球的支付数量，会用大师球补足差额。</p><div class="payment-grid">${COLORS.map(c=>`<label>${ball(c)}<input aria-label="支付${labels[c]}" data-payment="${c}" type="number" min="0" max="${Math.min(due[c],p.tokens[c])}" value="${payment[c]}"></label>`).join('')}</div><p class="fine" id="master-cost">需要 ${payment.master} 枚大师球（你有 ${p.tokens.master} 枚）</p></details>`:''}<div class="detail-actions"><button id="buy-card" class="sun" ${!buy||busy?'disabled':''}>${buy?'捕捉':'暂不可捕捉'}</button>${card.kind==='normal'?`<button id="reserve-card" ${!reserve||busy?'disabled':''}>预留${s.bank.master?' + 大师球':''}</button>`:''}</div>${!myTurn()?'<p class="fine">你可以查看卡牌，轮到你时再行动。</p>':''}`;
   if(!detail.open)detail.showModal();
 }
@@ -66,7 +66,7 @@ function showPlayer(seat) {
   detail.showModal();
 }
 function paymentFromDialog() {
-  const s=view(),p=s.players[self()],card=CARDS.find(c=>c.id===detail.dataset.card),due=price(p,card),payment=emptyTokens();
+  const s=view(),p=s.players[self()],card=CARDS.find(c=>c.id===detail.dataset.selectedCard),due=price(p,card),payment=emptyTokens();
   payment.master=due.master;
   for(const c of COLORS){payment[c]=Number(detail.querySelector(`[data-payment="${c}"]`)?.value??Math.min(due[c],p.tokens[c]));payment.master+=due[c]-payment[c];}
   return payment;
@@ -176,7 +176,14 @@ app.addEventListener('click',async e=>{
   }
 });
 detail.addEventListener('input',()=>{const payment=paymentFromDialog(),p=state.players[self()];document.querySelector('#master-cost').textContent=`需要 ${payment.master} 枚大师球（你有 ${p.tokens.master} 枚）`;document.querySelector('#buy-card').disabled=payment.master>p.tokens.master||COLORS.some(c=>!Number.isInteger(payment[c])||payment[c]<0);});
-detail.addEventListener('click',async e=>{const card=e.target.closest('[data-card]');if(card){showCard(card.dataset.card);return;}if(e.target.id==='buy-card')await move({type:'buy',cardId:detail.dataset.card,payment:paymentFromDialog()});if(e.target.id==='reserve-card')await move({type:'reserve',cardId:detail.dataset.card});});
+detail.addEventListener('click',async e=>{
+  // Selection state belongs to data-selected-card; only actual card buttons
+  // inside the public-team view should open another detail view.
+  const button=e.target.closest('button');if(!button||button.disabled)return;
+  if(button.matches('[data-card]')){showCard(button.dataset.card);return;}
+  if(button.id==='buy-card')await move({type:'buy',cardId:detail.dataset.selectedCard,payment:paymentFromDialog()});
+  if(button.id==='reserve-card')await move({type:'reserve',cardId:detail.dataset.selectedCard});
+});
 document.querySelectorAll('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
 document.querySelector('#help').addEventListener('click',()=>document.querySelector('#rules').showModal());
 document.querySelector('#sound').addEventListener('click',e=>{sound=!sound;e.target.textContent='音效：'+(sound?'开':'关');e.target.setAttribute('aria-pressed',String(sound));chime();});
