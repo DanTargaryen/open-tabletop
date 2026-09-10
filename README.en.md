@@ -4,7 +4,7 @@
 
 ![Open Tabletop collection](docs/collection-preview.jpg)
 
-An open-source collection of browser tabletop games that you can run yourself and extend. **The collection contains Texas Hold’em and an unofficial Splendor: Pokémon implementation**, with solo play against local AI and online rooms for friends.
+An open-source collection of browser tabletop games that you can run yourself and extend. **The collection contains Texas Hold’em, unofficial Splendor: Pokémon and Abracada...What? implementations**, with solo play against local AI and online rooms for friends.
 
 [中文](README.md) · [Add a game](docs/adding-a-game.md) · [Architecture](docs/architecture.md) · [Contributing](CONTRIBUTING.md)
 
@@ -21,6 +21,14 @@ Texas Hold’em includes:
 - Hand evaluation, main-pot and side-pot settlement, and masking of opponents’ hole cards in online play.
 - Persistent room state, recovery after a refresh, and lightweight synchronization at 1 / 2 / 5 second intervals according to state.
 - Automatic check or fold after a 45 second action timeout, with a 24 hour room activity TTL.
+
+The Abracada...What? rules prototype includes:
+
+- Local play and six-character-code friend rooms. Each game supports 2–5 total seats and 1–5 human players, with public-information-only local AI filling empty seats.
+- A multi-round score mode that ends at 8 points and a one-round mode with no persistent scoring.
+- All eight spell effects, the chained-casting restriction, secret stones, player-count setup rules, action animations, and a narrow-screen layout.
+- A separate hidden-information projection for every online player, refresh recovery, and AI tower spirits that take over after a 45-second timeout or temporary disconnect.
+- Original HTML/CSS visuals with no publisher art, scans, or other official assets.
 
 Brand names and marks remain the property of their respective owners. They do not imply participation or endorsement, and the project’s MIT license does not grant rights to those marks. See [third-party notices](THIRD_PARTY_NOTICES.md).
 
@@ -49,6 +57,8 @@ Open <http://127.0.0.1:18772>.
 | Online Texas Hold’em | `/games/texas-holdem/online.html` |
 | Solo Splendor: Pokémon | `/games/splendor/index.html` |
 | Online Splendor: Pokémon | `/games/splendor/online.html` |
+| Local Abracada...What? | `/games/abracada-what/index.html` |
+| Online Abracada...What? | `/games/abracada-what/online.html` |
 
 To play with friends on the same local network:
 
@@ -83,7 +93,7 @@ npm test
 npm run build:static
 ```
 
-Tests cover both game engines, room behavior, synchronization, and the root server. The static build copies assets to `.dist/public`. Online play also requires a Node or Worker + D1 backend serving `/api/poker` and `/api/splendor`; static hosting alone does not provide rooms.
+Tests cover all three game engines, room behavior, hidden-information projections, synchronization, and the root server. The static build copies assets to `.dist/public`. Online play also requires a Node or Worker + D1 backend serving `/api/poker`, `/api/splendor` and `/api/abracada`; static hosting alone does not provide rooms.
 
 The default entry point, `server/index.mjs`, runs in a Node environment you control. An optional Cloudflare adapter is included:
 
@@ -94,7 +104,7 @@ Database settings in the example configuration are placeholders. Create and bind
 
 ## Extend the collection
 
-Each game lives in `games/<game-id>/` and appears on the homepage through `games/catalog.json`. The catalog contains `texas-holdem` and `splendor`; additional games will be added as they are implemented and contributed.
+Each game lives in `games/<game-id>/` and appears on the homepage through `games/catalog.json`. The catalog contains `texas-holdem`, `splendor` and `abracada-what`; additional games will be added as they are implemented and contributed.
 
 ```text
 games/
@@ -104,6 +114,14 @@ games/
     server/     Poker rules and room service
     tests/      Game tests
     scripts/    Game development tools
+  splendor/
+    web/        Pokemon pages and assets
+    server/     Pokemon room service
+    tests/      Game and room tests
+  abracada-what/
+    web/        Local and online pages and assets
+    server/     Abracada room service
+    tests/      Spell, scoring, room, and hidden-information tests
 public/         Collection homepage
 server/         Node server entry point
 deploy/         Optional platform adapters

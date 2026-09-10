@@ -20,5 +20,16 @@
     "version": "0.1.0",
     "solo": "/games/splendor/index.html",
     "online": "/games/splendor/online.html"
+  },
+  {
+    "id": "abracada-what",
+    "title": "出包魔法师",
+    "subtitle": "ABRACADA WHAT?",
+    "description": "看得见所有人的法术，唯独看不见自己的。观察、推理，再决定继续连咏还是及时收手。",
+    "players": "1–5 人联机 / AI 补位",
+    "category": "出包魔法师",
+    "version": "0.2.0",
+    "solo": "/games/abracada-what/index.html",
+    "online": "/games/abracada-what/online.html"
   }
 ]

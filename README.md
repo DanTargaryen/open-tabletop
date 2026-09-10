@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/DanTargaryen/open-tabletop/actions/workflows/ci.yml/badge.svg)](https://github.com/DanTargaryen/open-tabletop/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/Code-MIT-d2b77c)](LICENSE)
 
-一个可以自己运行、继续扩展的开源网页桌游合集。**现已包含德州扑克与璀璨宝石·宝可梦特别款**：单人对战本地 AI，也可以创建房间与朋友联机。两款游戏的好友房都允许一个人直接开局，空位自动补 AI。
+一个可以自己运行、继续扩展的开源网页桌游合集。**现已包含德州扑克、璀璨宝石·宝可梦特别款与出包魔法师**：单人对战本地 AI，也可以创建房间与朋友联机，空位可由 AI 补齐。
 
 [English](README.en.md) · [添加游戏](docs/adding-a-game.md) · [架构说明](docs/architecture.md) · [参与贡献](CONTRIBUTING.md)
 
@@ -23,6 +23,14 @@
 - 牌型判定、主池与边池结算，以及联机时的对手暗牌遮罩。
 - 房间状态持久化、刷新恢复，以及按状态采用 1 / 2 / 5 秒间隔的轻量同步。
 - 45 秒行动超时后自动过牌或弃牌；房间活动 TTL 为 24 小时。
+
+《出包魔法师》规则原型包含：
+
+- 本地试玩和六位房间码好友房；每局可设置 2–5 个总席位，支持 1–5 名真人，空位由只使用公开信息的本地 AI 补齐。
+- 积分模式按多轮标准计分进行到 8 分，单局模式在一轮结束后直接结算。
+- 完整的八种法术、连续施法限制、秘密石、人数设置特例、行动动画和窄屏布局。
+- 联机时为每位玩家生成独立的隐藏信息视图，支持刷新恢复；真人 45 秒未行动或暂时离线时由 AI 塔灵代打。
+- 原创 HTML/CSS 视觉，不包含原版美术、扫描件或出版方素材。
 
 品牌名称与标识的权利归原权利人所有，不代表品牌参与或背书，也不因本仓库的 MIT 许可而转让。详见 [第三方声明](THIRD_PARTY_NOTICES.md)。
 
@@ -51,6 +59,8 @@ npm start
 | 德州扑克联机模式 | `/games/texas-holdem/online.html` |
 | 宝可梦特别款单人 AI | `/games/splendor/index.html` |
 | 宝可梦特别款好友房 | `/games/splendor/online.html` |
+| 出包魔法师本地模式 | `/games/abracada-what/index.html` |
+| 出包魔法师联机模式 | `/games/abracada-what/online.html` |
 
 与同一局域网内的朋友一起玩：
 
@@ -85,7 +95,7 @@ npm test
 npm run build:static
 ```
 
-测试覆盖两款游戏的规则引擎、房间逻辑、同步和根服务器。静态构建会将资源复制到 `.dist/public`；联机功能还需要提供 `/api/poker` 与 `/api/splendor` 的 Node 或 Worker + D1 后端，单独托管静态文件不能提供房间服务。
+测试覆盖三款游戏的规则引擎、房间逻辑、隐藏信息投影、同步和根服务器。静态构建会将资源复制到 `.dist/public`；联机功能还需要提供 `/api/poker`、`/api/splendor` 与 `/api/abracada` 的 Node 或 Worker + D1 后端，单独托管静态文件不能提供房间服务。
 
 默认入口是 `server/index.mjs`，适合在自己的 Node 环境中运行。仓库也提供可选的 Cloudflare 适配器：
 
@@ -97,7 +107,7 @@ npm run build:static
 
 ## 扩展合集
 
-每个游戏放在 `games/<game-id>/`，通过 `games/catalog.json` 出现在首页。当前目录包含 `texas-holdem` 与 `splendor`；未来游戏由实际实现和贡献逐步加入。
+每个游戏放在 `games/<game-id>/`，通过 `games/catalog.json` 出现在首页。当前目录包含 `texas-holdem`、`splendor` 与 `abracada-what`；未来游戏由实际实现和贡献逐步加入。
 
 ```text
 games/
@@ -107,6 +117,14 @@ games/
     server/     扑克规则与房间服务
     tests/      游戏测试
     scripts/    游戏开发工具
+  splendor/
+    web/        宝可梦页面与资源
+    server/     宝可梦房间服务
+    tests/      游戏与房间测试
+  abracada-what/
+    web/        本地与联机页面和资源
+    server/     魔法师房间服务
+    tests/      法术、计分、房间与隐藏信息测试
 public/         合集首页
 server/         Node 服务入口
 deploy/         可选平台适配器

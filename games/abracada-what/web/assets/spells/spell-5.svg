@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 336" role="img" aria-labelledby="title">
+  <title id="title">闪电风暴</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#27325e"/><stop offset=".56" stop-color="#292047"/><stop offset="1" stop-color="#111020"/></linearGradient>
+    <linearGradient id="bolt" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff7ad"/><stop offset="1" stop-color="#65e7f1"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="7"/></filter>
+  </defs>
+  <rect width="240" height="336" rx="42" fill="url(#bg)"/>
+  <circle cx="120" cy="169" r="88" fill="#7c69d8" opacity=".18"/>
+  <path d="M53 160c0-22 18-39 41-39 9-25 31-40 57-35 21 4 37 20 42 40 17 3 29 17 29 34 0 19-16 35-37 35H86c-19 0-33-15-33-35Z" fill="#38446e" stroke="#9beaf0" stroke-width="4"/>
+  <path d="m107 165-27 58h31l-12 52 61-78h-34l18-32Z" fill="#80eef4" opacity=".35" filter="url(#glow)"/>
+  <path d="m107 160-27 63h31l-12 52 61-83h-34l18-32Z" fill="url(#bolt)" stroke="#fff6c8" stroke-width="2" stroke-linejoin="round"/>
+  <path d="m70 186-18 35h18l-8 31 38-50H79l11-16Zm102 4-14 28h15l-7 27 31-43h-17l9-22Z" fill="#70dce8" opacity=".85"/>
+  <path d="M73 102c29-24 66-32 100-16" fill="none" stroke="#ceb8ff" stroke-opacity=".5" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="120" cy="169" r="96" fill="none" stroke="#91e9ed" stroke-opacity=".23" stroke-width="2" stroke-dasharray="4 9"/>
+  <rect x="8" y="8" width="224" height="320" rx="35" fill="none" stroke="#f2ca78" stroke-opacity=".55" stroke-width="3"/>
+</svg>

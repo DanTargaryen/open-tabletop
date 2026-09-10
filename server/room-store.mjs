@@ -1,10 +1,10 @@
 import {readFile,writeFile,mkdir,rename} from 'node:fs/promises';
 import {dirname} from 'node:path';
-import {MemoryRoomStore} from '../games/texas-holdem/server/rooms.mjs';
 
-// One Node process owns this file. Use the D1 adapter for a distributed deployment.
-export class FileRoomStore extends MemoryRoomStore {
- constructor(path){super();this.path=path;this.pending=Promise.resolve();}
+const clone=value=>JSON.parse(JSON.stringify(value));
+
+export class FileRoomStore {
+ constructor(path){this.rows=new Map();this.path=path;this.pending=Promise.resolve();}
  async init(){
   await mkdir(dirname(this.path),{recursive:true,mode:0o700});
   try{this.rows=new Map(JSON.parse(await readFile(this.path,'utf8')).filter(([,v])=>v.expiresAt>Date.now()));}
@@ -20,7 +20,8 @@ export class FileRoomStore extends MemoryRoomStore {
   });
   this.pending=task.catch(()=>{});return task;
  }
- async create(...args){const changed=await super.create(...args);if(changed)await this.save();return changed;}
- async cas(...args){const changed=await super.cas(...args);if(changed)await this.save();return changed;}
+ async get(code,now){const value=this.rows.get(code);return value&&value.expiresAt>now?clone(value):null;}
+ async create(code,room,expiresAt){if(this.rows.has(code))return false;this.rows.set(code,{revision:0,room:clone(room),expiresAt});await this.save();return true;}
+ async cas(code,revision,room,expiresAt){const previous=this.rows.get(code);if(!previous||previous.revision!==revision)return false;this.rows.set(code,{revision:revision+1,room:clone(room),expiresAt});await this.save();return true;}
  async close(){await this.pending;}
 }

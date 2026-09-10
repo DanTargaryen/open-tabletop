@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Open-source browser games: Texas Holdem and unofficial Splendor Pokemon, with local AI and multiplayer rooms.",
+  "description": "Open-source browser games: Texas Holdem, unofficial Splendor Pokemon and Abracada What, with local AI and multiplayer rooms.",
   "license": "MIT",
   "engines": {
     "node": ">=22.13.0"
