@@ -4,7 +4,8 @@ import {ARTWORK,artworkPath} from './artwork.js';
 import {acquisitionEvents} from './feedback-events.js';
 import {AcquisitionFeedback} from './feedback.js';
 const app=document.querySelector('#app'),detail=document.querySelector('#detail');
-const online=location.pathname.endsWith('online.html');
+// Static hosting may canonicalize online.html to /online.
+const online=/\/online(?:\.html)?\/?$/.test(location.pathname);
 const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labels={red:'精灵球',blue:'超级球',black:'高级球',pink:'治愈球',yellow:'先机球',master:'大师球'};
 const short={red:'红',blue:'蓝',black:'黑',pink:'粉',yellow:'黄',master:'M'};
