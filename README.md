@@ -10,9 +10,11 @@
 
 ## 先玩一局
 
+**[打开游戏大厅](https://velvet-poker-friends.linming-dracarys.chatgpt.site/)**，选择德州扑克或宝可梦，再选择单人模式或好友房。
+
 [宝可梦特别款 · 单人冒险](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/splendor/) · [宝可梦特别款 · 好友联机](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/splendor/online) · [德州扑克试玩](https://velvet-poker-friends.linming-dracarys.chatgpt.site)
 
-宝可梦特别款已部署到原有 Sites 域名，支持单人 AI 和远端 D1 好友房。原扑克入口保留；站点根路径仍进入扑克，尚未替换为合集首页。
+统一首页已部署到现有 Sites 域名；两款游戏均支持单人 AI 和远端好友房。原游戏直达路径及旧的扑克房间邀请链接继续可用。
 
 德州扑克包含：
 

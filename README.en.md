@@ -12,7 +12,7 @@ An open-source collection of browser tabletop games that you can run yourself an
 
 [Open the existing Texas Hold’em demo](https://velvet-poker-friends.linming-dracarys.chatgpt.site)
 
-This link points to the existing poker demo, not a deployment of this repository’s collection homepage. When you run this repository, its homepage lists available games from the game catalog.
+The public root URL is now the game-selection homepage, with solo and friend-room links for both games. Existing poker URLs and root room invitations remain supported.
 
 Texas Hold’em includes:
 
