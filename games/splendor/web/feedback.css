@@ -1,0 +1,27 @@
+.feedback-layer{position:fixed;inset:0;pointer-events:none;z-index:1000;overflow:hidden;contain:layout style}
+.feedback-layer *{pointer-events:none;box-sizing:border-box}
+#toast{z-index:1100}
+.feedback-sr{position:fixed;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.acquisition-scene{position:absolute;inset:0;--reward-color:#65b1ce}
+.acquisition-card{position:absolute;left:0;top:0;width:140px;height:166px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:2px solid #fff;border-radius:22px;background:linear-gradient(140deg,#fff 25%,#e8f5f5);color:#18354a;box-shadow:0 16px 48px #18354a45,0 0 0 7px #ffffff4d;z-index:3;will-change:transform,opacity}
+.acquisition-card .feedback-portrait{width:96px;height:100px;object-fit:contain;filter:drop-shadow(0 5px 5px #18354a20)}
+.acquisition-card>strong{font-size:19px;font-weight:800;line-height:1.3}
+.acquisition-card-badge{position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:11px;letter-spacing:.16em;font-weight:850;color:#375139;background:#e4f0b6;padding:5px 12px;border:2px solid white;border-radius:20px;box-shadow:0 3px 9px #18354a18}
+.acquisition-title{position:absolute;transform:translateX(-50%);text-align:center;z-index:4;background:#fffffff2;padding:12px 27px;border-radius:17px;box-shadow:0 8px 30px #18354a18;white-space:nowrap;border:1px solid #d3e6e9}
+.acquisition-title small{display:block;color:#69848d;font-size:12px;letter-spacing:.1em;margin-bottom:4px}
+.acquisition-title strong{display:block;color:#163a52;font-size:28px;letter-spacing:.08em;font-weight:850}
+.acquisition-rings{position:absolute;z-index:1}
+.acquisition-ring{display:block;position:absolute;width:230px;height:230px;border:2px solid var(--reward-color);border-radius:50%;background:radial-gradient(circle,#ffffff66,transparent 64%);transform:translate(-50%,-50%);opacity:0}
+.acquisition-spark{position:absolute;width:11px;height:11px;background:#e7c453;clip-path:polygon(50% 0,64% 35%,100% 50%,64% 65%,50% 100%,35% 65%,0 50%,35% 35%);z-index:2;opacity:0}
+.acquisition-spark:nth-child(2n){background:var(--reward-color);width:8px;height:8px}
+.acquisition-receipt{position:absolute;right:24px;bottom:24px;display:flex;align-items:center;gap:12px;width:max-content;max-width:min(410px,calc(100vw - 32px));min-height:82px;padding:13px 20px 13px 13px;border:1px solid #aeced4;border-left:4px solid var(--reward-color);border-radius:16px;background:#fffffffa;color:#18354a;box-shadow:0 10px 40px #163a5229;opacity:0;z-index:5}
+.acquisition-receipt.receipt-arrived{opacity:1}
+.acquisition-receipt .feedback-portrait{width:48px;height:48px;object-fit:contain;padding:3px;border-radius:10px;background:#eef6f7;flex-shrink:0}
+.acquisition-receipt-copy{min-width:0}
+.acquisition-receipt-copy>strong{display:block;font-size:16px;line-height:1.5}
+.acquisition-receipt-copy>span{display:block;font-size:13px;line-height:1.6;color:#55757f}
+.feedback-replay-label{display:block;font-size:11px;letter-spacing:.1em;color:#748e96}
+.acquisition-highlight{animation:acquisition-pulse 1.15s ease-out;border-radius:7px;outline:2px solid transparent}
+@keyframes acquisition-pulse{0%{background:#f9e795;outline-color:#e0bd55;box-shadow:0 0 0 0 #e8c34c66;transform:scale(1)}25%{transform:scale(1.1);box-shadow:0 0 0 8px #e8c34c00}60%{background:#fff2ba}100%{background:transparent;outline-color:transparent;transform:scale(1)}}
+@media(max-width:760px){.acquisition-receipt{left:16px;right:16px;bottom:16px;max-width:none;width:auto;padding:11px 13px;gap:10px}.acquisition-title{padding:10px 22px}.acquisition-title strong{font-size:25px}.acquisition-receipt-copy>strong{font-size:15px}.acquisition-receipt-copy>span{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.acquisition-highlight{animation:none;outline-color:#d6b64c;background:#fff3c3;box-shadow:none}.acquisition-card,.acquisition-title,.acquisition-rings,.acquisition-spark{display:none}}

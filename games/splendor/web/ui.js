@@ -1,13 +1,16 @@
 import {createGame,applyAction,projectGame,legalActions,defaultPayment,price,affordable,total,emptyTokens,COLORS,TOKENS,assertConservation,CARDS} from './engine.js';
 import {chooseAction,AI_STYLES} from './ai.js';
 import {ARTWORK,artworkPath} from './artwork.js';
+import {acquisitionEvents} from './feedback-events.js';
+import {AcquisitionFeedback} from './feedback.js';
 const app=document.querySelector('#app'),detail=document.querySelector('#detail');
 const online=location.pathname.endsWith('online.html');
 const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labels={red:'精灵球',blue:'超级球',black:'高级球',pink:'治愈球',yellow:'先机球',master:'大师球'};
 const short={red:'红',blue:'蓝',black:'黑',pink:'粉',yellow:'黄',master:'M'};
 const SOLO='open-tabletop.pokemon.solo.v1',SESSION='open-tabletop.pokemon.room.v1',PENDING='open-tabletop.pokemon.pending.v1';
-let state=null,room=null,session=null,busy=false,error='',selection=[],takeMode='different',botTimer=null,pollTimer=null,toastTimer=null,sound=false,audioCtx=null,pending=null,fillAI=true,polling=false,sending=false;
+let state=null,room=null,session=null,busy=false,error='',selection=[],takeMode='different',botTimer=null,pollTimer=null,toastTimer=null,sound=false,audioCtx=null,pending=null,fillAI=true,polling=false,sending=false,moveOrigins=null;
+const feedback=new AcquisitionFeedback({onSound:kind=>chime(kind)});
 const read=(storage,key)=>{try{return JSON.parse(storage.getItem(key)||'null');}catch{return null;}};
 const save=(storage,key,value)=>{try{storage.setItem(key,JSON.stringify(value));return true;}catch{toast('浏览器未允许保存，刷新恢复可能不可用。');return false;}};
 const uuid=()=>crypto.randomUUID();
@@ -22,7 +25,13 @@ function portrait(card) {
 }
 
 function toast(message) {const el=document.querySelector('#toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),4500);}
-function chime() {if(!sound)return;try{audioCtx??=new AudioContext();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.setValueAtTime(620,audioCtx.currentTime);o.frequency.exponentialRampToValueAtTime(930,audioCtx.currentTime+.09);g.gain.setValueAtTime(.045,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.2);o.start();o.stop(audioCtx.currentTime+.21);}catch{}}
+function chime(kind='turn') {
+  if(!sound)return;
+  try{audioCtx??=new AudioContext();void audioCtx.resume().catch(()=>{});
+    const notes=kind==='capture'?[523.25,659.25,783.99]:kind==='evolve'?[587.33,739.99,880,1174.66]:[620];
+    notes.forEach((frequency,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain(),t=audioCtx.currentTime+i*.09;o.type='sine';o.connect(g);g.connect(audioCtx.destination);o.frequency.setValueAtTime(frequency,t);g.gain.setValueAtTime(.001,t);g.gain.exponentialRampToValueAtTime(.04,t+.015);g.gain.exponentialRampToValueAtTime(.001,t+.25);o.start(t);o.stop(t+.27);});
+  }catch{}
+}
 function cardHTML(card,{interactive=true}={}) {
   if(!card) return '<div class="empty-slot">牌库已空</div>';
   const p=view()?.players[self()],can=p && affordable(p,card);
@@ -38,10 +47,10 @@ function waiting() {
 }
 function errorHTML() {return error?`<div class="notice connection-error"><span>${escape(error)}</span><button id="reconnect" class="small">重新同步</button></div>`:'';}
 function playerHTML(p,s) {
-  return `<article class="player ${s.current===p.seat && s.phase!=='complete'?'active':''}"><div class="player-head"><button class="avatar" data-player="${p.seat}" aria-label="查看${escape(p.name)}的公开队伍">${escape(p.name.slice(0,1))}</button><span class="player-name">${escape(p.name)}${p.seat===self()?' · 你':''}<small>${p.seat===s.first?'先手 · ':''}${p.cards.length} 只伙伴 · ${p.evolved.length} 次进化 · 预留 ${p.reserved.length}</small></span><span class="score">${p.points}<small> / 18</small></span></div><div class="player-resources" aria-label="持球数 / 永久加成">${TOKENS.map(c=>`<span class="tiny-resource">${ball(c)}<b>${p.tokens[c]}</b>${c==='master'?'':`<small>/ ${p.bonuses[c]}</small>`}</span>`).join('')}</div></article>`;
+  return `<article data-seat="${p.seat}" class="player ${s.current===p.seat && s.phase!=='complete'?'active':''}"><div class="player-head"><button class="avatar" data-player="${p.seat}" aria-label="查看${escape(p.name)}的公开队伍">${escape(p.name.slice(0,1))}</button><span class="player-name">${escape(p.name)}${p.seat===self()?' · 你':''}<small>${p.seat===s.first?'先手 · ':''}${p.cards.length} 只伙伴 · ${p.evolved.length} 次进化 · 预留 ${p.reserved.length}</small></span><span class="score">${p.points}<small> / 18</small></span></div><div class="player-resources" aria-label="持球数 / 永久加成">${TOKENS.map(c=>`<span class="tiny-resource" data-resource="${c}">${ball(c)}<b>${p.tokens[c]}</b>${c==='master'?'':`<small>/ ${p.bonuses[c]}</small>`}</span>`).join('')}</div></article>`;
 }
 function render() {
-  if(!state) {if(online&&room)waiting();else lobby();return;}
+  if(!state) {feedback.reset();moveOrigins=null;if(online&&room)waiting();else lobby();return;}
   const s=view(),p=s.players[self()],turn=myTurn(),active=s.players[s.current];
   const phaseText=s.phase==='complete'?'对局结束':turn?s.phase==='return'?'归还多余的球':s.phase==='evolve'?'选择一次进化':'轮到你了':`${active.name} 的回合`;
   const options=turn?legalActions(s):[];
@@ -55,9 +64,11 @@ function render() {
 function showCard(id) {
   const s=view(),p=s.players[self()],card=[...s.market.flat().filter(Boolean),...s.players.flatMap(p=>[...p.cards,...p.reserved.filter(c=>!c.hidden)])].find(c=>c.id===id);
   if(!card)return;
+  const owned=p.cards.some(c=>c.id===id);
   const actions=myTurn()?legalActions(s):[],buy=actions.some(a=>a.type==='buy'&&a.cardId===id),reserve=actions.some(a=>a.type==='reserve'&&a.cardId===id),due=price(p,card),payment=defaultPayment(p,card);
+  const actionButtons=owned ? '<button id="replay-acquisition" class="primary">回放加入队伍动效</button>' : `<button id="buy-card" class="sun" ${!buy||busy?'disabled':''}>${buy?'捕捉':'暂不可捕捉'}</button>${card.kind==='normal'?`<button id="reserve-card" ${!reserve||busy?'disabled':''}>预留${s.bank.master?' + 大师球':''}</button>`:''}`;
   detail.dataset.selectedCard=id;
-  document.querySelector('#detail-body').innerHTML=`<div class="detail-card">${portrait(card)}<div><span class="eyebrow">NO. ${String(card.dexId).padStart(3,'0')} · ${card.kind==='normal'?'LEVEL '+card.tier:card.kind==='rare'?'RARE':'LEGENDARY'}</span><h2>${escape(card.nameZh)}</h2><p>${escape(card.name)} · ${card.points} 奖杯</p><p>永久加成 ${ball(card.bonus)} × ${card.bonusAmount}</p></div></div><div class="section-label">捕捉费用 <small>卡牌原价</small></div><div class="costs">${costs(card.cost)}</div><p class="action-help">你的永久加成抵扣后：${TOKENS.every(c=>!due[c])?'免费捕捉':costs(due)}</p>${card.evolveCost?`<p class="action-help">进化条件：${costs(card.evolveCost)} 永久加成<br>进化为 ${escape(CARDS.find(c=>c.speciesId===card.evolvesToSpeciesId)?.nameZh||'下一阶')}，需要对应卡在展示区或你的预留中。</p>`:'<p class="action-help">这张卡在本游戏中不能进化。</p>'}${buy?`<details><summary>调整支付方式</summary><p class="fine">减少彩色球的支付数量，会用大师球补足差额。</p><div class="payment-grid">${COLORS.map(c=>`<label>${ball(c)}<input aria-label="支付${labels[c]}" data-payment="${c}" type="number" min="0" max="${Math.min(due[c],p.tokens[c])}" value="${payment[c]}"></label>`).join('')}</div><p class="fine" id="master-cost">需要 ${payment.master} 枚大师球（你有 ${p.tokens.master} 枚）</p></details>`:''}<div class="detail-actions"><button id="buy-card" class="sun" ${!buy||busy?'disabled':''}>${buy?'捕捉':'暂不可捕捉'}</button>${card.kind==='normal'?`<button id="reserve-card" ${!reserve||busy?'disabled':''}>预留${s.bank.master?' + 大师球':''}</button>`:''}</div>${!myTurn()?'<p class="fine">你可以查看卡牌，轮到你时再行动。</p>':''}`;
+  document.querySelector('#detail-body').innerHTML=`<div class="detail-card">${portrait(card)}<div><span class="eyebrow">NO. ${String(card.dexId).padStart(3,'0')} · ${card.kind==='normal'?'LEVEL '+card.tier:card.kind==='rare'?'RARE':'LEGENDARY'}</span><h2>${escape(card.nameZh)}</h2><p>${escape(card.name)} · ${card.points} 奖杯</p><p>永久加成 ${ball(card.bonus)} × ${card.bonusAmount}</p></div></div><div class="section-label">捕捉费用 <small>卡牌原价</small></div><div class="costs">${costs(card.cost)}</div><p class="action-help">你的永久加成抵扣后：${TOKENS.every(c=>!due[c])?'免费捕捉':costs(due)}</p>${card.evolveCost?`<p class="action-help">进化条件：${costs(card.evolveCost)} 永久加成<br>进化为 ${escape(CARDS.find(c=>c.speciesId===card.evolvesToSpeciesId)?.nameZh||'下一阶')}，需要对应卡在展示区或你的预留中。</p>`:'<p class="action-help">这张卡在本游戏中不能进化。</p>'}${buy?`<details><summary>调整支付方式</summary><p class="fine">减少彩色球的支付数量，会用大师球补足差额。</p><div class="payment-grid">${COLORS.map(c=>`<label>${ball(c)}<input aria-label="支付${labels[c]}" data-payment="${c}" type="number" min="0" max="${Math.min(due[c],p.tokens[c])}" value="${payment[c]}"></label>`).join('')}</div><p class="fine" id="master-cost">需要 ${payment.master} 枚大师球（你有 ${p.tokens.master} 枚）</p></details>`:''}<div class="detail-actions">${actionButtons}</div>${!myTurn()?'<p class="fine">你可以查看卡牌，轮到你时再行动。</p>':''}`;
   if(!detail.open)detail.showModal();
 }
 function showPlayer(seat) {
@@ -78,9 +89,13 @@ async function api(path,{body,token=session?.token}={}) {
 }
 function accept(data) {
   if(room?.code===data.room.code && data.room.version<room.version)return;
+  const before=state,origins=moveOrigins||feedback.captureOrigins();
   const old=state?.version;room=data.room;state=data.game;error='';
-  if(old!==state?.version){selection=[];if(state?.current===self())chime();}
+  const events=acquisitionEvents(before,state);
+  if(old!==state?.version){selection=[];if(state?.current===self()&&!events.some(e=>e.seat===self()))chime();}
   render();
+  feedback.play(events,{viewer:self(),players:state?.players,origins});
+  if(events.some(e=>e.seat===self()))moveOrigins=null;
 }
 async function poll() {
   if(polling)return;
@@ -120,21 +135,21 @@ async function sendPending() {
   } catch(e) {
     if(session!==identity||pending!==request)return;
     busy=false;
-    if(e.status && e.status<500){pending=null;sessionStorage.removeItem(PENDING);if(e.status===409){try{accept(await api('/rooms/'+session.code));}catch{}}}
+    if(e.status && e.status<500){moveOrigins=null;pending=null;sessionStorage.removeItem(PENDING);if(e.status===409){try{accept(await api('/rooms/'+session.code));}catch{}}}
     error=e.message||'网络未确认这次行动。点击重新同步，将用相同请求编号重试。';toast(error);render();
   } finally {sending=false;busy=false;}
 }
 async function move(action) {
   if(busy||!myTurn())return;
-  detail.close();
-  if(online){await mutate('action',{action});return;}
-  try{state=applyAction(state,0,action);save(localStorage,SOLO,state);selection=[];render();chime();scheduleBot();}catch(e){toast(e.message);}
+  const before=state,origins=feedback.captureOrigins();detail.close();
+  if(online){moveOrigins=origins;await mutate('action',{action});return;}
+  try{state=applyAction(state,0,action);save(localStorage,SOLO,state);selection=[];render();const events=acquisitionEvents(before,state);feedback.play(events,{viewer:0,players:state.players,origins});if(!events.length)chime();scheduleBot();}catch(e){toast(e.message);}
 }
 function scheduleBot() {
   clearTimeout(botTimer);
   if(online||!state||state.current===0||state.phase==='complete')return;
   botTimer=setTimeout(()=>{
-    try{const seat=state.current;state=applyAction(state,seat,chooseAction(projectGame(state,seat),AI_STYLES[(seat-1)%3].id));save(localStorage,SOLO,state);render();scheduleBot();}catch(e){error='AI 暂停：'+e.message;render();}
+    try{const seat=state.current,before=state,origins=feedback.captureOrigins();state=applyAction(state,seat,chooseAction(projectGame(state,seat),AI_STYLES[(seat-1)%3].id));save(localStorage,SOLO,state);render();feedback.play(acquisitionEvents(before,state),{viewer:0,players:state.players,origins});scheduleBot();}catch(e){error='AI 暂停：'+e.message;render();}
   },800);
 }
 function updateCountdown(){const el=document.querySelector('#countdown');if(el&&room?.deadline)el.textContent=Math.max(0,Math.ceil((room.deadline-room.serverNow)/1000))+' 秒';}
@@ -181,6 +196,11 @@ detail.addEventListener('click',async e=>{
   // inside the public-team view should open another detail view.
   const button=e.target.closest('button');if(!button||button.disabled)return;
   if(button.matches('[data-card]')){showCard(button.dataset.card);return;}
+  if(button.id==='replay-acquisition'){
+    const s=view(),card=s.players[self()].cards.find(c=>c.id===detail.dataset.selectedCard);if(!card)return;
+    const origins=feedback.captureOrigins();detail.close();
+    feedback.play([{key:'replay:'+card.id,kind:'capture',seat:self(),card,bonusChanges:{[card.bonus]:card.bonusAmount},pointsDelta:card.points}],{viewer:self(),players:s.players,origins,replay:true});return;
+  }
   if(button.id==='buy-card')await move({type:'buy',cardId:detail.dataset.selectedCard,payment:paymentFromDialog()});
   if(button.id==='reserve-card')await move({type:'reserve',cardId:detail.dataset.selectedCard});
 });
