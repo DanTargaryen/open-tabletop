@@ -25,3 +25,20 @@
 .your-team .team-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:14px;margin-bottom:26px}.your-team .team-empty{grid-column:1/-1;margin-bottom:0;padding:12px 0}.owned-card{border-color:#c3d8d2;background:#fbfefd}.owned-marker{display:inline-block;vertical-align:middle;margin-left:6px;padding:2px 4px;border-radius:4px;background:#e9f3ee;color:#5b806c;font-size:10px;font-weight:500;line-height:1.2}.team-list .pokemon-card{height:210px;width:100%}.team-list .pokemon-card>.portrait{width:108px;height:94px;top:31px}.team-list .pokemon-card .evo-cost{top:126px;left:10px}.team-list .pokemon-card .card-bottom{left:10px;right:8px;bottom:10px}.team-list .card-name{font-size:14px;line-height:1.35}.team-list .costs{gap:4px;margin-top:7px}.team-list .costs .ball{min-width:22px;height:22px;font-size:11px}.your-team .reserved-row{margin-top:0}
 @media(max-width:1120px){.hand-tokens{grid-template-columns:repeat(3,minmax(0,1fr))}.held-token{justify-content:flex-start;padding:12px 15px}.held-token-copy>span{font-size:13px}.permanent-bonuses>small{margin-left:0}}
 @media(max-width:760px){.hand-tokens{gap:8px}.held-token{padding:10px 6px;gap:6px;justify-content:center}.held-token>.ball{width:30px;height:30px;min-width:30px;font-size:12px}.held-token-copy>span{font-size:11px}.held-token-copy>strong{font-size:22px}.held-token-copy small{display:none}.permanent-bonuses{gap:6px;margin-bottom:18px;padding-bottom:17px}.bonus-label{width:100%;margin:0 0 2px}.inventory-bonus{gap:4px;padding:4px 5px;font-size:13px}.permanent-bonuses>small{display:block;width:100%;margin-top:4px}.hand-total{padding:3px 9px;font-size:12px!important}.hand-total b{font-size:18px}.your-team .team-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:24px}.team-list .pokemon-card{height:210px}.team-list .pokemon-card .card-top{top:9px;left:9px;right:9px}.team-list .pokemon-card>.portrait{width:100px;height:92px;top:33px}.team-list .pokemon-card .evo-cost{top:131px;left:9px}.team-list .pokemon-card .card-bottom{left:9px;right:6px;bottom:10px}.team-list .card-name{font-size:13px}.team-list .costs .ball{min-width:21px;height:21px}.owned-marker{font-size:9px;margin-left:4px}}
+
+/* Brand portraits are local images; the avatar remains the public-team button. */
+.ai-avatar-image{display:block;width:100%;height:100%;object-fit:contain;padding:4px}
+.player .avatar.ai-avatar,.player .avatar.human-avatar{background:#fff;overflow:hidden}
+.ai-lineup{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 8px}
+.ai-lineup-item{display:inline-flex;align-items:center;gap:6px;padding:5px 9px 5px 5px;border:1px solid var(--line);border-radius:10px;background:#f7fafb;font-size:13px;white-space:nowrap}
+.ai-lineup-item .ai-avatar-image{width:30px;height:30px;border-radius:7px;background:white;padding:4px}
+.ai-lineup-note{font-size:12px;margin-bottom:20px}
+.public-player-head{display:flex;align-items:center;gap:12px;margin:12px 0 16px}
+.public-player-head h2{margin:0}
+.public-player-avatar{overflow:hidden;width:48px;height:48px;flex-shrink:0;display:grid;place-items:center;border:1px solid var(--line);border-radius:12px;background:white;font-size:22px;font-weight:700}
+.game-active:not(.compact-table) #app .player .avatar{width:40px;height:40px}
+@media(max-width:760px){.game-active:not(.compact-table) #app .player .avatar{width:32px;height:32px}.ai-lineup{gap:6px}.ai-lineup-item{font-size:12px;padding-right:7px}}
+
+.human-avatar-image{display:block;width:100%;height:100%;object-fit:cover;transform:scale(1.8);transform-origin:50% 28%;pointer-events:none}
+.roster-person{display:flex;align-items:center;gap:10px;min-width:0}
+.roster-human-avatar{width:32px;height:32px;flex-shrink:0;overflow:hidden;border-radius:50%;background:#e7eef5}

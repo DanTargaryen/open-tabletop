@@ -1,5 +1,6 @@
 import {createGame, applyAction, projectGame, random} from '../web/engine.js';
 import {chooseAction, AI_STYLES} from '../web/ai.js';
+import {assignAIAvatars} from '../web/ai-avatars.js';
 
 export const ROOM_TTL = 86400000, TURN_MS = 120000, BOT_MS = 900;
 export class SplendorError extends Error { constructor(status,message) { super(message); this.status=status; } }
@@ -98,7 +99,7 @@ export class SplendorRooms {
           requireThat(active(room).every(m=>m.ready),409,'请等待所有玩家准备。');
           requireThat(active(room).length===1 || active(room).length===room.capacity || input.fillAI===true,409,'还有空位，可以选择由 AI 补齐。');
           const names=Array.from({length:room.capacity},(_,seat)=>active(room).find(m=>m.seat===seat)?.name || AI_STYLES[seat%3].name+' · AI');
-          room.game=createGame(names,{first:Math.floor(random()*room.capacity)});room.status='playing';setDeadline(room,now);
+          room.game=assignAIAvatars(createGame(names,{first:Math.floor(random()*room.capacity)}),active(room).map(m=>m.seat));room.status='playing';setDeadline(room,now);
         } else if(operation==='action') {
           requireThat(room.status==='playing',409,'对局尚未开始或已经结束。');
           try {room.game=applyAction(room.game,member.seat,input.action);} catch(error) {throw new SplendorError(400,error.message);}

@@ -1,6 +1,7 @@
 import {createGame,applyAction,projectGame,legalActions,defaultPayment,price,affordable,total,emptyTokens,COLORS,TOKENS,assertConservation,CARDS} from './engine.js';
 import {chooseAction,AI_STYLES} from './ai.js';
 import {ARTWORK,artworkPath} from './artwork.js';
+import {AI_AVATARS,HUMAN_AVATAR,assignAIAvatars,resolveAIAvatars} from './ai-avatars.js';
 import {acquisitionEvents} from './feedback-events.js';
 import {AcquisitionFeedback} from './feedback.js';
 const app=document.querySelector('#app'),detail=document.querySelector('#detail');
@@ -23,6 +24,10 @@ const self=()=>online?room?.selfSeat:0;
 const view=()=>online?state:state?projectGame(state,0):null;
 const myTurn=()=>state && state.phase!=='complete' && state.current===self();
 const ball=(color,count=short[color],title='')=>`<span class="ball ${color}" title="${escape(title||labels[color])}" aria-label="${escape(labels[color]+' '+count)}">${count}</span>`;
+const avatarImage=a=>`<img class="ai-avatar-image" src="${a.icon}" alt="" width="32" height="32" draggable="false">`;
+const humanAvatar=()=>`<img class="human-avatar-image" src="${HUMAN_AVATAR}" alt="" width="32" height="32" draggable="false">`;
+const avatarFor=(p,s)=>resolveAIAvatars(s.players,online?(room?.members?.map(m=>m.seat)??s.players.map(p=>p.seat)):[0]).get(p.seat);
+const aiLineup=()=>`<div class="ai-lineup" aria-label="AI 牌友头像">${AI_AVATARS.map(a=>`<span class="ai-lineup-item" title="${a.name} 主题牌友">${avatarImage(a)}<span>${a.name}</span></span>`).join('')}</div><p class="fine ai-lineup-note">四种主题牌友，每局抽选；出牌由游戏 AI 决定。</p>`;
 const costs=t=>TOKENS.filter(c=>t[c]>0).map(c=>ball(c,t[c])).join('');
 function portrait(card) {
   return `<div class="portrait" role="img" aria-label="${escape(card.nameZh+'角色插画')}"><img src="${artworkPath(card)}" alt="" draggable="false" width="32" height="32"></div>`;
@@ -58,15 +63,16 @@ function personalAreaHTML(player) {
 function lobby() {
   const name=escape(read(localStorage,'open-tabletop.pokemon.name')||'训练师');
   const queryCode=escape(new URLSearchParams(location.search).get('room')||'');
-  app.innerHTML=`<section class="lobby"><div class="lobby-story"><span class="eyebrow">OPEN TABLETOP / 02</span><h1>下一只伙伴，<br>会是谁？</h1><p>收集精灵球，捕捉你的宝可梦。<br>让一次进化，改变整场对局。</p><div class="lobby-art">${[30,31,32].map(i=>portrait(CARDS.find(c=>c.artIndex===i))).join('')}</div><span class="label">2–4 位训练师 · 18 分开启最终轮</span></div><div class="lobby-controls"><span class="eyebrow">${online?'FRIENDS AT THE TABLE':'YOUR NEXT ADVENTURE'}</span><h2>${online?'邀请朋友开一桌':'出发吧，训练师'}</h2><label class="field">你的昵称<input id="name" maxlength="16" value="${name}" autocomplete="nickname"></label><label class="field">牌桌人数（含 AI）<select id="capacity"><option value="2">2 人 · ${online?'一对一':'你与一位 AI'}</option><option value="3">3 人 · ${online?'三人对局':'你与两位 AI'}</option><option value="4" selected>4 人 · ${online?'四人对局':'你与三位 AI'}</option></select></label><button class="primary" id="create" ${busy?'disabled':''}>${online?'创建好友房':'开始冒险'} <span aria-hidden="true">→</span></button>${online?`<div class="divider">已有房间码</div><label class="field">六位房间码<div class="inline"><input id="room-code" maxlength="6" placeholder="例如 ABC234" value="${queryCode}" autocomplete="off" autocapitalize="characters"><button id="join" ${busy?'disabled':''}>加入</button></div></label>`:'<p class="fine">青岚、赤砚与月白会用不同的本地策略应战。对局自动保存在这个浏览器。</p>'}<p class="fine">${online?'一个人也能开局，空位由 AI 补齐；也可以邀请朋友一起玩。':'也可以切换到右上角的好友联机。'}</p>${error?`<div class="notice">${escape(error)}</div>`:''}</div></section>`;
+  app.innerHTML=`<section class="lobby"><div class="lobby-story"><span class="eyebrow">OPEN TABLETOP / 02</span><h1>下一只伙伴，<br>会是谁？</h1><p>收集精灵球，捕捉你的宝可梦。<br>让一次进化，改变整场对局。</p><div class="lobby-art">${[30,31,32].map(i=>portrait(CARDS.find(c=>c.artIndex===i))).join('')}</div><span class="label">2–4 位训练师 · 18 分开启最终轮</span></div><div class="lobby-controls"><span class="eyebrow">${online?'FRIENDS AT THE TABLE':'YOUR NEXT ADVENTURE'}</span><h2>${online?'邀请朋友开一桌':'出发吧，训练师'}</h2>${aiLineup()}<label class="field">你的昵称<input id="name" maxlength="16" value="${name}" autocomplete="nickname"></label><label class="field">牌桌人数（含 AI）<select id="capacity"><option value="2">2 人 · ${online?'一对一':'你与一位 AI'}</option><option value="3">3 人 · ${online?'三人对局':'你与两位 AI'}</option><option value="4" selected>4 人 · ${online?'四人对局':'你与三位 AI'}</option></select></label><button class="primary" id="create" ${busy?'disabled':''}>${online?'创建好友房':'开始冒险'} <span aria-hidden="true">→</span></button>${online?`<div class="divider">已有房间码</div><label class="field">六位房间码<div class="inline"><input id="room-code" maxlength="6" placeholder="例如 ABC234" value="${queryCode}" autocomplete="off" autocapitalize="characters"><button id="join" ${busy?'disabled':''}>加入</button></div></label>`:'<p class="fine">AI 牌友会采用不同的游戏策略。对局自动保存在这个浏览器。</p>'}<p class="fine">${online?'一个人也能开局，空位由 AI 补齐；也可以邀请朋友一起玩。':'也可以切换到右上角的好友联机。'}</p>${error?`<div class="notice">${escape(error)}</div>`:''}</div></section>`;
 }
 function waiting() {
   const alone=room.members.length===1,allReady=room.members.every(m=>m.ready);
-  app.innerHTML=`<section class="wait-room"><span class="eyebrow">YOUR TABLE IS READY</span><h1>训练师集合</h1><div class="inline"><span class="room-code">${room.code}</span><button id="share" class="small">复制邀请</button></div><p class="fine">${alone?'一个人也能开桌，剩余座位将由 AI 加入。':'发给朋友房间码或邀请链接，准备好后由房主开始。'}</p>${errorHTML()}<div class="roster">${Array.from({length:room.capacity},(_,seat)=>{const m=room.members.find(m=>m.seat===seat);return `<div class="roster-row"><span>${seat+1}. ${m?escape(m.name)+(m.owner?' · 房主':''):'等待训练师'}</span><em>${m?m.ready?'已准备':'未准备':'空位'}</em></div>`;}).join('')}</div>${room.isOwner?(alone?`<p class="fine solo-start-note">你与 ${room.capacity-1} 位 AI 对战。</p>`:`<label class="check"><input type="checkbox" id="fill-ai" ${fillAI?'checked':''}>开始时用 AI 补齐空位</label>`):''}<div class="wait-actions"><button class="sun" id="ready" ${busy?'disabled':''}>${room.members.find(m=>m.id===room.selfId)?.ready?'取消准备':'我准备好了'}</button>${room.isOwner?`<button class="primary" id="start-room" ${busy||!allReady?'disabled':''}>${alone?'一个人开局':'开始对局'}</button>`:''}<button id="leave-room" class="ghost">离开房间</button></div><p class="fine">先手会随机选出，所有真人需要准备。主动离开进行中的对局后，原座位由 AI 接手。</p></section>`;
+  app.innerHTML=`<section class="wait-room"><span class="eyebrow">YOUR TABLE IS READY</span><h1>训练师集合</h1><div class="inline"><span class="room-code">${room.code}</span><button id="share" class="small">复制邀请</button></div><p class="fine">${alone?'一个人也能开桌，剩余座位将由 AI 加入。':'发给朋友房间码或邀请链接，准备好后由房主开始。'}</p>${errorHTML()}<div class="roster">${Array.from({length:room.capacity},(_,seat)=>{const m=room.members.find(m=>m.seat===seat);return `<div class="roster-row"><span class="roster-person">${m?`<span class="roster-human-avatar">${humanAvatar()}</span>`:''}<span>${seat+1}. ${m?escape(m.name)+(m.owner?' · 房主':''):'等待训练师'}</span></span><em>${m?m.ready?'已准备':'未准备':'空位'}</em></div>`;}).join('')}</div>${room.isOwner?(alone?`<p class="fine solo-start-note">你与 ${room.capacity-1} 位 AI 对战。</p>`:`<label class="check"><input type="checkbox" id="fill-ai" ${fillAI?'checked':''}>开始时用 AI 补齐空位</label>`):''}<div class="wait-actions"><button class="sun" id="ready" ${busy?'disabled':''}>${room.members.find(m=>m.id===room.selfId)?.ready?'取消准备':'我准备好了'}</button>${room.isOwner?`<button class="primary" id="start-room" ${busy||!allReady?'disabled':''}>${alone?'一个人开局':'开始对局'}</button>`:''}<button id="leave-room" class="ghost">离开房间</button></div><p class="fine">先手会随机选出，所有真人需要准备。主动离开进行中的对局后，原座位由 AI 接手。</p></section>`;
 }
 function errorHTML() {return error?`<div class="notice connection-error"><span>${escape(error)}</span><button id="reconnect" class="small">重新同步</button></div>`:'';}
 function playerHTML(p,s) {
-  return `<article data-seat="${p.seat}" class="player ${s.current===p.seat && s.phase!=='complete'?'active':''}"><div class="player-head"><button class="avatar" data-player="${p.seat}" aria-label="查看${escape(p.name)}的公开队伍">${escape(p.name.slice(0,1))}</button><span class="player-name">${escape(p.name)}${p.seat===self()?' · 你':''}<small>${p.seat===s.first?'先手 · ':''}${p.cards.length} 只伙伴 · ${p.evolved.length} 次进化 · 预留 ${p.reserved.length}</small></span><span class="score">${p.points}<small> / 18</small></span></div><div class="player-resources" aria-label="持球数 / 永久加成">${TOKENS.map(c=>`<span class="tiny-resource" data-resource="${c}">${ball(c)}<b>${p.tokens[c]}</b>${c==='master'?'':`<small>/ ${p.bonuses[c]}</small>`}</span>`).join('')}</div></article>`;
+  const avatar=avatarFor(p,s);
+  return `<article data-seat="${p.seat}" class="player ${s.current===p.seat && s.phase!=='complete'?'active':''}"><div class="player-head"><button class="avatar ${avatar?'ai-avatar':'human-avatar'}" data-player="${p.seat}" aria-label="查看${escape(p.name)}的公开队伍" title="${avatar?escape(avatar.name+' 主题头像'):escape(p.name)}">${avatar?avatarImage(avatar):humanAvatar()}</button><span class="player-name">${escape(p.name)}${p.seat===self()?' · 你':''}<small>${p.seat===s.first?'先手 · ':''}${p.cards.length} 只伙伴 · ${p.evolved.length} 次进化 · 预留 ${p.reserved.length}</small></span><span class="score">${p.points}<small> / 18</small></span></div><div class="player-resources" aria-label="持球数 / 永久加成">${TOKENS.map(c=>`<span class="tiny-resource" data-resource="${c}">${ball(c)}<b>${p.tokens[c]}</b>${c==='master'?'':`<small>/ ${p.bonuses[c]}</small>`}</span>`).join('')}</div></article>`;
 }
 function syncLayout() {
   document.body.classList.toggle('game-active',Boolean(state));
@@ -131,8 +137,8 @@ function showCard(id) {
   if(!detail.open)detail.showModal();
 }
 function showPlayer(seat) {
-  const p=view().players[seat];
-  document.querySelector('#detail-body').innerHTML=`<span class="eyebrow">PUBLIC TEAM</span><h2>${escape(p.name)}的队伍</h2><p class="fine">${p.points} 奖杯 · ${p.evolved.length} 次进化 · 预留 ${p.reserved.length} 张（内容仅本人可见）</p><div class="public-team">${p.cards.map(c=>cardHTML(c,{owned:true})).join('')||'<p>还没有捕捉到宝可梦。</p>'}</div>`;
+  const s=view(),p=s.players[seat],avatar=avatarFor(p,s);
+  document.querySelector('#detail-body').innerHTML=`<span class="eyebrow">PUBLIC TEAM</span><div class="public-player-head"><span class="public-player-avatar">${avatar?avatarImage(avatar):humanAvatar()}</span><h2>${escape(p.name)}的队伍</h2></div><p class="fine">${p.points} 奖杯 · ${p.evolved.length} 次进化 · 预留 ${p.reserved.length} 张（内容仅本人可见）</p><div class="public-team">${p.cards.map(c=>cardHTML(c,{owned:true})).join('')||'<p>还没有捕捉到宝可梦。</p>'}</div>`;
   detail.showModal();
 }
 function paymentFromDialog() {
@@ -232,7 +238,7 @@ app.addEventListener('click',async e=>{
   if(b.dataset.evolve){await move({type:'evolve',fromId:b.dataset.evolve,cardId:b.dataset.target});return;}
   if(b.dataset.token){const c=b.dataset.token;if(state.phase==='return'){const n=selection.filter(v=>v===c).length;if(n<state.players[self()].tokens[c])selection.push(c);else selection=selection.filter(v=>v!==c);}else if(takeMode==='same')selection=state.bank[c]>=4?[c,c]:[];else if(selection.includes(c))selection=selection.filter(v=>v!==c);else if(selection.length<3)selection.push(c);render();return;}
   switch(b.id){
-    case 'create': if(online)await enterRoom(false);else {const n=Number(document.querySelector('#capacity').value),name=document.querySelector('#name').value.trim()||'训练师';save(localStorage,'open-tabletop.pokemon.name',name);state=createGame([name,...AI_STYLES.slice(0,n-1).map(a=>a.name+' · AI')],{first:Math.floor(Math.random()*n)});save(localStorage,SOLO,state);error='';render();scheduleBot();}break;
+    case 'create': if(online)await enterRoom(false);else {const n=Number(document.querySelector('#capacity').value),name=document.querySelector('#name').value.trim()||'训练师';save(localStorage,'open-tabletop.pokemon.name',name);state=assignAIAvatars(createGame([name,...AI_STYLES.slice(0,n-1).map(a=>a.name+' · AI')],{first:Math.floor(Math.random()*n)}),[0]);save(localStorage,SOLO,state);error='';render();scheduleBot();}break;
     case 'join':await enterRoom(true);break;
     case 'different':case 'same':takeMode=b.id;selection=[];render();break;
     case 'clear-tokens':selection=[];render();break;
@@ -273,7 +279,7 @@ document.querySelector('#sound').addEventListener('click',e=>{sound=!sound;e.tar
 document.querySelector('#mode-link').href=online?'./index.html':'./online.html';document.querySelector('#mode-link').textContent=online?'单人冒险 ↗':'好友联机 ↗';
 document.addEventListener('visibilitychange',()=>{if(online&&session&&!document.hidden)poll();});
 async function ensureArtwork() {
-  const files=[...new Set(Object.values(ARTWORK).map(a=>'./assets/pokemon/'+a.file))];
+  const files=[...new Set([...Object.values(ARTWORK).map(a=>'./assets/pokemon/'+a.file),...AI_AVATARS.map(a=>a.icon),HUMAN_AVATAR])];
   await Promise.all(files.map(src=>new Promise((resolve,reject)=>{
     const image=new Image();image.onload=resolve;image.onerror=()=>reject(new Error('角色图片加载失败，请检查服务后重试。'));image.src=src;
   })));
