@@ -11,8 +11,8 @@ export async function handleSplendor(request,{store,limit=()=>{}}={}) {
   try {
     const url=new URL(request.url),path=url.pathname.replace(/^\/api\/splendor/,'');
     if(request.headers.get('origin') && request.headers.get('origin')!==url.origin) throw new SplendorError(403,'不允许跨站操作。');
-    if(!store) return json({error:'璀璨宝石联机目前需要 Node 服务。'},503);
-    if(path==='/health' && request.method==='GET') return json({ok:true,service:'splendor-pokemon',schema:1});
+    if(!store) return json({error:'璀璨宝石联机服务尚未完成配置。'},503);
+    if(path==='/health' && request.method==='GET') {await store.health?.();return json({ok:true,service:'splendor-pokemon',schema:1});}
     const rooms=new SplendorRooms(store);
     if(path==='/rooms' && request.method==='POST') {await limit(request);return json(await rooms.create(await readBody(request)),201);}
     const match=path.match(/^\/rooms\/([A-Z2-9]{6})(?:\/(join|ready|start|action|leave|rematch))?$/);

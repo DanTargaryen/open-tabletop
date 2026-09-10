@@ -28,7 +28,7 @@
 
 已发行宝可梦特别版规则的非官方实现：2–4 个座位、90 张卡、捕捉与进化、特殊卡和 18 分终局。支持单人本地 AI、好友准备开局、AI 补位、刷新恢复与独立房间存储。
 
-卡表来自社区转录，尚未逐张核对实体版；55 种宝可梦均有本地角色图片，采用 The Artificial 作者自绘、允许署名分享的统一图标，无数字替补。详见 [玩法与运行](games/splendor/README.md) 及 [规则与素材来源](games/splendor/SOURCES.md)。当前宝可梦联机仅接入 Node 服务；现有扑克线上站和 Cloudflare 适配器不提供本游戏联机。
+卡表来自社区转录，尚未逐张核对实体版；55 种宝可梦均有本地角色图片，采用 The Artificial 作者自绘、允许署名分享的统一图标，无数字替补。详见 [玩法与运行](games/splendor/README.md) 及 [规则与素材来源](games/splendor/SOURCES.md)。宝可梦联机支持 Node 服务或 Cloudflare Workers + D1；Worker 需要应用独立的宝可梦房间与限流表迁移。
 
 ## 本地运行
 
@@ -83,12 +83,13 @@ npm test
 npm run build:static
 ```
 
-测试覆盖两款游戏的规则引擎、房间逻辑、同步和根服务器。静态构建会将资源复制到 `.dist/public`；联机功能还需要提供 `/api/poker` 与 `/api/splendor` 的 Node 后端，单独托管静态文件不能提供房间服务。
+测试覆盖两款游戏的规则引擎、房间逻辑、同步和根服务器。静态构建会将资源复制到 `.dist/public`；联机功能还需要提供 `/api/poker` 与 `/api/splendor` 的 Node 或 Worker + D1 后端，单独托管静态文件不能提供房间服务。
 
 默认入口是 `server/index.mjs`，适合在自己的 Node 环境中运行。仓库也提供可选的 Cloudflare 适配器：
 
 - `deploy/cloudflare/worker.mjs`
 - `deploy/cloudflare/wrangler.example.jsonc`
+- `deploy/cloudflare/migrations/`：扑克原有表与新增宝可梦表的顺序迁移；两款游戏使用独立表和限流。
 
 示例配置中的数据库信息是占位符。使用前需要自行创建并绑定资源；本仓库不附带任何可复用的托管账户或数据库 ID。具体边界见 [架构说明](docs/architecture.md)。
 

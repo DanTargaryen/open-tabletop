@@ -7,4 +7,4 @@ await cp(resolve(root,'public'),out,{recursive:true});
 const catalog=JSON.parse(await readFile(resolve(root,'games/catalog.json'),'utf8'));
 for(const game of catalog){if(!/^[a-z0-9-]+$/.test(game.id))throw Error('Invalid game id');await cp(resolve(root,'games',game.id,'web'),resolve(out,'games',game.id),{recursive:true});}
 await copyFile(resolve(root,'games/catalog.json'),resolve(out,'games.json'));
-console.log('Static assets: '+out+'\nMultiplayer requires the Node server. The optional Cloudflare adapter currently supports poker rooms only.');
+console.log('Static assets: '+out+'\nMultiplayer requires the Node server or the Cloudflare Worker with migrated D1 storage.');

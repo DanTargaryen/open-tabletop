@@ -28,7 +28,7 @@ Brand names and marks remain the property of their respective owners. They do no
 
 An unofficial implementation of the published Pokémon edition: 2–4 seats, 90 cards, evolution, special cards, and an 18-point final round. Solo opponents use local heuristics. Online rooms include readiness, optional AI filling, refresh recovery, private hands, and separate persistence.
 
-Numeric data is community-transcribed and has not been checked card-by-card against a physical copy. All 55 species have local illustrations from The Artificial’s creator-authored Pokémon Icons, shared with attribution under their stated CC-BY permission. No numeric placeholders are used. See [game documentation](games/splendor/README.md) and [sources and notices](games/splendor/SOURCES.md). Pokémon multiplayer currently requires the Node server; the existing poker demo and optional Cloudflare adapter do not serve its rooms.
+Numeric data is community-transcribed and has not been checked card-by-card against a physical copy. All 55 species have local illustrations from The Artificial’s creator-authored Pokémon Icons, shared with attribution under their stated CC-BY permission. No numeric placeholders are used. See [game documentation](games/splendor/README.md) and [sources and notices](games/splendor/SOURCES.md). Pokémon multiplayer supports the Node server or Cloudflare Workers with migrated D1 storage. Pokémon rooms and rate limits use separate tables from poker.
 
 ## Run locally
 
@@ -83,7 +83,7 @@ npm test
 npm run build:static
 ```
 
-Tests cover both game engines, room behavior, synchronization, and the root server. The static build copies assets to `.dist/public`. Online play also requires the Node backend serving `/api/poker` and `/api/splendor`; static hosting alone does not provide rooms.
+Tests cover both game engines, room behavior, synchronization, and the root server. The static build copies assets to `.dist/public`. Online play also requires a Node or Worker + D1 backend serving `/api/poker` and `/api/splendor`; static hosting alone does not provide rooms.
 
 The default entry point, `server/index.mjs`, runs in a Node environment you control. An optional Cloudflare adapter is included:
 

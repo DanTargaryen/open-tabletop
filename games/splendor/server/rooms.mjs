@@ -43,6 +43,11 @@ export class SplendorRooms {
       const owner={id:crypto.randomUUID(),name,tokenHash,seat:0,ready:true,lastSeen:now,left:false,processed:[]};
       const room={schema:1,code,version:0,capacity,status:'waiting',ownerId:owner.id,members:[owner],game:null,deadline:null,expiresAt:now+ROOM_TTL};
       if(await this.store.create(code,room,room.expiresAt)) return {...projectRoom(room,owner,now),token};
+      // A concurrent retry may have created this same candidate after our read.
+      // Recover that room before trying another code, preserving create idempotency.
+      const raced=await this.store.get(code,now);
+      const creator=raced && active(raced.room).find(m=>m.tokenHash===tokenHash);
+      if(creator)return {...projectRoom(raced.room,creator,now),token};
     }
     throw new SplendorError(503,'暂时无法创建房间，请稍后重试。');
   }
