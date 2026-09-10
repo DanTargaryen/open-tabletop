@@ -13,8 +13,9 @@ let state=null,room=null,session=null,busy=false,error='',selection=[],takeMode=
 const feedback=new AcquisitionFeedback({onSound:kind=>chime(kind)});
 const read=(storage,key)=>{try{return JSON.parse(storage.getItem(key)||'null');}catch{return null;}};
 const save=(storage,key,value)=>{try{storage.setItem(key,JSON.stringify(value));return true;}catch{toast('浏览器未允许保存，刷新恢复可能不可用。');return false;}};
-const LAYOUT='open-tabletop.pokemon.layout.v1';
-let compact=read(localStorage,LAYOUT)!=='spacious',layoutFrame=null;
+// V2 defaults to comfortable, scrollable cards; compact remains an explicit choice.
+const LAYOUT='open-tabletop.pokemon.layout.v2';
+let compact=read(localStorage,LAYOUT)==='compact',layoutFrame=null;
 const uuid=()=>crypto.randomUUID();
 const newKey=()=>Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
 const self=()=>online?room?.selfSeat:0;
@@ -72,9 +73,9 @@ function syncLayout() {
   app.style.minHeight='';
   const toggle=document.querySelector('#layout-mode');
   toggle.hidden=!state;
-  toggle.textContent=compact?'舒展布局':'紧凑布局';
+  toggle.textContent=compact?'舒适布局':'紧凑布局';
   toggle.setAttribute('aria-pressed',String(compact));
-  toggle.setAttribute('aria-label',compact?'当前紧凑布局，切换到舒展布局':'当前舒展布局，切换到紧凑布局');
+  toggle.setAttribute('aria-label',compact?'当前紧凑布局，切换到舒适布局':'当前舒适布局，可上下滚动，切换到紧凑布局');
 }
 function fitCompactLayout() {
   app.style.minHeight='';
