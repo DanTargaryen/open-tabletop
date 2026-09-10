@@ -80,6 +80,7 @@ export class AcquisitionFeedback {
     const targets=[];
     for(const c of Object.keys(event.bonusChanges||{})) {
       const node=document.querySelector(`.player[data-seat="${event.seat}"] [data-resource="${c}"]`);if(node)targets.push(node);
+      if(event.seat===event.viewer){const personal=document.querySelector(`.your-team [data-bonus="${c}"]`);if(personal)targets.push(personal);}
     }
     if(event.pointsDelta){const score=document.querySelector(`.player[data-seat="${event.seat}"] .score`);if(score)targets.push(score);}
     const chip=document.querySelector(`.team-list button[data-card="${event.card.id}"]`);if(chip && event.seat===event.viewer)targets.push(chip);
