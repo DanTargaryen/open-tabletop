@@ -29,4 +29,4 @@ All 55 local SVG character illustrations come from **The Artificial — Pokémon
 
 ## User-supplied human-player portrait
 
-`games/splendor/web/assets/players/human.png` was supplied by the site owner for the human-player avatar. The image bytes are preserved; CSS frames it within avatar controls. It is a third-party image excluded from the code MIT license.
+`games/splendor/web/assets/players/human.png` was supplied by the site owner for the human-player avatar. The image bytes are preserved; CSS frames it within avatar controls. The additional selectable human portraits and their mechanically resized WebP thumbnails are also owner-supplied third-party images. All are excluded from the code MIT license.

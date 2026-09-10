@@ -39,6 +39,22 @@
 .game-active:not(.compact-table) #app .player .avatar{width:40px;height:40px}
 @media(max-width:760px){.game-active:not(.compact-table) #app .player .avatar{width:32px;height:32px}.ai-lineup{gap:6px}.ai-lineup-item{font-size:12px;padding-right:7px}}
 
-.human-avatar-image{display:block;width:100%;height:100%;object-fit:cover;transform:scale(1.8);transform-origin:50% 28%;pointer-events:none}
+.human-avatar-image{display:block;width:100%;height:100%;object-fit:cover;transform:scale(var(--avatar-scale,1.8));transform-origin:var(--avatar-origin,50% 28%);object-position:var(--avatar-position,50% 50%);pointer-events:none}
 .roster-person{display:flex;align-items:center;gap:10px;min-width:0}
 .roster-human-avatar{width:32px;height:32px;flex-shrink:0;overflow:hidden;border-radius:50%;background:#e7eef5}
+
+.human-avatar-gold{--avatar-scale:1.05;--avatar-origin:50% 45%}
+.human-avatar-forest{--avatar-scale:1.8;--avatar-origin:50% 40%;--avatar-position:50% 40%}
+.human-avatar-star{--avatar-scale:1.08;--avatar-origin:50% 35%;--avatar-position:50% 28%}
+.human-avatar-picker{border:0;padding:0;margin:16px 0 20px;min-width:0}
+.human-avatar-picker legend{font-size:14px;font-weight:650;padding:0;margin-bottom:8px}
+.human-avatar-auto{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-bottom:10px}
+.human-avatar-choices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.human-avatar-option{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;padding:7px 4px;border:1px solid var(--line);border-radius:10px;background:#f6f9fa;cursor:pointer;font-size:12px}
+.human-avatar-option input{position:absolute;opacity:0;width:1px;height:1px}
+.human-avatar-option:has(input:checked){border-color:#287d9d;box-shadow:0 0 0 2px #287d9d26;background:#eaf4f7}
+.human-avatar-option:has(input:focus-visible){outline:2px solid #287d9d;outline-offset:3px}
+.human-avatar-picker:disabled{opacity:.65}
+.human-avatar-crop{display:block;width:54px;height:54px;overflow:hidden;border-radius:50%;background:#e7eef5}
+.human-avatar-options{margin:8px 0 16px}
+.human-avatar-options summary{font-size:14px;color:#387e98;cursor:pointer}

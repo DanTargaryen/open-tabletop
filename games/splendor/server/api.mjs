@@ -15,7 +15,7 @@ export async function handleSplendor(request,{store,limit=()=>{}}={}) {
     if(path==='/health' && request.method==='GET') {await store.health?.();return json({ok:true,service:'splendor-pokemon',schema:1});}
     const rooms=new SplendorRooms(store);
     if(path==='/rooms' && request.method==='POST') {await limit(request);return json(await rooms.create(await readBody(request)),201);}
-    const match=path.match(/^\/rooms\/([A-Z2-9]{6})(?:\/(join|ready|start|action|leave|rematch))?$/);
+    const match=path.match(/^\/rooms\/([A-Z2-9]{6})(?:\/(join|ready|start|action|leave|rematch|avatar))?$/);
     if(!match) throw new SplendorError(404,'接口不存在。');
     const op=match[2]||'state';
     if(request.method!==(op==='state'?'GET':'POST')) throw new SplendorError(405,'请求方法不正确。');

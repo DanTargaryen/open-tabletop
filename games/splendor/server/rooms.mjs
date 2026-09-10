@@ -1,6 +1,7 @@
 import {createGame, applyAction, projectGame, random} from '../web/engine.js';
 import {chooseAction, AI_STYLES} from '../web/ai.js';
 import {assignAIAvatars} from '../web/ai-avatars.js';
+import {validHumanAvatar,getHumanAvatar,selectHumanAvatarId} from '../web/human-avatars.js';
 
 export const ROOM_TTL = 86400000, TURN_MS = 120000, BOT_MS = 900;
 export class SplendorError extends Error { constructor(status,message) { super(message); this.status=status; } }
@@ -22,7 +23,7 @@ function setDeadline(room,now) {
 export function projectRoom(room,member,now) {
   return {room:{code:room.code,version:room.version,status:room.status,capacity:room.capacity,
     selfId:member.id,selfSeat:member.seat,isOwner:member.id===room.ownerId,
-    members:active(room).map(m=>({id:m.id,name:m.name,seat:m.seat,ready:m.ready,owner:m.id===room.ownerId,connected:now-m.lastSeen<20000})),
+    members:active(room).map(m=>({id:m.id,name:m.name,seat:m.seat,humanAvatarId:getHumanAvatar(m.humanAvatarId,m.seat).id,ready:m.ready,owner:m.id===room.ownerId,connected:now-m.lastSeen<20000})),
     deadline:room.deadline,serverNow:now,expiresAt:room.expiresAt},
     game:room.game ? projectGame(room.game,member.seat) : null};
 }
@@ -31,6 +32,7 @@ export class SplendorRooms {
   async create(input) {
     const name=nameOf(input.name), token=keyOf(input.seatKey), tokenHash=await hashToken(token), capacity=input.capacity;
     requireThat(Number.isInteger(capacity) && capacity>=2 && capacity<=4,400,'房间人数须为 2–4 人。');
+    requireThat(validHumanAvatar(input.humanAvatarId),400,'请选择列表中的头像。');
     const now=this.clock(), alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     // Same client key resolves an uncertain create response without making another room.
     for(let attempt=0;attempt<8;attempt++) {
@@ -41,7 +43,7 @@ export class SplendorRooms {
         if(member) return {...projectRoom(existing.room,member,now),token};
         continue;
       }
-      const owner={id:crypto.randomUUID(),name,tokenHash,seat:0,ready:true,lastSeen:now,left:false,processed:[]};
+      const owner={id:crypto.randomUUID(),name,tokenHash,seat:0,humanAvatarId:selectHumanAvatarId(input.humanAvatarId),ready:true,lastSeen:now,left:false,processed:[]};
       const room={schema:1,code,version:0,capacity,status:'waiting',ownerId:owner.id,members:[owner],game:null,deadline:null,expiresAt:now+ROOM_TTL};
       if(await this.store.create(code,room,room.expiresAt)) return {...projectRoom(room,owner,now),token};
       // A concurrent retry may have created this same candidate after our read.
@@ -56,6 +58,7 @@ export class SplendorRooms {
     requireThat(/^[A-Z2-9]{6}$/.test(code),400,'房间码应为六位字母或数字。');
     const joining=operation==='join', rawKey=keyOf(joining?input.seatKey:token), hash=await hashToken(rawKey);
     const joinName=joining?nameOf(input.name):null;
+    if(joining||operation==='avatar')requireThat(validHumanAvatar(input.humanAvatarId),400,'请选择列表中的头像。');
     for(let attempt=0;attempt<12;attempt++) {
       const now=this.clock(), row=await this.store.get(code,now);
       requireThat(row,404,'房间不存在或已过期。');
@@ -67,7 +70,7 @@ export class SplendorRooms {
         requireThat(active(room).length<room.capacity,409,'房间已满。');
         requireThat(!active(room).some(m=>m.name.toLowerCase()===joinName.toLowerCase()),409,'这个昵称已有人使用。');
         const seat=Array.from({length:room.capacity},(_,i)=>i).find(i=>!active(room).some(m=>m.seat===i));
-        member={id:crypto.randomUUID(),name:joinName,tokenHash:hash,seat,ready:false,lastSeen:now,left:false,processed:[]};
+        member={id:crypto.randomUUID(),name:joinName,tokenHash:hash,seat,humanAvatarId:selectHumanAvatarId(input.humanAvatarId,active(room).map(m=>getHumanAvatar(m.humanAvatarId,m.seat).id)),ready:false,lastSeen:now,left:false,processed:[]};
         room.members.push(member);room.version++;changed=true;
       }
       requireThat(member,403,'无法恢复座位，请检查所用浏览器。');
@@ -79,7 +82,7 @@ export class SplendorRooms {
         duplicate=member.processed.includes(input.requestId);
       }
       // A retry after a timeout must not repeat an already accepted move.
-      if(!duplicate && room.status==='playing' && now>=room.deadline) {
+      if(operation!=='avatar' && !duplicate && room.status==='playing' && now>=room.deadline) {
         const seat=room.game.current, human=active(room).some(m=>m.seat===seat);
         room.game=applyAction(room.game,seat,chooseAction(projectGame(room.game,seat),AI_STYLES[seat%3].id));
         if(human) room.game.log.unshift({turn:room.game.turn,seat,text:'行动超时，由本地策略代为操作'});
@@ -91,7 +94,10 @@ export class SplendorRooms {
           if(changed && !await this.store.cas(code,row.revision,room,now+ROOM_TTL)) continue;
           throw new SplendorError(409,'牌桌已更新，请查看最新状态后再操作。');
         }
-        if(operation==='ready') {
+        if(operation==='avatar') {
+          member.humanAvatarId=selectHumanAvatarId(input.humanAvatarId,active(room).filter(m=>m.id!==member.id).map(m=>getHumanAvatar(m.humanAvatarId,m.seat).id));
+          if(room.game)room.game.players[member.seat].humanAvatarId=member.humanAvatarId;
+        } else if(operation==='ready') {
           requireThat(room.status==='waiting',409,'当前不在准备阶段。');
           requireThat(typeof input.ready==='boolean',400,'准备状态无效。');member.ready=input.ready;
         } else if(operation==='start') {
@@ -99,7 +105,9 @@ export class SplendorRooms {
           requireThat(active(room).every(m=>m.ready),409,'请等待所有玩家准备。');
           requireThat(active(room).length===1 || active(room).length===room.capacity || input.fillAI===true,409,'还有空位，可以选择由 AI 补齐。');
           const names=Array.from({length:room.capacity},(_,seat)=>active(room).find(m=>m.seat===seat)?.name || AI_STYLES[seat%3].name+' · AI');
-          room.game=assignAIAvatars(createGame(names,{first:Math.floor(random()*room.capacity)}),active(room).map(m=>m.seat));room.status='playing';setDeadline(room,now);
+          room.game=assignAIAvatars(createGame(names,{first:Math.floor(random()*room.capacity)}),active(room).map(m=>m.seat));
+          for(const m of active(room))room.game.players[m.seat].humanAvatarId=getHumanAvatar(m.humanAvatarId,m.seat).id;
+          room.status='playing';setDeadline(room,now);
         } else if(operation==='action') {
           requireThat(room.status==='playing',409,'对局尚未开始或已经结束。');
           try {room.game=applyAction(room.game,member.seat,input.action);} catch(error) {throw new SplendorError(400,error.message);}

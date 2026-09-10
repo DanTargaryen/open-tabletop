@@ -1,4 +1,4 @@
-export const HUMAN_AVATAR='./assets/players/human.png';
+export {HUMAN_AVATAR} from './human-avatars.js';
 
 // Visual identities are independent of the three existing AI strategies.
 export const AI_AVATARS=Object.freeze([
