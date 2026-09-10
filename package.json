@@ -1,0 +1,17 @@
+{
+  "name": "open-tabletop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Open-source browser board games. Start with Velvet Poker, a solo and multiplayer Texas Hold'em game.",
+  "license": "MIT",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "start": "node server/index.mjs",
+    "lan": "node server/index.mjs --host 0.0.0.0",
+    "test": "node --test",
+    "build:static": "node scripts/build-static.mjs",
+    "measure:poker-sync": "node games/texas-holdem/scripts/measure-sync.mjs"
+  },
+  "repository": { "type": "git", "url": "https://github.com/DanTargaryen/open-tabletop.git" }
+}
