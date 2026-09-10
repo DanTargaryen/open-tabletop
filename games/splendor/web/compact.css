@@ -1,0 +1,243 @@
+/* The personal area spans the table in both layouts. Dialogs keep their full size. */
+.game-layout > .your-team { grid-column: 1 / -1; margin-top: 0; }
+.history-panel { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 12px; }
+.history-panel summary { cursor: pointer; font-size: 13px; font-weight: 700; }
+.history-panel .history { margin-top: 10px; display: block; }
+#layout-mode[hidden] { display: none; }
+
+@media (min-width: 900px) and (min-height: 660px) {
+  body.game-active.compact-table { height: 100dvh; display: flex; flex-direction: column; }
+  .game-active.compact-table .topbar { height: 46px; flex: 0 0 46px; padding: 0 16px; gap: 20px; }
+  .game-active.compact-table .brand { font-size: 18px; gap: 6px; }
+  .game-active.compact-table .brand-symbol { font-size: 28px; }
+  .game-active.compact-table .brand small { font-size: 10px; margin: 0; }
+  .game-active.compact-table .top-actions { font-size: 12px; }
+  .compact-table #app {
+    width: 100%; max-width: 1680px; flex: 1; min-height: 0; margin: 0 auto;
+    padding: 8px 12px; display: flex; flex-direction: column; gap: 7px;
+  }
+  .compact-table #app .game-meta { margin: 0; min-height: 26px; flex-shrink: 0; }
+  .compact-table #app .game-meta > div:first-child { display: flex; gap: 12px; align-items: baseline; }
+  .compact-table #app .game-meta h1 { font-size: 15px; }
+  .compact-table #app .game-meta small { font-size: 11px; }
+  .compact-table #app .game-meta button { font-size: 12px; padding: 4px 8px; }
+  .compact-table #app .players { margin: 0; gap: 7px; flex-shrink: 0; }
+  .compact-table #app .player { padding: 7px 8px; border-radius: 9px; }
+  .compact-table #app .player-head { gap: 6px; align-items: center; }
+  .compact-table #app .avatar { height: 25px; width: 25px; font-size: 12px; }
+  .compact-table #app .player-name { font-size: 12px; }
+  .compact-table #app .player-name small { font-size: 10px; line-height: 1.2; white-space: nowrap; }
+  .compact-table #app .score { font-size: 23px; }
+  .compact-table #app .score small { font-size: 10px; }
+  .compact-table #app .player-resources { margin-top: 5px; gap: 5px; flex-wrap: nowrap; justify-content: space-between; }
+  .compact-table #app .tiny-resource { gap: 2px; }
+  .compact-table #app .tiny-resource .ball { height: 15px; min-width: 15px; font-size: 9px; }
+  .compact-table #app .tiny-resource b { font-size: 11px; }
+  .compact-table #app .tiny-resource small { display: inline; font-size: 10px; }
+  .compact-table #app .game-layout {
+    flex: 1; min-height: 0; display: grid; align-items: stretch; gap: 8px;
+    grid-template-columns: minmax(0, 1fr) 200px;
+    grid-template-rows: minmax(260px, 1fr) calc(var(--personal-card-height, 112px) + 71px);
+    grid-template-areas: 'market console' 'personal personal';
+  }
+  .compact-table #app .market { grid-area: market; display: grid; grid-template-rows: 56px repeat(3, minmax(0, 1fr)); gap: 6px; min-height: 0; }
+  .compact-table #app .tier-row { grid-template-columns: 34px repeat(4, minmax(0, 1fr)); gap: 7px; margin: 0; min-height: 0; }
+  .compact-table #app .deck { padding: 4px 1px; border-radius: 8px; font-size: 9px; justify-content: space-around; }
+  .compact-table #app .deck > span:first-child { display: none; }
+  .compact-table #app .deck strong { font-size: 17px; }
+  .compact-table #app .deck small { font-size: 10px; }
+  .compact-table #app .empty-slot { min-height: 0; font-size: 11px; }
+
+  /* Market cards use a side-by-side portrait and information, keeping every cost. */
+  .compact-table #app .market .pokemon-card {
+    height: 100%; min-height: 0; padding: 5px 7px; border-radius: 9px;
+    display: grid; grid-template-columns: minmax(38px, 35%) minmax(0, 1fr);
+    grid-template-rows: 20px minmax(0, 1fr) 18px; column-gap: 5px;
+  }
+  .compact-table #app .market .pokemon-card .card-top { position: static; grid-column: 1 / -1; grid-row: 1; align-items: center; }
+  .compact-table #app .market .card-points { font-size: 21px; line-height: 1; }
+  .compact-table #app .market .card-points small { display: none; }
+  .compact-table #app .market .bonus { gap: 3px; }
+  .compact-table #app .market .bonus .ball { height: 18px; min-width: 18px; font-size: 10px; }
+  .compact-table #app .market .bonus > small { font-size: 11px; }
+  .compact-table #app .market .pokemon-card > .portrait {
+    position: static; transform: none; width: 100%; height: 100%; max-height: 70px;
+    grid-column: 1; grid-row: 2 / 4; align-self: center; border-radius: 7px;
+  }
+  .compact-table #app .market .pokemon-card .card-bottom { position: static; grid-column: 2; grid-row: 2; align-self: center; min-width: 0; }
+  .compact-table #app .market .card-name { font-size: 13px; line-height: 1.25; white-space: nowrap; }
+  .compact-table #app .market .card-id { display: none; }
+  .compact-table #app .market .costs { margin-top: 4px; gap: 3px; flex-wrap: wrap; }
+  .compact-table #app .market .costs .ball { min-width: 18px; height: 18px; font-size: 11px; }
+  .compact-table #app .market .pokemon-card .evo-cost { position: static; grid-column: 2; grid-row: 3; align-self: end; font-size: 10px; gap: 3px; }
+  .compact-table #app .market .evo-cost .ball { height: 14px; min-width: 14px; font-size: 9px; }
+  .compact-table #app .specials { margin: 0; gap: 7px; min-height: 0; }
+  .compact-table #app .special-box { padding: 4px 6px; gap: 6px; border-radius: 9px; min-width: 0; }
+  .compact-table #app .special-label { min-width: 56px; font-size: 12px; }
+  .compact-table #app .special-label small { font-size: 10px; margin-top: 2px; }
+  .compact-table #app .special-label small:last-child { display: none; }
+  .compact-table #app .special-box .pokemon-card { grid-template-columns: 40px minmax(0, 1fr); grid-template-rows: 16px 1fr; padding: 3px 5px; gap: 1px 6px; }
+  .compact-table #app .special-box .pokemon-card > .portrait { grid-column: 1; grid-row: 1 / -1; height: 38px; }
+  .compact-table #app .special-box .pokemon-card .card-top { grid-column: 2; }
+  .compact-table #app .special-box .pokemon-card .card-bottom { grid-column: 2; grid-row: 2; display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+  .compact-table #app .special-box .card-points { font-size: 17px; }
+  .compact-table #app .special-box .costs { margin: 0; gap: 2px; }
+  .compact-table #app .special-box .card-name { font-size: 12px; }
+  .compact-table #app .special-box .costs .ball { min-width: 16px; height: 16px; font-size: 10px; }
+
+  .compact-table #app .console { grid-area: console; position: static; min-height: 0; overflow-y: auto; border-radius: 10px; }
+  .compact-table #app .turn-banner { padding: 8px 10px; }
+  .compact-table #app .turn-banner .eyebrow { display: none; }
+  .compact-table #app .turn-banner h2 { font-size: 17px; line-height: 1.2; margin: 0; }
+  .compact-table #app .turn-banner p { font-size: 10px; line-height: 1.25; margin-top: 3px; }
+  .game-complete.compact-table #app .console .take-mode,
+  .game-complete.compact-table #app .console #take,
+  .game-complete.compact-table #app .console .action-help { display: none; }
+  .compact-table #app .console-body { padding: 8px; }
+  .compact-table #app .section-label { font-size: 12px; margin-bottom: 6px; }
+  .compact-table #app .section-label small { font-size: 10px; }
+  .compact-table #app .supply { gap: 5px; }
+  .compact-table #app .supply button { flex-direction: row; justify-content: center; gap: 2px; padding: 4px 1px; font-size: 9px; }
+  .compact-table #app .supply .ball { width: 22px; height: 22px; min-width: 22px; font-size: 13px; }
+  .compact-table #app .take-mode { margin: 8px 0 6px; gap: 4px; }
+  .compact-table #app .take-mode button { font-size: 11px; padding: 6px 1px; }
+  .compact-table #app .console .wide { padding: 7px 3px; font-size: 12px; }
+  .compact-table #app .action-help { font-size: 11px; line-height: 1.45; margin: 6px 0; }
+  .compact-table #app .hint-button { font-size: 11px; padding: 2px 0; }
+  .compact-table #app .evolution-option { font-size: 12px; line-height: 1.4; padding: 6px; margin-bottom: 5px; }
+  .compact-table #app .history-panel { margin-top: 5px; padding-top: 5px; }
+  .compact-table #app .history-panel summary { font-size: 11px; }
+  .compact-table #app .history { font-size: 11px; }
+
+  .compact-table #app .your-team { grid-area: personal; padding: 7px 9px; border-radius: 10px; min-height: 0; }
+  .compact-table #app .inventory-strip { display: flex; align-items: center; gap: 16px; height: 33px; margin-bottom: 6px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  .compact-table #app .team-head { margin-bottom: 5px; gap: 8px; height: 17px; }
+  .compact-table #app .team-head h2 { font-size: 12px; white-space: nowrap; }
+  .compact-table #app .team-head > span { font-size: 10px; white-space: nowrap; }
+  .compact-table #app .hand-heading { margin: 0; height: auto; justify-content: start; }
+  .compact-table #app .hand-total { padding: 2px 6px; font-size: 11px !important; }
+  .compact-table #app .hand-total b { font-size: 14px; }
+  .compact-table #app .hand-tokens { display: flex; gap: 5px; }
+  .compact-table #app .held-token { padding: 2px 5px; gap: 5px; border-radius: 6px; }
+  .compact-table #app .held-token > .ball { width: 20px; height: 20px; min-width: 20px; font-size: 10px; }
+  .compact-table #app .held-token-copy > span, .compact-table #app .held-token-copy small { display: none; }
+  .compact-table #app .held-token-copy > strong { font-size: 15px; }
+  .compact-table #app .permanent-bonuses { padding: 0; margin: 0 0 0 auto; border: 0; gap: 4px; flex-wrap: nowrap; }
+  .compact-table #app .bonus-label { font-size: 11px; margin-right: 2px; white-space: nowrap; }
+  .compact-table #app .inventory-bonus { font-size: 12px; padding: 2px 4px; gap: 3px; }
+  .compact-table #app .inventory-bonus .ball { height: 18px; min-width: 18px; font-size: 10px; }
+  .compact-table #app .permanent-bonuses > small { display: none; }
+  .compact-table #app .personal-cards { display: grid; grid-template-columns: minmax(0, 1fr) calc(var(--reserved-count) * 86px + (var(--reserved-count) - 1) * 6px); gap: 14px; }
+  .compact-table #app .captured-zone, .compact-table #app .reserved-zone { min-width: 0; }
+  .compact-table #app .reserved-zone { border-left: 1px solid var(--line); padding-left: 10px; }
+  .compact-table #app .team-list {
+    display: grid; grid-template-columns: repeat(var(--team-columns, 8), minmax(0, 1fr));
+    grid-auto-rows: 108px; gap: 6px; margin: 0; max-height: var(--personal-card-height, 112px); overflow-y: auto;
+    max-width: calc(var(--team-columns, 8) * 110px); padding: 2px;
+  }
+  .compact-table #app .team-list.two-rows { grid-auto-rows: 76px; }
+  .compact-table #app .your-team .pokemon-card { height: 108px; min-width: 0; width: 100%; padding: 4px; border-radius: 7px; }
+  .compact-table #app .your-team .card-top { top: 4px; left: 5px; right: 5px; }
+  .compact-table #app .your-team .card-points { font-size: 17px; line-height: 1; }
+  .compact-table #app .your-team .card-points small, .compact-table #app .your-team .card-id, .compact-table #app .owned-marker { display: none; }
+  .compact-table #app .your-team .bonus { gap: 2px; }
+  .compact-table #app .your-team .bonus .ball { height: 16px; min-width: 16px; font-size: 9px; }
+  .compact-table #app .your-team .bonus > small { font-size: 10px; }
+  .compact-table #app .your-team .pokemon-card > .portrait { width: 52px; height: 48px; top: 22px; border-radius: 6px; }
+  .compact-table #app .your-team .pokemon-card .card-bottom { left: 5px; right: 4px; bottom: 21px; }
+  .compact-table #app .your-team .card-name { font-size: 12px; line-height: 1.2; white-space: nowrap; }
+  .compact-table #app .team-list .costs { display: none; }
+  .compact-table #app .team-list .pokemon-card .evo-cost { left: 5px; top: auto; bottom: 4px; font-size: 10px; }
+  .compact-table #app .team-list .evo-cost .ball { height: 14px; min-width: 14px; font-size: 9px; }
+  .compact-table #app .team-list.two-rows .pokemon-card { height: 76px; }
+  .compact-table #app .team-list.two-rows .pokemon-card > .portrait { width: 29px; height: 28px; left: 5px; transform: none; top: 23px; }
+  .compact-table #app .team-list.two-rows .pokemon-card .card-bottom { bottom: 5px; }
+  .compact-table #app .team-list.two-rows .pokemon-card .evo-cost { left: 38px; top: 27px; bottom: auto; flex-wrap: wrap; gap: 2px; }
+  .compact-table #app .reserved-row { display: grid; grid-template-columns: repeat(var(--reserved-count), minmax(0, 1fr)); gap: 6px; margin: 0; }
+  .compact-table #app .reserved-row .pokemon-card .card-bottom { bottom: 5px; }
+  .compact-table #app .reserved-row .pokemon-card > .portrait { height: 40px; width: 46px; top: 22px; }
+  .compact-table #app .reserved-row .evo-cost { display: none; }
+  .compact-table #app .reserved-row .costs { margin-top: 4px; gap: 2px; }
+  .compact-table #app .reserved-row .costs .ball { min-width: 15px; height: 15px; font-size: 10px; }
+  .compact-table #app .reserved-row .empty-slot { width: auto; height: 108px; text-align: center; padding: 5px; }
+  .compact-table #app .team-empty { grid-column: 1 / -1; padding: 12px 6px; font-size: 12px; }
+  .compact-table #app .finished { display: flex; align-items: center; gap: 12px; padding: 6px 10px; margin: 0; flex-shrink: 0; border-radius: 8px; }
+  .compact-table #app .finished .eyebrow { display: none; }
+  .compact-table #app .finished h2 { font-size: 15px; margin: 0; }
+  .compact-table #app .finished p { font-size: 11px; margin: 0; }
+  .compact-table #app .finished button, .compact-table #app .finished > span { padding: 4px 9px; font-size: 11px; margin-left: auto; }
+  .compact-table #app .connection-error { margin: 0; padding: 5px 10px; font-size: 12px; }
+  .compact-table #app .footer-note { margin: 0; font-size: 10px; line-height: 13px; flex-shrink: 0; }
+}
+
+/* Smaller or shorter windows retain natural scrolling and comfortable hit targets. */
+@media (max-width: 899px), (max-height: 659px) {
+  .game-active.compact-table .topbar { padding: 0 10px; gap: 10px; }
+  .game-active.compact-table .top-actions { gap: 10px; }
+  .game-active.compact-table .brand { font-size: 16px; }
+  .game-active.compact-table .brand small { font-size: 9px; }
+  .game-active.compact-table .brand-symbol { display: none; }
+  .game-active.compact-table #app { padding: 10px; }
+  .compact-table #app .your-team { padding: 10px; width: 100%; }
+  .compact-table #app .hand-heading { margin-bottom: 8px; }
+  .compact-table #app .hand-tokens { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
+  .compact-table #app .held-token { padding: 5px 2px; gap: 3px; }
+  .compact-table #app .held-token > .ball { width: 22px; height: 22px; min-width: 22px; font-size: 10px; }
+  .compact-table #app .held-token-copy > span, .compact-table #app .held-token-copy small { display: none; }
+  .compact-table #app .held-token-copy > strong { font-size: 16px; }
+  .compact-table #app .permanent-bonuses { padding: 8px 0; margin-bottom: 10px; }
+  .compact-table #app .bonus-label { width: auto; font-size: 11px; }
+  .compact-table #app .permanent-bonuses > small { font-size: 10px; margin: 0; }
+  .compact-table #app .team-list { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 8px; margin-bottom: 12px; padding: 3px; }
+  .compact-table #app .team-list .pokemon-card { width: 116px; flex: 0 0 116px; height: 176px; }
+  .compact-table #app .team-list .pokemon-card > .portrait { width: 78px; height: 69px; top: 30px; }
+  .compact-table #app .team-list .pokemon-card .evo-cost { top: 100px; }
+  .compact-table #app .owned-marker { display: none; }
+  .compact-table #app .reserved-row { flex-wrap: nowrap; gap: 6px; }
+  .compact-table #app .reserved-row .pokemon-card { width: calc((100% - 12px) / 3); }
+  .compact-table #app .team-head { margin-bottom: 8px; }
+}
+@media (max-width: 480px) {
+  .game-active.compact-table .back { display: none; }
+  .game-active.compact-table .topbar { height: 58px; }
+  .game-active.compact-table .top-actions { gap: 7px; font-size: 11px; }
+  .game-active.compact-table .top-actions button { font-size: 11px; }
+  .game-active.compact-table .top-actions a { padding-left: 7px; }
+}
+@media (max-width: 899px) {
+  .compact-table #app .players { gap: 5px; }
+  .compact-table #app .player { padding: 6px; }
+  .compact-table #app .player-head { gap: 5px; }
+  .compact-table #app .player-name { font-size: 11px; }
+  .compact-table #app .player-name small { font-size: 9px; line-height: 1.3; }
+  .compact-table #app .avatar { height: 23px; width: 23px; font-size: 11px; }
+  .compact-table #app .score { font-size: 21px; }
+  .compact-table #app .score small { font-size: 9px; }
+  .compact-table #app .player-resources { gap: 3px; margin-top: 5px; }
+  .compact-table #app .tiny-resource { gap: 1px; }
+  .compact-table #app .tiny-resource .ball { height: 14px; min-width: 14px; font-size: 8px; }
+  .compact-table #app .tiny-resource b, .compact-table #app .tiny-resource small { font-size: 9px; }
+  .compact-table #app .tier-row { gap: 4px; grid-template-columns: 23px repeat(4, minmax(0, 1fr)); margin-bottom: 6px; }
+  .compact-table #app .market .tier-row .pokemon-card { height: 146px; padding: 4px; }
+  .compact-table #app .market .tier-row .pokemon-card > .portrait { width: 56px; height: 54px; top: 28px; }
+  .compact-table #app .market .tier-row .pokemon-card .evo-cost { top: 85px; font-size: 9px; }
+  .compact-table #app .market .tier-row .card-points { font-size: 18px; }
+  .compact-table #app .market .tier-row .card-name { font-size: 11px; }
+  .compact-table #app .market .tier-row .bonus { gap: 2px; }
+  .compact-table #app .market .tier-row .bonus .ball { height: 17px; min-width: 17px; font-size: 9px; }
+  .compact-table #app .market .tier-row .bonus > small { font-size: 9px; }
+  .compact-table #app .market .tier-row .costs { gap: 2px; }
+  .compact-table #app .market .tier-row .costs .ball { height: 15px; min-width: 15px; font-size: 9px; }
+  .compact-table #app .market .tier-row .card-bottom { left: 4px; right: 3px; bottom: 6px; }
+  .compact-table #app .console-body { padding: 8px; }
+  .compact-table #app .turn-banner { padding: 8px; }
+  .compact-table #app .supply button { font-size: 9px; padding: 4px 1px; }
+  .compact-table #app .supply .ball { width: 25px; height: 25px; min-width: 25px; font-size: 13px; }
+  .compact-table #app .console .wide { padding: 7px; font-size: 12px; }
+  .compact-table #app .take-mode { margin: 7px 0; }
+  .compact-table #app .take-mode button { padding: 6px; font-size: 11px; }
+  .compact-table #app .console .action-help { font-size: 11px; margin: 6px 0; }
+  .game-complete.compact-table #app .console .take-mode,
+  .game-complete.compact-table #app .console #take,
+  .game-complete.compact-table #app .console .action-help { display: none; }
+}

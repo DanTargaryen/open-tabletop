@@ -6,6 +6,25 @@ const make=(tag,className,text)=>{const node=document.createElement(tag);node.cl
 const usable=rect=>rect && rect.width>0 && rect.height>0 && rect.right>0 && rect.bottom>0 && rect.left<innerWidth && rect.top<innerHeight;
 const point=rect=>({x:rect.left+rect.width/2,y:rect.top+rect.height/2});
 const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+const clips=value=>['auto','scroll','hidden','clip','overlay'].includes(value);
+function visibleRect(node) {
+  if(!node)return null;
+  const rect=node.getBoundingClientRect();if(!usable(rect))return null;
+  let left=Math.max(0,rect.left),top=Math.max(0,rect.top),right=Math.min(innerWidth,rect.right),bottom=Math.min(innerHeight,rect.bottom);
+  // A card may be within the viewport yet outside an ancestor's scrollport.
+  // Keep only the visible portion so even a partially clipped card has a visible anchor.
+  for(let parent=node.parentElement;parent;parent=parent.parentElement) {
+    const style=getComputedStyle(parent),clipX=clips(style.overflowX),clipY=clips(style.overflowY);
+    if(!clipX&&!clipY)continue;
+    const box=parent.getBoundingClientRect();
+    const sx=parent.offsetWidth?box.width/parent.offsetWidth:1,sy=parent.offsetHeight?box.height/parent.offsetHeight:1;
+    const x=box.left+parent.clientLeft*sx,y=box.top+parent.clientTop*sy;
+    if(clipX){left=Math.max(left,x);right=Math.min(right,x+parent.clientWidth*sx);}
+    if(clipY){top=Math.max(top,y);bottom=Math.min(bottom,y+parent.clientHeight*sy);}
+    if(right<=left||bottom<=top)return null;
+  }
+  return {left,top,right,bottom,width:right-left,height:bottom-top};
+}
 
 // Presentation only: never calls the engine or the room API.
 export class AcquisitionFeedback {
@@ -18,12 +37,12 @@ export class AcquisitionFeedback {
   captureOrigins() {
     const origins=new Map();
     for(const el of document.querySelectorAll('#app button[data-card]')) {
-      const rect=el.getBoundingClientRect();if(usable(rect))origins.set(el.dataset.card,rect.toJSON());
+      const rect=visibleRect(el);if(rect)origins.set(el.dataset.card,rect);
     }
     const dialog=document.querySelector('#detail[open]');
     if(dialog?.dataset.selectedCard) {
-      const rect=dialog.querySelector('.portrait')?.getBoundingClientRect();
-      if(usable(rect))origins.set(dialog.dataset.selectedCard,rect.toJSON());
+      const rect=visibleRect(dialog.querySelector('.portrait'));
+      if(rect)origins.set(dialog.dataset.selectedCard,rect);
     }
     return origins;
   }
@@ -130,8 +149,8 @@ export class AcquisitionFeedback {
     if(!current()){scene.remove();return;}
     await this.pause(160);if(!current()){scene.remove();return;}
     scene.dataset.phase='fly';
-    const team=document.querySelector(`.team-list button[data-card="${event.card.id}"]`),teamRect=team?.getBoundingClientRect();
-    const destination=usable(teamRect)?point(teamRect):point(receipt.getBoundingClientRect());
+    const team=document.querySelector(`.team-list button[data-card="${event.card.id}"]`),teamRect=visibleRect(team);
+    const destination=teamRect?point(teamRect):point(receipt.getBoundingClientRect());
     const dx=clamp(destination.x,32,innerWidth-32),dy=clamp(destination.y,32,innerHeight-32);
     const bendY=clamp(Math.min(cy,dy)-55,70,innerHeight-90);
     void this.animate(title,[{opacity:1},{opacity:0,transform:'translate(-50%,8px)'}],{duration:240});

@@ -13,6 +13,8 @@ let state=null,room=null,session=null,busy=false,error='',selection=[],takeMode=
 const feedback=new AcquisitionFeedback({onSound:kind=>chime(kind)});
 const read=(storage,key)=>{try{return JSON.parse(storage.getItem(key)||'null');}catch{return null;}};
 const save=(storage,key,value)=>{try{storage.setItem(key,JSON.stringify(value));return true;}catch{toast('浏览器未允许保存，刷新恢复可能不可用。');return false;}};
+const LAYOUT='open-tabletop.pokemon.layout.v1';
+let compact=read(localStorage,LAYOUT)!=='spacious',layoutFrame=null;
 const uuid=()=>crypto.randomUUID();
 const newKey=()=>Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
 const self=()=>online?room?.selfSeat:0;
@@ -35,20 +37,20 @@ function chime(kind='turn') {
 function cardHTML(card,{interactive=true,owned=false}={}) {
   if(!card) return '<div class="empty-slot">牌库已空</div>';
   const p=owned?null:view()?.players[self()],can=p && affordable(p,card);
-  return `<button class="pokemon-card ${can?'affordable':''} ${owned?'owned-card':''}" data-card="${card.id}" aria-label="${escape((owned?'已捕捉，':'')+card.nameZh+'，'+card.points+' 分，'+labels[card.bonus]+'加成 '+card.bonusAmount)}" ${interactive?'':'disabled'}><div class="card-top"><span class="card-points">${card.points}<small>奖杯</small></span><span class="bonus">${ball(card.bonus)}<small>+${card.bonusAmount}</small></span></div>${portrait(card)}${card.evolveCost?`<div class="evo-cost">进化 ${costs(card.evolveCost)}</div>`:''}<div class="card-bottom"><div class="card-name">${escape(card.nameZh)}${owned?'<span class="owned-marker">已捕捉</span>':`<span class="card-id">#${String(card.dexId).padStart(3,'0')}</span>`}</div><div class="costs">${costs(card.cost)}</div></div></button>`;
+  return `<button class="pokemon-card ${can?'affordable':''} ${owned?'owned-card':''}" data-card="${card.id}" aria-label="${escape((owned?'已捕捉，':'')+card.nameZh+'，'+card.points+' 分，'+labels[card.bonus]+'加成 '+card.bonusAmount+'，点击查看完整卡牌')}" ${interactive?'':'disabled'}><div class="card-top"><span class="card-points">${card.points}<small>奖杯</small></span><span class="bonus">${ball(card.bonus)}<small>+${card.bonusAmount}</small></span></div>${portrait(card)}${card.evolveCost?`<div class="evo-cost">进化 ${costs(card.evolveCost)}</div>`:''}<div class="card-bottom"><div class="card-name">${escape(card.nameZh)}${owned?'<span class="owned-marker">已捕捉</span>':`<span class="card-id">#${String(card.dexId).padStart(3,'0')}</span>`}</div><div class="costs">${costs(card.cost)}</div></div></button>`;
 }
 function personalAreaHTML(player) {
   const held=total(player.tokens),excess=Math.max(0,held-10);
   return `<section id="personal-area" class="your-team" aria-label="你的精灵球与宝可梦">
-    <div class="team-head hand-heading"><h2>你的精灵球</h2><span class="hand-total ${excess?'over-limit':''}"><b>${held}</b> / 10 枚${excess?` · 需归还 ${excess} 枚`:''}</span></div>
+    <div class="inventory-strip"><div class="team-head hand-heading"><h2>你的精灵球</h2><span class="hand-total ${excess?'over-limit':''}"><b>${held}</b> / 10 枚${excess?` · 需归还 ${excess} 枚`:''}</span></div>
     <div class="hand-tokens" role="group" aria-label="手中可支付的精灵球">
       ${TOKENS.map(c=>`<div class="held-token ${player.tokens[c]?'':'empty'}" data-held-color="${c}" aria-label="${labels[c]}，持有 ${player.tokens[c]} 枚">${ball(c)}<div class="held-token-copy"><span>${labels[c]}</span><strong data-held-count>${player.tokens[c]}<small> 枚</small></strong></div></div>`).join('')}
     </div>
-    <div class="permanent-bonuses" role="group" aria-label="永久加成，不计入持球上限"><span class="bonus-label">永久加成</span>${COLORS.map(c=>`<span class="inventory-bonus ${player.bonuses[c]?'':'empty'}" data-bonus="${c}" title="${labels[c]}永久加成 ${player.bonuses[c]}">${ball(c)}<b>+${player.bonuses[c]}</b></span>`).join('')}<small>不计入 10 枚持球上限</small></div>
-    <div class="team-head"><h2>你的宝可梦</h2><span>${player.cards.length} 只在场 · 训练师板 ${player.evolved.length} 张</span></div>
+    <div class="permanent-bonuses" role="group" aria-label="永久加成，不计入持球上限"><span class="bonus-label">永久加成</span>${COLORS.map(c=>`<span class="inventory-bonus ${player.bonuses[c]?'':'empty'}" data-bonus="${c}" title="${labels[c]}永久加成 ${player.bonuses[c]}">${ball(c)}<b>+${player.bonuses[c]}</b></span>`).join('')}<small>不计入 10 枚持球上限</small></div></div>
+    <div class="personal-cards" style="--reserved-count:${Math.max(1,player.reserved.length)}"><div class="captured-zone"><div class="team-head"><h2>你的宝可梦</h2><span>${player.cards.length} 只在场 · 训练师板 ${player.evolved.length} 张</span></div>
     <div class="team-list">${player.cards.length?player.cards.map(c=>cardHTML(c,{owned:true})).join(''):'<p class="fine team-empty">捕捉第一只伙伴，从这里开始建立你的队伍。</p>'}</div>
-    <div class="team-head"><h2>预留卡</h2><span>${player.reserved.length} / 3 · 仅你可见</span></div>
-    <div class="reserved-row">${player.reserved.length?player.reserved.map(c=>cardHTML(c)).join(''):'<div class="empty-slot">预留获得大师球</div>'}</div>
+    </div><div class="reserved-zone"><div class="team-head"><h2>预留卡</h2><span>${player.reserved.length} / 3 · 仅你可见</span></div>
+    <div class="reserved-row">${player.reserved.length?player.reserved.map(c=>cardHTML(c)).join(''):'<div class="empty-slot">预留获得大师球</div>'}</div></div></div>
   </section>`;
 }
 function lobby() {
@@ -63,8 +65,33 @@ function errorHTML() {return error?`<div class="notice connection-error"><span>$
 function playerHTML(p,s) {
   return `<article data-seat="${p.seat}" class="player ${s.current===p.seat && s.phase!=='complete'?'active':''}"><div class="player-head"><button class="avatar" data-player="${p.seat}" aria-label="查看${escape(p.name)}的公开队伍">${escape(p.name.slice(0,1))}</button><span class="player-name">${escape(p.name)}${p.seat===self()?' · 你':''}<small>${p.seat===s.first?'先手 · ':''}${p.cards.length} 只伙伴 · ${p.evolved.length} 次进化 · 预留 ${p.reserved.length}</small></span><span class="score">${p.points}<small> / 18</small></span></div><div class="player-resources" aria-label="持球数 / 永久加成">${TOKENS.map(c=>`<span class="tiny-resource" data-resource="${c}">${ball(c)}<b>${p.tokens[c]}</b>${c==='master'?'':`<small>/ ${p.bonuses[c]}</small>`}</span>`).join('')}</div></article>`;
 }
+function syncLayout() {
+  document.body.classList.toggle('game-active',Boolean(state));
+  document.body.classList.toggle('compact-table',Boolean(state)&&compact);
+  document.body.classList.toggle('game-complete',state?.phase==='complete');
+  const toggle=document.querySelector('#layout-mode');
+  toggle.hidden=!state;
+  toggle.textContent=compact?'舒展布局':'紧凑布局';
+  toggle.setAttribute('aria-pressed',String(compact));
+  toggle.setAttribute('aria-label',compact?'当前紧凑布局，切换到舒展布局':'当前舒展布局，切换到紧凑布局');
+}
+function fitCompactLayout() {
+  const zone=app.querySelector('.captured-zone'),list=app.querySelector('.team-list');
+  if(!zone||!list||!compact)return;
+  const count=list.querySelectorAll('[data-card]').length;
+  const columns=Math.max(1,Math.min(count||1,Math.floor((zone.clientWidth+2)/78)));
+  const rows=Math.min(2,Math.ceil(count/columns));
+  list.style.setProperty('--team-columns',columns);
+  list.classList.toggle('two-rows',rows>1);
+  app.style.setProperty('--personal-card-height',rows>1?'162px':'112px');
+}
 function render() {
+  syncLayout();
   if(!state) {feedback.reset();moveOrigins=null;if(online&&room)waiting();else lobby();return;}
+  const scrollPositions=['.team-list','.console','.history'].map(selector=>[selector,app.querySelector(selector)?.scrollTop||0,app.querySelector(selector)?.scrollLeft||0]);
+  const historyOpen=app.querySelector('.history-panel')?.open;
+  const focused=document.activeElement;
+  const focusSelector=app.contains(focused)&&focused.matches('button')?(focused.id?'#'+CSS.escape(focused.id):['card','token','evolve','target','deck','player'].filter(k=>focused.dataset[k]!==undefined).map(k=>`[data-${k}="${CSS.escape(focused.dataset[k])}"]`).join('')):null;
   const s=view(),p=s.players[self()],turn=myTurn(),active=s.players[s.current];
   const phaseText=s.phase==='complete'?'对局结束':turn?s.phase==='return'?'归还多余的球':s.phase==='evolve'?'选择一次进化':'轮到你了':`${active.name} 的回合`;
   const options=turn?legalActions(s):[];
@@ -72,7 +99,11 @@ function render() {
   let canTake=false;
   if(s.phase==='return')canTake=selection.length===total(p.tokens)-10 && TOKENS.every(c=>selectionTokens[c]<=p.tokens[c]);
   else canTake=options.some(a=>a.type==='take' && [...a.colors].sort().join(',')===[...selection].sort().join(','));
-  app.innerHTML=`<div class="game-meta"><div><h1>${online?'好友房 '+room.code:'训练师的牌桌'}</h1><small>第 ${Math.floor(s.turn/s.players.length)+1} 轮 · ${s.finalRound?'最终轮':'每人轮流行动'} · 持球 / 永久加成</small></div><div class="inline">${online?'<button id="share" class="small">邀请链接</button>':''}<button id="${online?'leave-room':'new-solo'}" class="small">${online?'离开':'重新开局'}</button></div></div>${errorHTML()}${s.phase==='complete'?`<section class="finished"><span class="eyebrow">ADVENTURE COMPLETE</span><h2>${s.winners.map(i=>escape(s.players[i].name)).join('、')} ${s.winners.length>1?'共享胜利':'赢得本局'}</h2><p>最高 ${Math.max(...s.players.map(p=>p.points))} 分 · 同分依次比较进化次数与场上宝可梦数量。</p>${online?(room.isOwner?'<button id="rematch" class="primary">再来一局</button>':'<span>等待房主发起下一局</span>'):'<button id="new-solo" class="primary">再来一局</button>'}</section>`:''}<section class="players" style="--players:${s.players.length}">${s.players.map(p=>playerHTML(p,s)).join('')}</section><div class="game-layout"><section class="market" aria-label="宝可梦展示区"><div class="specials">${[3,4].map(i=>`<div class="special-box"><div class="special-label">${i===3?'稀有':'传说 / 幻'}<small>剩 ${s.deckCounts[i]} 张</small><small>加成 ×2</small></div>${cardHTML(s.market[i][0])}</div>`).join('')}</div>${[2,1,0].map(i=>`<div class="tier-row"><button class="deck" data-deck="${i+1}" aria-label="盲预留 ${i+1} 级卡" ${!turn||s.phase!=='action'||busy||!s.deckCounts[i]||p.reserved.length>=3?'disabled':''}><span>LEVEL</span><strong>${['I','II','III'][i]}</strong><small>${s.deckCounts[i]} 张</small><span>预留</span></button>${s.market[i].map(c=>cardHTML(c)).join('')}</div>`).join('')}${personalAreaHTML(p)}</section><aside class="console"><div class="turn-banner"><div><span class="eyebrow">${turn?'MAKE YOUR MOVE':'AT THE TABLE'}</span><h2>${escape(phaseText)}</h2></div><p>${online && room.deadline?`<span id="countdown"></span> · 超时自动操作`:s.phase==='complete'?'感谢一起冒险':turn?'主动作后可以进化一次':'本地策略思考中…'}</p></div><div class="console-body"><div class="section-label">${s.phase==='return'&&turn?'选择要归还的球':'精灵球供应'}<small>${s.phase==='return'&&turn?'你持有的数量':'公共区域'}</small></div><div class="supply">${TOKENS.map(c=>`<button data-token="${c}" class="${selectionTokens[c]?'selected':''}" aria-label="${s.phase==='return'&&turn?'归还':'选择'}${labels[c]}" ${!turn||busy||!['action','return'].includes(s.phase)||(s.phase==='action'&&(c==='master'||!s.bank[c]))||(s.phase==='return'&&!p.tokens[c])?'disabled':''}>${ball(c,s.phase==='return'&&turn?p.tokens[c]:s.bank[c])}<span>${labels[c]}</span>${selectionTokens[c]?`<em>+${selectionTokens[c]}</em>`:''}</button>`).join('')}</div>${s.phase==='evolve'&&turn?`<p class="action-help">使用永久加成进化，不花球。旧卡将移入训练师板。</p>${options.filter(a=>a.type==='evolve').map(a=>{const from=p.cards.find(c=>c.id===a.fromId),to=[...s.market.flat().filter(Boolean),...p.reserved].find(c=>c.id===a.cardId);return `<button class="evolution-option" data-evolve="${a.fromId}" data-target="${a.cardId}" ${busy?'disabled':''}>${escape(from.nameZh)} → ${escape(to.nameZh)}<br><small>奖杯 ${from.points} → ${to.points}</small></button>`;}).join('')}<button id="finish-turn" class="wide primary" ${busy?'disabled':''}>本回合不进化</button>`:`${s.phase==='return'&&turn?'':`<div class="take-mode"><button id="different" class="${takeMode==='different'?'chosen':''}" ${!turn||busy?'disabled':''}>三种不同色</button><button id="same" class="${takeMode==='same'?'chosen':''}" ${!turn||busy?'disabled':''}>两枚同色</button></div>`}<button id="take" class="wide sun" ${!turn||!canTake||busy?'disabled':''}>${s.phase==='return'?'归还所选精灵球':selection.length?`拿取 ${selection.length} 枚精灵球`:'选择精灵球'}</button><p class="action-help">${s.phase==='return'&&turn?`需要归还 ${total(p.tokens)-10} 枚，已选 ${selection.length} 枚。可归还刚拿到的球。`:'点击卡牌查看费用、捕捉或预留。点击牌库可盲预留普通卡。'}</p>${selection.length?'<button id="clear-tokens" class="hint-button">清空所选</button>':''}${options.some(a=>a.type==='pass')?'<button id="pass" class="wide">无合法动作，跳过</button>':''}`}${turn&&s.phase!=='complete'?'<button id="hint" class="hint-button">给我一个策略提示</button>':''}<hr><div class="section-label history-label">最近的冒险</div><div class="history">${s.log.slice(0,6).map(e=>`<p><b>${escape(s.players[e.seat].name)}</b> ${escape(e.text)}</p>`).join('')||'<p>精灵球已就位。</p>'}</div></div></aside></div><p class="footer-note">角色美术：<a href="https://theartificial.github.io/pokemon-icons/" target="_blank" rel="noreferrer">The Artificial</a> · 署名分享 · 非官方同人作品</p>`;
+  app.innerHTML=`<div class="game-meta"><div><h1>${online?'好友房 '+room.code:'训练师的牌桌'}</h1><small>第 ${Math.floor(s.turn/s.players.length)+1} 轮 · ${s.finalRound?'最终轮':'每人轮流行动'} · 持球 / 永久加成</small></div><div class="inline">${online?'<button id="share" class="small">邀请链接</button>':''}<button id="${online?'leave-room':'new-solo'}" class="small">${online?'离开':'重新开局'}</button></div></div>${errorHTML()}${s.phase==='complete'?`<section class="finished"><span class="eyebrow">ADVENTURE COMPLETE</span><h2>${s.winners.map(i=>escape(s.players[i].name)).join('、')} ${s.winners.length>1?'共享胜利':'赢得本局'}</h2><p>最高 ${Math.max(...s.players.map(p=>p.points))} 分 · 同分依次比较进化次数与场上宝可梦数量。</p>${online?(room.isOwner?'<button id="rematch" class="primary">再来一局</button>':'<span>等待房主发起下一局</span>'):'<button id="new-solo" class="primary">再来一局</button>'}</section>`:''}<section class="players" style="--players:${s.players.length}">${s.players.map(p=>playerHTML(p,s)).join('')}</section><div class="game-layout"><section class="market" aria-label="宝可梦展示区"><div class="specials">${[3,4].map(i=>`<div class="special-box"><div class="special-label">${i===3?'稀有':'传说 / 幻'}<small>剩 ${s.deckCounts[i]} 张</small><small>加成 ×2</small></div>${cardHTML(s.market[i][0])}</div>`).join('')}</div>${[2,1,0].map(i=>`<div class="tier-row"><button class="deck" data-deck="${i+1}" aria-label="盲预留 ${i+1} 级卡" ${!turn||s.phase!=='action'||busy||!s.deckCounts[i]||p.reserved.length>=3?'disabled':''}><span>LEVEL</span><strong>${['I','II','III'][i]}</strong><small>${s.deckCounts[i]} 张</small><span>预留</span></button>${s.market[i].map(c=>cardHTML(c)).join('')}</div>`).join('')}</section><aside class="console"><div class="turn-banner"><div><span class="eyebrow">${turn?'MAKE YOUR MOVE':'AT THE TABLE'}</span><h2>${escape(phaseText)}</h2></div><p>${online && room.deadline?`<span id="countdown"></span> · 超时自动操作`:s.phase==='complete'?'感谢一起冒险':turn?'主动作后可以进化一次':'本地策略思考中…'}</p></div><div class="console-body"><div class="section-label">${s.phase==='return'&&turn?'选择要归还的球':'精灵球供应'}<small>${s.phase==='return'&&turn?'你持有的数量':'公共区域'}</small></div><div class="supply">${TOKENS.map(c=>`<button data-token="${c}" class="${selectionTokens[c]?'selected':''}" aria-label="${s.phase==='return'&&turn?'归还':'选择'}${labels[c]}" ${!turn||busy||!['action','return'].includes(s.phase)||(s.phase==='action'&&(c==='master'||!s.bank[c]))||(s.phase==='return'&&!p.tokens[c])?'disabled':''}>${ball(c,s.phase==='return'&&turn?p.tokens[c]:s.bank[c])}<span>${labels[c]}</span>${selectionTokens[c]?`<em>+${selectionTokens[c]}</em>`:''}</button>`).join('')}</div>${s.phase==='evolve'&&turn?`<p class="action-help">使用永久加成进化，不花球。旧卡将移入训练师板。</p>${options.filter(a=>a.type==='evolve').map(a=>{const from=p.cards.find(c=>c.id===a.fromId),to=[...s.market.flat().filter(Boolean),...p.reserved].find(c=>c.id===a.cardId);return `<button class="evolution-option" data-evolve="${a.fromId}" data-target="${a.cardId}" ${busy?'disabled':''}>${escape(from.nameZh)} → ${escape(to.nameZh)}<br><small>奖杯 ${from.points} → ${to.points}</small></button>`;}).join('')}<button id="finish-turn" class="wide primary" ${busy?'disabled':''}>本回合不进化</button>`:`${s.phase==='return'&&turn?'':`<div class="take-mode"><button id="different" class="${takeMode==='different'?'chosen':''}" ${!turn||busy?'disabled':''}>三种不同色</button><button id="same" class="${takeMode==='same'?'chosen':''}" ${!turn||busy?'disabled':''}>两枚同色</button></div>`}<button id="take" class="wide sun" ${!turn||!canTake||busy?'disabled':''}>${s.phase==='return'?'归还所选精灵球':selection.length?`拿取 ${selection.length} 枚精灵球`:'选择精灵球'}</button><p class="action-help">${s.phase==='return'&&turn?`需要归还 ${total(p.tokens)-10} 枚，已选 ${selection.length} 枚。可归还刚拿到的球。`:'点击卡牌查看费用、捕捉或预留。点击牌库可盲预留普通卡。'}</p>${selection.length?'<button id="clear-tokens" class="hint-button">清空所选</button>':''}${options.some(a=>a.type==='pass')?'<button id="pass" class="wide">无合法动作，跳过</button>':''}`}${turn&&s.phase!=='complete'?'<button id="hint" class="hint-button">给我一个策略提示</button>':''}<details class="history-panel"><summary>最近的冒险</summary><div class="history">${s.log.slice(0,6).map(e=>`<p><b>${escape(s.players[e.seat].name)}</b> ${escape(e.text)}</p>`).join('')||'<p>精灵球已就位。</p>'}</div></details></div></aside>${personalAreaHTML(p)}</div><p class="footer-note">角色美术：<a href="https://theartificial.github.io/pokemon-icons/" target="_blank" rel="noreferrer">The Artificial</a> · 署名分享 · 非官方同人作品</p>`;
+  fitCompactLayout();
+  if(historyOpen)app.querySelector('.history-panel').open=true;
+  for(const [selector,top,left] of scrollPositions){const el=app.querySelector(selector);if(el){el.scrollTop=top;el.scrollLeft=left;}}
+  if(focusSelector)app.querySelector(focusSelector)?.focus({preventScroll:true});
   updateCountdown();
 }
 function showCard(id) {
@@ -219,6 +250,10 @@ detail.addEventListener('click',async e=>{
   if(button.id==='reserve-card')await move({type:'reserve',cardId:detail.dataset.selectedCard});
 });
 document.querySelectorAll('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
+document.querySelector('#layout-mode').addEventListener('click',()=>{
+  compact=!compact;save(localStorage,LAYOUT,compact?'compact':'spacious');syncLayout();fitCompactLayout();
+});
+window.addEventListener('resize',()=>{cancelAnimationFrame(layoutFrame);layoutFrame=requestAnimationFrame(fitCompactLayout);});
 document.querySelector('#help').addEventListener('click',()=>document.querySelector('#rules').showModal());
 document.querySelector('#sound').addEventListener('click',e=>{sound=!sound;e.target.textContent='音效：'+(sound?'开':'关');e.target.setAttribute('aria-pressed',String(sound));chime();});
 document.querySelector('#mode-link').href=online?'./index.html':'./online.html';document.querySelector('#mode-link').textContent=online?'单人冒险 ↗':'好友联机 ↗';
