@@ -1,10 +1,17 @@
 import {AbracadaGame,AI_PROFILES} from '../web/engine.js';
+import {characterForSeat} from '../web/characters.js';
 
 export const TURN_MS=45000;
 export const AI_DELAY_MS=1000;
 export const ACTION_HOLD_MS=1000;
 export const OFFLINE_MS=20000;
 export const ROOM_TTL=24*60*60*1000;
+
+const CAST_PRESENTATION_MS=1700;
+const DIE_PRESENTATION_MS=2000;
+const LIFE_PRESENTATION_MS=700;
+const DRAW_PRESENTATION_MS=900;
+const SPELL_PRESENTATION_MS={1:3600,2:2500,3:1300,4:2400,5:1500,6:2300,7:1700,8:2100};
 
 const clone=value=>JSON.parse(JSON.stringify(value));
 const activeMembers=room=>room.members.filter(member=>!member.left);
@@ -40,7 +47,6 @@ function rebalanceOwner(room){
   const members=activeMembers(room);
   if(!members.length)return;
   if(!members.some(member=>member.id===room.ownerId))room.ownerId=members[0].id;
-  if(room.status==='waiting'&&!members.some(member=>member.seat===0))members.find(member=>member.id===room.ownerId).seat=0;
 }
 
 function syncPlayers(room,game){
@@ -50,6 +56,7 @@ function syncPlayers(room,game){
     player.name=member?member.name:profile.name;
     player.title=member?(member.id===room.ownerId?'试炼发起人':'远程魔法师'):profile.title;
     player.color=member?(player.id===0?'#f5e4ad':'#b9e7df'):profile.color;
+    player.characterKey=characterForSeat(player.id).key;
     player.isHuman=!!member;
     player.aiProfile=clone(profile);
   }
@@ -72,11 +79,23 @@ function setDeadline(room,game,now){
   room.deadline=Math.max(now,room.actionAvailableAt||0)+(connected?TURN_MS:AI_DELAY_MS);
 }
 
+export function actionPresentationMs(action){
+  if(action?.type==='stop')return DRAW_PRESENTATION_MS;
+  if(action?.type!=='cast')return 0;
+  let duration=CAST_PRESENTATION_MS;
+  if(action.roll!==null&&action.roll!==undefined)duration+=DIE_PRESENTATION_MS;
+  if(action.success)duration+=SPELL_PRESENTATION_MS[action.spell]||0;
+  const hasLifeChange=action.lifeChanges?.some(change=>change.amount!==0);
+  if(hasLifeChange)duration+=LIFE_PRESENTATION_MS;
+  const splitDragonFailure=!action.success&&action.spell===1&&action.roll!==null&&action.roll!==undefined&&hasLifeChange;
+  if(splitDragonFailure)duration+=ACTION_HOLD_MS+LIFE_PRESENTATION_MS;
+  if(!action.success||action.spell===4)duration+=DRAW_PRESENTATION_MS;
+  return duration;
+}
+
 function holdForAction(room,action,now){
-  const splitDragonFailure=action?.type==='cast'&&action.spell===1&&!action.success&&action.roll!==null&&action.roll!==undefined;
-  const revealCount=action?.type==='cast'?1+(action.roll===null||action.roll===undefined?0:1)+(splitDragonFailure?1:0):0;
-  room.actionAvailableAt=now+revealCount*ACTION_HOLD_MS;
-  if(revealCount){
+  room.actionAvailableAt=now+actionPresentationMs(action);
+  if(action?.type==='cast'){
     room.actionSequence=(room.actionSequence||0)+1;
     room.reveal={...clone(action),id:room.actionSequence,at:now,until:room.actionAvailableAt};
   }else room.reveal=null;
@@ -161,9 +180,11 @@ export function projectAbracadaRoom(room,member,now){
     id:candidate.id,
     name:candidate.name,
     seat:rotate(candidate.seat),
+    towerSeat:candidate.seat,
     owner:candidate.id===room.ownerId,
     ready:candidate.ready,
     connected:now-candidate.lastSeen<OFFLINE_MS,
+    characterKey:characterForSeat(candidate.seat).key,
   })).sort((left,right)=>left.seat-right.seat);
   const meta={
     code:room.code,
@@ -275,6 +296,15 @@ export class AbracadaRoomService{
         }else if(operation==='ready'){
           requireThat(['waiting','round-complete','finished'].includes(room.status),409,'请等待本轮结束后准备。');
           member.ready=!!input.ready;
+          member.lastSeen=now;
+          room.version++;
+          changed=true;
+        }else if(operation==='seat'){
+          requireThat(room.status==='waiting',409,'只能在等待室中更换座位。');
+          const nextSeat=Number(input.seat);
+          requireThat(Number.isInteger(nextSeat)&&nextSeat>=0&&nextSeat<room.playerCount,400,'请选择有效的法师座位。');
+          requireThat(!activeMembers(room).some(candidate=>candidate.id!==member.id&&candidate.seat===nextSeat),409,'这个座位已经有玩家了。');
+          member.seat=nextSeat;
           member.lastSeen=now;
           room.version++;
           changed=true;

@@ -1,3 +1,5 @@
+import {characterForSeat} from './characters.js';
+
 export const SPELLS = Object.freeze([
   { id: 1, name: '远古巨龙', icon: '龙', copies: 1, tag: '群体重击', description: '投掷特殊骰（1/1/1/2/2/3），其他所有玩家失去等同点数的生命；施放失败时，除常规失去 1 点生命外，额外受到骰子点数的伤害。' },
   { id: 2, name: '暗夜行者', icon: '影', copies: 2, tag: '群伤吸取', description: '其他所有玩家失去 1 点生命，你恢复 1 点生命。' },
@@ -81,6 +83,7 @@ export class AbracadaGame {
           name: id === 0 ? String(playerName).trim().slice(0, 20) || '你' : profile.name,
           title: id === 0 ? '见习魔法师' : profile.title,
           color: id === 0 ? '#f5e4ad' : profile.color,
+          characterKey: characterForSeat(id).key,
           isHuman: id === 0,
           aiProfile: id === 0 ? null : clone(profile),
           life: 6,
@@ -325,16 +328,13 @@ export class AbracadaGame {
       s.phase = 'game-complete';
       return;
     }
-    const candidates = s.players.filter(player => player.score >= 8);
-    if (!candidates.length) {
+    const highestScore = Math.max(...s.players.map(player => player.score));
+    const leaders = s.players.filter(player => player.score === highestScore);
+    if (highestScore < 8 || leaders.length !== 1) {
       s.phase = 'round-complete';
       return;
     }
-    const bestRoundScore = Math.max(...candidates.map(player => basePoints[player.id]));
-    let finalists = candidates.filter(player => basePoints[player.id] === bestRoundScore);
-    const bestLife = Math.max(...finalists.map(player => player.life));
-    finalists = finalists.filter(player => player.life === bestLife);
-    s.gameWinnerIds = finalists.map(player => player.id);
+    s.gameWinnerIds = [leaders[0].id];
     s.phase = 'game-complete';
   }
 
@@ -450,6 +450,7 @@ export class AbracadaGame {
         name: player.name,
         title: player.title,
         color: player.color,
+        characterKey: player.characterKey||characterForSeat(player.id).key,
         isHuman: player.isHuman,
         life: player.life,
         score: player.score,

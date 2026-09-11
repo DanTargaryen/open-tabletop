@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {AbracadaRoomService,ACTION_HOLD_MS,AI_DELAY_MS,MemoryAbracadaRoomStore} from '../server/rooms.mjs';
+import {AbracadaRoomService,AI_DELAY_MS,MemoryAbracadaRoomStore,actionPresentationMs} from '../server/rooms.mjs';
 import {handleAbracada} from '../server/api.mjs';
 
 const seatKey=value=>String(value).padStart(48,String(value)).slice(0,48).replace(/[^a-f0-9]/g,'a');
@@ -87,6 +87,7 @@ test('AI and timed-out human seats advance only after their deadline',async()=>{
   await current.service.request(current.code,current.host.token,'action',{requestId:'hand-to-ai-action',version:before.room.version,type:'cast',spell:absent});
   const deadline=current.room().deadline;
   const version=current.room().version;
+  assert.equal(deadline,current.room().actionAvailableAt+AI_DELAY_MS);
   current.tick(deadline-current.now-1);
   await current.service.request(current.code,current.host.token,'state');
   assert.equal(current.room().version,version);
@@ -96,7 +97,7 @@ test('AI and timed-out human seats advance only after their deadline',async()=>{
   assert.ok(current.room().deadline>=Math.max(current.now,current.room().actionAvailableAt||0)+AI_DELAY_MS||current.room().status!=='playing');
 });
 
-test('played stones and dice results block the next action for one second each',async()=>{
+test('each action blocks the next turn until its complete presentation finishes',async()=>{
   const current=await table({people:2,playerCount:2});
   const raw=current.room();
   raw.engine.players[0].rack=[8,8,8];
@@ -106,7 +107,8 @@ test('played stones and dice results block the next action for one second each',
   assert.equal(rolled.action.playerId,0);
   assert.equal(rolled.room.reveal.playerId,0);
   assert.equal(rolled.room.reveal.roll,rolled.action.roll);
-  assert.equal(rolled.room.actionAvailableAt,current.now+ACTION_HOLD_MS*3);
+  const presentationMs=actionPresentationMs(rolled.action);
+  assert.equal(rolled.room.actionAvailableAt,current.now+presentationMs);
   const guestState=await current.service.request(current.code,current.players[1].token,'state');
   assert.equal(guestState.room.reveal.playerId,1);
   assert.equal(guestState.room.reveal.roll,rolled.action.roll);
@@ -114,13 +116,13 @@ test('played stones and dice results block the next action for one second each',
   guestRaw.engine.players[1].rack=[1,1,1];
   const guestAction={requestId:'after-reveal-action',version:guestState.room.version,type:'cast',spell:8};
   await assert.rejects(current.service.request(current.code,current.players[1].token,'action',guestAction),/展示/);
-  current.tick(ACTION_HOLD_MS*3-1);
+  current.tick(presentationMs-1);
   await assert.rejects(current.service.request(current.code,current.players[1].token,'action',guestAction),/展示/);
   current.tick(1);
   const next=await current.service.request(current.code,current.players[1].token,'action',guestAction);
   assert.equal(next.action.playerId,0);
   assert.equal(next.action.roll,null);
-  assert.equal(next.room.actionAvailableAt,current.now+ACTION_HOLD_MS);
+  assert.equal(next.room.actionAvailableAt,current.now+actionPresentationMs(next.action));
 });
 
 test('all human players ready before the host starts the next scoring round',async()=>{

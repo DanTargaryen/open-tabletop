@@ -40,11 +40,12 @@ Numeric data is community-transcribed and has not been checked card-by-card agai
 
 ## Run locally
 
-Requires **Node.js 22.13 or newer**. There are no npm dependencies, so `npm install` is not required.
+Requires **Node.js 22.13 or newer**. Install the local dependencies before the first run:
 
 ```sh
 git clone https://github.com/DanTargaryen/open-tabletop.git
 cd open-tabletop
+npm install
 npm start
 ```
 

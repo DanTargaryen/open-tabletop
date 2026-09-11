@@ -13,7 +13,7 @@ import {SplendorError} from '../games/splendor/server/rooms.mjs';
 import {FileRoomStore} from './room-store.mjs';
 
 const projectRoot=resolve(dirname(fileURLToPath(import.meta.url)),'..');
-const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.json':'application/json; charset=utf-8'};
+const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.gltf':'model/gltf+json','.glb':'model/gltf-binary','.bin':'application/octet-stream','.json':'application/json; charset=utf-8'};
 const safeHeaders={'X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin'};
 
 export async function createTabletopServer({dataDir=resolve(projectRoot,'.data'),publicOrigin=null}={}){
@@ -23,6 +23,13 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
  const abracadaStore=await new FileRoomStore(resolve(dataDir,'abracada-rooms.json')).init();
  const catalog=JSON.parse(await readFile(resolve(projectRoot,'games/catalog.json'),'utf8'));
  const staticGames=new Map(catalog.map(game=>[`/games/${game.id}/`,resolve(projectRoot,'games',game.id,'web')]));
+ const vendorFiles=new Map([
+  ['/vendor/three.module.js',resolve(projectRoot,'node_modules/three/build/three.module.js')],
+  ['/vendor/three.core.js',resolve(projectRoot,'node_modules/three/build/three.core.js')],
+  ['/vendor/loaders/GLTFLoader.js',resolve(projectRoot,'node_modules/three/examples/jsm/loaders/GLTFLoader.js')],
+  ['/vendor/utils/BufferGeometryUtils.js',resolve(projectRoot,'node_modules/three/examples/jsm/utils/BufferGeometryUtils.js')],
+  ['/vendor/utils/SkeletonUtils.js',resolve(projectRoot,'node_modules/three/examples/jsm/utils/SkeletonUtils.js')],
+ ]);
  const limits=new Map();
  const limit=(request,ErrorType)=>{
   const now=Date.now(),bucket=Math.floor(now/60000),key=(request.headers.get('cf-connecting-ip')||'local')+':'+bucket;
@@ -53,6 +60,8 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
    }
    let path=decodeURIComponent(url.pathname);
    if(path.includes('\\')||path.includes('\0')||path.split('/').some(part=>part.startsWith('.'))){res.writeHead(404);res.end();return;}
+   const vendorFile=vendorFiles.get(path);
+   if(vendorFile){const bytes=await readFile(vendorFile);res.writeHead(200,{...safeHeaders,'Content-Type':mime['.js'],'Content-Length':bytes.length,'Cache-Control':'public, max-age=31536000, immutable'});res.end(req.method==='HEAD'?undefined:bytes);return;}
    let staticRoot=resolve(projectRoot,'public'),gamePrefix=null;
    for(const[prefix,root]of staticGames){if(path===prefix.slice(0,-1)){res.writeHead(302,{Location:prefix+url.search});res.end();return;}if(path.startsWith(prefix)){staticRoot=root;gamePrefix=prefix;break;}}
    path=gamePrefix?path.slice(gamePrefix.length):path.slice(1);

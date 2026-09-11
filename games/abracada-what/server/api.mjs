@@ -60,7 +60,7 @@ export async function handleAbracada(request,db,options={}){
       await limit();
       return json(await service.create(await readBody(request)),201);
     }
-    const match=path.match(/^\/rooms\/([A-Z2-9]{6})(?:\/(join|action|ready|start|leave|kick))?$/);
+    const match=path.match(/^\/rooms\/([A-Z2-9]{6})(?:\/(join|action|ready|seat|start|leave|kick))?$/);
     if(!match)throw new AbracadaRoomError(404,'接口不存在。');
     const operation=match[2]||'state';
     if((operation==='state'&&request.method!=='GET')||(operation!=='state'&&request.method!=='POST'))throw new AbracadaRoomError(405,'请求方法不正确。');

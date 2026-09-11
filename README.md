@@ -42,11 +42,12 @@
 
 ## 本地运行
 
-需要 **Node.js 22.13 或更新版本**。项目没有 npm 依赖，无需先执行 `npm install`。
+需要 **Node.js 22.13 或更新版本**。首次运行时先安装本地依赖：
 
 ```sh
 git clone https://github.com/DanTargaryen/open-tabletop.git
 cd open-tabletop
+npm install
 npm start
 ```
 

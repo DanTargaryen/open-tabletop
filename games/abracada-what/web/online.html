@@ -6,8 +6,10 @@
 <meta name="theme-color" content="#17132a">
 <meta name="description" content="出包魔法师非官方联机原型：创建法师塔房间，邀请朋友共同试炼。">
 <title>出包魔法师 · 好友房</title>
+<link rel="icon" href="/favicon.svg">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="online.css">
+<script type="importmap">{"imports":{"three":"/vendor/three.module.js"}}</script>
 </head>
 <body class="online-page">
 <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
@@ -55,8 +57,9 @@
   <div class="invite-actions"><button class="primary-button" id="copyInviteBtn" type="button"><span>复制邀请链接</span><span>⧉</span></button><button class="quiet-button" id="leaveWaitingBtn" type="button">离开房间</button></div>
  </section>
  <section class="summoning-room">
+  <canvas class="character-preview-canvas waiting-character-canvas" id="waitingCharacterCanvas" aria-label="法师塔座位的 3D 预览，可点击空闲法师选择座位"></canvas>
   <div class="room-code-seal"><small>ROOM SIGIL</small><strong id="waitingCode">------</strong><span>点击上方按钮分享传送门</span></div>
-  <div class="summoning-ring" aria-hidden="true"><i></i><i></i><i></i></div>
+  <div class="waiting-character-heading"><small>点击空闲的尖帽法师选择座位</small><b data-seat-name>当前位于 1 号座</b></div>
   <div class="room-roster" id="roomRoster"></div>
   <p class="waiting-hint" id="waitingHint" aria-live="polite"></p>
   <div class="waiting-actions"><button class="rules-button" data-help type="button">游戏玩法</button><button class="ready-button" id="readyRoomBtn" type="button">准备完成</button><button class="primary-button" id="startRoomBtn" type="button"><span>开始试炼</span><span>→</span></button></div>
@@ -64,34 +67,40 @@
 </main>
 
 <main id="game" class="game-shell hidden">
- <div class="online-room-strip"><button id="copyGameInvite" type="button">房间 ------ · 复制邀请</button><span id="connectionLabel">正在连接法师塔</span><span id="turnCountdown"></span></div>
  <section class="game-topbar">
   <div><p class="eyebrow" id="modeEyebrow">SCORE ASCENT</p><h2 id="roundTitle">法师塔 · 第 1 轮</h2></div>
+  <div class="online-room-strip"><button id="copyGameInvite" type="button">房间 ------ · 复制邀请</button><span id="connectionLabel">正在连接法师塔</span><span id="turnCountdown"></span></div>
   <div class="game-facts"><span><small>目标</small><b id="goalLabel">8 分</b></span><span><small>牌堆</small><b id="drawCount">0</b></span><span><small>秘密石</small><b id="secretCount">4</b></span></div>
-  <div class="game-topbar-actions"><button class="rules-button" data-help type="button">游戏玩法</button><button class="quiet-button" id="restartBtn" type="button">离开房间</button></div>
+  <div class="game-topbar-actions"><button class="log-toggle-button" id="logToggleBtn" type="button" aria-controls="logPanel" aria-expanded="false"><span aria-hidden="true">☷</span>塔内回响</button><button class="rules-button" data-help type="button">游戏玩法</button><button class="quiet-button" id="restartBtn" type="button">离开房间</button></div>
  </section>
  <div class="game-grid">
   <section class="table-panel">
-   <div class="opponents" id="opponents"></div>
+   <div class="player-hands" id="playerHands"><div class="human-area top-human-area"><div class="human-seat" id="humanSeat"></div><div class="turn-progress human-turn-progress hidden" id="turnProgress" role="progressbar" aria-label="出牌倒计时" aria-valuemin="0"><div class="turn-progress-copy"><span>出牌倒计时</span><b id="turnProgressSeconds">45s</b></div><span class="turn-progress-track"><i id="turnProgressFill"></i></span></div></div><div class="opponents" id="opponents"></div></div>
    <div class="magic-table">
+    <canvas class="magic-table-canvas" id="magicTableCanvas" aria-label="3D 魔法牌桌"></canvas>
+    <div class="table-volume" aria-hidden="true"><div class="table-felt"></div></div>
+    <div class="table-players-3d" id="tablePlayers" aria-hidden="true"></div>
+    <div class="cast-focus" id="castFocus" aria-hidden="true"></div>
     <div class="table-runes">✦　·　✧　·　✦　·　✧　·　✦</div>
     <div class="table-center">
      <div class="pile secret-pile"><span class="pile-stone">?</span><small>秘密石</small><b id="secretPileCount">4</b></div>
      <div class="tower-core"><span id="turnGlyph">✦</span><b id="turnHeadline">等待塔内回响</b><small id="turnDetail">正在同步其他法师</small><div class="die-scene hidden" id="die" role="img" aria-label="魔法骰"><div class="die-cube" id="dieCube"><i class="die-face die-front">1</i><i class="die-face die-back">2</i><i class="die-face die-right">1</i><i class="die-face die-left">3</i><i class="die-face die-top">1</i><i class="die-face die-bottom">2</i></div></div></div>
      <div class="pile draw-pile"><span class="pile-stone">✧</span><small>补充牌堆</small><b id="drawPileCount">0</b></div>
     </div>
-    <div class="public-row"><div><span>公开移除</span><div id="removedStones" class="mini-stones"></div></div><div><span>已施放</span><div id="castStones" class="mini-stones"></div></div></div>
+    <div class="discard-row"><div class="discard-panel"><span>弃牌堆</span><div id="discardPiles" class="discard-piles" aria-label="按法术编号整理的弃牌堆"></div></div></div>
    </div>
-   <div class="human-area"><div class="human-seat" id="humanSeat"></div><div class="turn-progress human-turn-progress hidden" id="turnProgress" role="progressbar" aria-label="出牌倒计时" aria-valuemin="0"><div class="turn-progress-copy"><span>出牌倒计时</span><b id="turnProgressSeconds">45s</b></div><span class="turn-progress-track"><i id="turnProgressFill"></i></span></div></div>
   </section>
-  <aside class="spell-panel"><div class="spell-heading"><p class="eyebrow">SPELL INDEX</p><h3>法术目录</h3><small id="castRule">等待你的回合</small></div><div class="spell-list" id="spellList"></div><button class="stop-button hidden" id="stopBtn" type="button">收手并结束回合 <span>→</span></button></aside>
-  <aside class="log-panel"><div class="log-heading"><span>塔内回响</span><button id="clearLogBtn" type="button">回到最新</button></div><div class="event-log" id="eventLog" aria-live="polite"></div></aside>
+  <button class="spellbook-toggle" id="spellbookToggle" type="button" aria-controls="spellbookPanel" aria-expanded="false"><img src="./assets/ui/spellbook-cover.svg" alt=""><span><b>展开魔法书</b><small>选择施放的法术</small></span></button>
+  <button class="spellbook-backdrop" id="spellbookBackdrop" type="button" aria-label="收起魔法书" tabindex="-1"></button>
+  <aside class="spell-panel" id="spellbookPanel" aria-hidden="true" inert><div class="spellbook-stage"><button class="spellbook-close" id="spellbookCloseBtn" type="button" aria-label="收起魔法书">×</button><div class="spellbook-pages"><section class="spellbook-page spellbook-page-left"><div class="spellbook-page-heading"><p>ARCANA · I—IV</p><h3>源初法术</h3><small>龙、暗影、梦境与月光</small></div><div class="spell-list spell-list-page" id="spellListLeft"></div></section><section class="spellbook-page spellbook-page-right"><div class="spellbook-page-heading"><p>ARCANA · V—VIII</p><h3>元素法术</h3><small id="castRule">等待你的回合</small></div><div class="spell-list spell-list-page" id="spellListRight"></div></section></div><button class="stop-button hidden" id="stopBtn" type="button">收手并结束回合 <span>→</span></button></div></aside>
+   <button class="log-backdrop" id="logBackdrop" type="button" aria-label="关闭塔内回响" tabindex="-1"></button>
+   <aside class="log-panel" id="logPanel" aria-hidden="true" inert><div class="log-heading"><span>塔内回响</span><div class="log-actions"><button id="clearLogBtn" type="button">回到最新</button><button class="log-close-button" id="logCloseBtn" type="button" aria-label="关闭塔内回响">×</button></div></div><div class="event-log" id="eventLog" aria-live="polite"></div></aside>
  </div>
 </main>
 
-<div class="result-layer hidden" id="resultLayer" role="dialog" aria-modal="true" aria-labelledby="resultTitle"><section class="result-card"><p class="eyebrow" id="resultEyebrow">ROUND COMPLETE</p><div class="result-glyph" id="resultGlyph">✦</div><h2 id="resultTitle">本轮结束</h2><p id="resultSummary"></p><div class="score-table" id="scoreTable"></div><button class="primary-button" id="resultBtn" type="button"><span>准备下一轮</span><span>→</span></button><button class="text-button" id="resultExitBtn" type="button">离开房间</button></section></div>
+<div class="result-layer hidden" id="resultLayer" role="dialog" aria-modal="true" aria-labelledby="resultTitle"><section class="result-card"><div class="result-tower-panel" id="resultTower" aria-label="玩家爬塔进度"></div><div class="result-summary-panel"><p class="eyebrow" id="resultEyebrow">ROUND COMPLETE</p><div class="winner-showcase hidden" id="winnerShowcase"><canvas id="winnerCanvas" aria-label="最终获胜者的 3D 庆祝动画"></canvas><span><small>ARCANE CHAMPION</small><b id="winnerName"></b></span></div><div class="result-glyph" id="resultGlyph">✦</div><h2 id="resultTitle">本轮结束</h2><p id="resultSummary"></p><div class="score-table" id="scoreTable"></div><button class="primary-button" id="resultBtn" type="button"><span>准备下一轮</span><span>→</span></button><button class="text-button" id="resultExitBtn" type="button">离开房间</button></div></section></div>
 
-<dialog id="helpDialog" class="help-dialog"><button class="dialog-close" id="helpCloseBtn" type="button" aria-label="关闭">×</button><p class="eyebrow">HOW TO PLAY</p><h2>你唯一看不见的，<br>是自己的法术。</h2><ol><li><b>观察</b><span>你看得见其他法师头顶的法术石，却看不见自己的；结合公开移除区和已施放区进行推理。</span></li><li><b>宣告</b><span>轮到你时选择 1–8 号法术。若自己持有对应法术石则施法成功，否则失去 1 点生命并结束回合；1 号失败时，除常规失去 1 点生命外，额外受到骰子点数的伤害。</span></li><li><b>连咏</b><span>成功后可继续宣告或及时收手；同一回合后续法术编号必须大于或等于上一次成功编号。</span></li><li><b>获胜</b><span>清空自己的法术石，或通过攻击令其他法师生命归零，即可结束本轮并按当前模式结算。</span></li><li><b>联机</b><span>房主设置 2–5 个总席位，真人不足由 AI 补齐；掉线或 45 秒超时的真人会暂时由塔灵代为行动。</span></li></ol><p class="help-foot">积分模式率先达到 8 分获胜；单局模式在一轮结算后结束。房间有效期为 24 小时，刷新页面后可恢复座位。</p></dialog>
+<dialog id="helpDialog" class="help-dialog"><button class="dialog-close" id="helpCloseBtn" type="button" aria-label="关闭">×</button><p class="eyebrow">HOW TO PLAY</p><h2>你唯一看不见的，<br>是自己的法术。</h2><ol><li><b>观察</b><span>你看得见其他法师头顶的法术石，却看不见自己的；结合按编号整理的弃牌堆进行推理。</span></li><li><b>宣告</b><span>轮到你时选择 1–8 号法术。若自己持有对应法术石则施法成功，否则失去 1 点生命并结束回合；1 号失败时，除常规失去 1 点生命外，额外受到骰子点数的伤害。</span></li><li><b>连咏</b><span>成功后可继续宣告或及时收手；同一回合后续法术编号必须大于或等于上一次成功编号。</span></li><li><b>获胜</b><span>清空自己的法术石，或通过攻击令其他法师生命归零，即可结束本轮并按当前模式结算。</span></li><li><b>联机</b><span>房主设置 2–5 个总席位，真人不足由 AI 补齐；掉线或 45 秒超时的真人会暂时由塔灵代为行动。</span></li></ol><p class="help-foot">积分模式率先达到 8 分获胜；单局模式在一轮结算后结束。房间有效期为 24 小时，刷新页面后可恢复座位。</p></dialog>
 
 <div class="toast" id="toast" role="status"></div>
 <script type="module" src="online-ui.js"></script>

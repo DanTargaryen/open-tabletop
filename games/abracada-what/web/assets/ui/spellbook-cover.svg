@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 600">
+ <defs>
+  <linearGradient id="leather" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6f2d35"/><stop offset=".42" stop-color="#37192a"/><stop offset="1" stop-color="#190f1c"/></linearGradient>
+  <radialGradient id="wear"><stop stop-color="#bd715d" stop-opacity=".5"/><stop offset=".48" stop-color="#6f3040" stop-opacity=".16"/><stop offset="1" stop-color="#120b17" stop-opacity=".7"/></radialGradient>
+  <linearGradient id="gold" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#fff0a8"/><stop offset=".25" stop-color="#c99235"/><stop offset=".55" stop-color="#71421f"/><stop offset=".8" stop-color="#e6bc59"/><stop offset="1" stop-color="#68401e"/></linearGradient>
+  <radialGradient id="gem"><stop stop-color="#d9ffff"/><stop offset=".18" stop-color="#74e8df"/><stop offset=".52" stop-color="#207e8b"/><stop offset="1" stop-color="#102d4a"/></radialGradient>
+  <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#020107" flood-opacity=".72"/></filter>
+  <filter id="grain"><feTurbulence baseFrequency=".82" numOctaves="4" seed="17" type="fractalNoise" result="noise"/><feColorMatrix in="noise" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 .2 0"/><feBlend in="SourceGraphic" mode="soft-light"/></filter>
+  <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="8" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <pattern id="stitches" width="22" height="22" patternUnits="userSpaceOnUse"><path d="M2 11h7" stroke="#d19c62" stroke-width="2" stroke-linecap="round" opacity=".52"/></pattern>
+ </defs>
+ <g filter="url(#shadow)">
+  <path d="M83 35h307q35 0 35 35v460q0 35-35 35H83q-28 0-28-28V63q0-28 28-28Z" fill="#130d17"/>
+  <path d="M76 28h303q31 0 31 31v458q0 31-31 31H76q-25 0-25-25V53q0-25 25-25Z" fill="url(#leather)" stroke="#9a623b" stroke-width="5" filter="url(#grain)"/>
+  <path d="M82 49h284q23 0 23 23v432q0 23-23 23H82q-10 0-10-10V59q0-10 10-10Z" fill="url(#wear)" stroke="#b37b4a" stroke-opacity=".46" stroke-width="2"/>
+  <path d="M103 68h252q15 0 15 15v400q0 15-15 15H103q-12 0-12-12V80q0-12 12-12Z" fill="none" stroke="url(#gold)" stroke-width="7"/>
+  <path d="M109 79h240q10 0 10 10v388q0 10-10 10H109q-7 0-7-7V86q0-7 7-7Z" fill="none" stroke="#f0d47c" stroke-opacity=".3" stroke-width="2"/>
+  <path d="M57 48h42v481H57z" fill="#221221" stroke="#87502f" stroke-width="3"/>
+  <path d="M65 55h25v467H65z" fill="url(#stitches)" opacity=".75"/>
+  <g fill="url(#gold)" stroke="#2b1520" stroke-width="2">
+   <path d="M74 28h86v23h-53v53H74zM326 28h53q31 0 31 31v52h-28V67q0-16-16-16h-40zM51 467h28v58h65v23H76q-25 0-25-25zM351 525h15q16 0 16-16v-50h28v58q0 31-31 31h-28z"/>
+   <path d="M88 94l24-24 35 1-34 13-13 33zM374 94l-24-24-35 1 34 13 13 33zM88 480l24 24 35-1-34-13-13-33zM374 480l-24 24-35-1 34-13 13-33z" opacity=".86"/>
+  </g>
+  <g transform="translate(235 286)">
+   <circle r="119" fill="#160f1d" fill-opacity=".58" stroke="url(#gold)" stroke-width="8"/>
+   <circle r="99" fill="none" stroke="#e4bd64" stroke-opacity=".42" stroke-width="2" stroke-dasharray="4 11"/>
+   <path d="M0-105 18-65 61-84 51-39 98-31 64 3 101 35 53 42 60 91 17 68 0 111-18 68-61 91-53 42-101 35-64 3-98-31-51-39-61-84-18-65Z" fill="none" stroke="url(#gold)" stroke-width="5" stroke-linejoin="round"/>
+   <circle r="61" fill="#25152b" stroke="#b6813f" stroke-width="4"/>
+   <path d="M0-48 13-15 48 0 13 15 0 48-13 15-48 0-13-15Z" fill="url(#gold)"/>
+   <circle r="25" fill="url(#gem)" stroke="#e8d88c" stroke-width="5" filter="url(#glow)"/>
+   <circle cx="-8" cy="-9" r="7" fill="#efffff" opacity=".7"/>
+  </g>
+  <g fill="none" stroke="#ddb65c" stroke-width="3" opacity=".62">
+   <path d="M122 139q38-43 76-12M348 139q-38-43-76-12M122 433q38 43 76 12M348 433q-38 43-76 12"/>
+   <path d="M132 151q15-26 39-21-8 20-39 21Zm206 0q-15-26-39-21 8 20 39 21ZM132 421q15 26 39 21-8-20-39-21Zm206 0q-15 26-39 21 8 20 39 21Z"/>
+  </g>
+  <path d="M409 214h32q15 0 15 15v106q0 15-15 15h-32z" fill="url(#gold)" stroke="#321b1c" stroke-width="4"/>
+  <circle cx="432" cy="282" r="11" fill="url(#gem)" stroke="#f0dc91" stroke-width="3"/>
+ </g>
+</svg>
