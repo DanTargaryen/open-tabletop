@@ -20,6 +20,17 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offse
 .icon-button,.quiet-button{border:1px solid var(--line);background:rgba(255,255,255,.035);cursor:pointer;transition:.2s ease}
 .icon-button{width:36px;height:36px;border-radius:50%;font:bold 16px Georgia,serif}
 .icon-button:hover,.quiet-button:hover{border-color:rgba(240,203,120,.5);background:rgba(240,203,120,.08)}
+.audio-toggle-button{display:grid;place-items:center;flex:0 0 auto;border:1px solid var(--line);color:var(--ink);background:rgba(255,255,255,.035);cursor:pointer;transition:border-color .2s ease,background .2s ease,color .2s ease,box-shadow .2s ease}
+.audio-toggle-button:hover{border-color:rgba(240,203,120,.58);color:var(--gold);background:rgba(240,203,120,.09);box-shadow:0 0 18px rgba(240,203,120,.1)}
+.audio-toggle-button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.audio-toggle-button svg{width:19px;height:19px;overflow:visible}
+.audio-toggle-button .audio-speaker{fill:currentColor;stroke:none}
+.audio-toggle-button .audio-wave,.audio-toggle-button .audio-muted-mark{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:opacity .18s ease,transform .18s ease}
+.audio-toggle-button .audio-muted-mark{opacity:0;transform:scale(.72);transform-origin:center}
+.audio-toggle-button.is-muted{color:var(--muted)}
+.audio-toggle-button.is-muted .audio-wave{opacity:0;transform:scale(.72)}
+.audio-toggle-button.is-muted .audio-muted-mark{opacity:1;transform:scale(1)}
+.game-topbar-actions>.audio-toggle-button{width:38px;min-height:38px;padding:0;border-radius:11px;background:rgba(255,255,255,.035)}
 .lobby-shell{width:min(1440px,100%);min-height:calc(100vh - 78px);margin:auto;padding:clamp(44px,7vh,90px) clamp(22px,6vw,86px);display:grid;grid-template-columns:minmax(300px,1.04fr) minmax(330px,.78fr) minmax(240px,.62fr);align-items:center;gap:clamp(32px,5vw,82px)}
 .eyebrow{margin:0;color:var(--gold);font-size:10px;letter-spacing:.24em;text-transform:uppercase}
 .lobby-copy>.eyebrow{display:flex;align-items:center;gap:10px}
@@ -354,6 +365,11 @@ body.game-active{height:100vh;overflow:hidden}
  .game-shell .magic-table.webgl-ready .table-center{top:48%;width:84%}.game-shell .magic-table.webgl-ready .tower-core{transform:translateY(-58px)}.game-shell .magic-table.webgl-ready .pile{transform:translateY(94px)}
  .log-panel{top:7px;right:7px;bottom:7px;width:calc(100% - 14px);border-radius:20px}.log-heading{height:54px;padding:0 15px}.event-log{padding:12px 15px 20px}
  .online-room-strip{top:104px;left:7px;width:calc(100% - 14px);min-height:27px;padding:4px 8px;border-radius:9px}.online-room-strip span:nth-child(2){display:none}.online-page .player-hands{top:137px}.online-page .spell-panel{top:auto}
+}
+
+@media(max-width:680px){
+ .game-topbar-actions>.audio-toggle-button{width:30px;min-height:30px;border-radius:7px}
+ .game-topbar-actions>.audio-toggle-button svg{width:15px;height:15px}
 }
 
 .player-hands{right:18px}
