@@ -34,3 +34,9 @@ All 55 local SVG character illustrations come from **The Artificial — Pokémon
 ## Abracada rules prototype
 
 `games/abracada-what/` is an unofficial rules and interaction prototype inspired by the tabletop game *Abracada...What?*, designed by Gary Kim and originally published by Korea Boardgames. The original game name, localized title, rules terminology, and related rights remain with their respective owners. This repository does not include or license any official illustrations, logos, scans, rulebook text, or other publisher assets. All visual assets in the prototype are original HTML, CSS and SVG under the root MIT license. Inclusion does not imply endorsement, authorization, or affiliation.
+
+The 3D table renderer uses [Three.js](https://github.com/mrdoob/three.js), copyright (c) 2010-2026 Three.js Authors, under the MIT license. The dependency is installed from npm as `three@0.186.0`; its license is distributed with the package.
+
+The optimized 3D characters and animation clips under `games/abracada-what/web/assets/3d/characters/` and `games/abracada-what/web/assets/3d/animations/` come from [KayKit Character Pack: Adventurers 2.0](https://kaylousberg.itch.io/kaykit-adventurers) and [KayKit Character Animations 1.1](https://kaylousberg.itch.io/kaykit-character-animations) by Kay Lousberg. The selected dungeon props under `games/abracada-what/web/assets/3d/dungeon/` come from [KayKit Dungeon Pack 1.1](https://kaylousberg.itch.io/kaykit-dungeon-pack). These assets are dedicated under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/); attribution is included for provenance.
+
+The particle textures under `games/abracada-what/web/assets/3d/particles/` are selected from [Kenney Particle Pack 1.0](https://kenney.nl/assets/particle-pack) by Kenney. They are dedicated under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/); attribution is included for provenance.

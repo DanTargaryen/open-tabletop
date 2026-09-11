@@ -1,5 +1,6 @@
 import {AbracadaGame,AI_PROFILES,SPELLS} from './engine.js';
-import {showTowerProgress} from './tower-progress.js';
+import {renderTowerProgress,showTowerProgress} from './tower-progress.js';
+import {createWinnerShowcase} from './winner-showcase.js';
 
 const $=id=>document.getElementById(id);
 const esc=value=>String(value).replace(/[&<>'"]/g,character=>({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' })[character]);
@@ -16,11 +17,50 @@ let resultTimer=null;
 let busy=false;
 let actionEpoch=0;
 let dieRolling=false;
+let magicTable3d=null;
+const winnerShowcase3d=createWinnerShowcase($('winnerCanvas'));
+const magicTableReady=import('./three-table.js').then(({createMagicTable3D})=>{
+  magicTable3d=createMagicTable3D($('magicTableCanvas'));
+  if(magicTable3d&&view)magicTable3d.sync(view);
+  return magicTable3d;
+}).catch(error=>{console.warn('3D magic table could not start',error);return null;});
 
-function lifePips(life){return `<span class="life-pips" aria-label="${life} 点生命">${Array.from({length:6},(_,index)=>`<i class="${index<life?'live':''}"></i>`).join('')}</span>`;}
+function setLogOpen(open){
+  const panel=$('logPanel'),backdrop=$('logBackdrop'),toggle=$('logToggleBtn');
+  panel.classList.toggle('open',open);backdrop.classList.toggle('open',open);panel.inert=!open;
+  panel.setAttribute('aria-hidden',String(!open));toggle.setAttribute('aria-expanded',String(open));
+  if(open){$('eventLog').scrollTop=$('eventLog').scrollHeight;setTimeout(()=>{if(panel.classList.contains('open'))$('logCloseBtn').focus();},320);}
+  else if(document.activeElement===$('logCloseBtn'))toggle.focus();
+}
+
+function setSpellbookOpen(open){
+  const panel=$('spellbookPanel'),backdrop=$('spellbookBackdrop'),toggle=$('spellbookToggle');
+  panel.classList.toggle('open',open);backdrop.classList.toggle('open',open);panel.inert=!open;
+  panel.setAttribute('aria-hidden',String(!open));toggle.setAttribute('aria-expanded',String(open));
+  if(open)setTimeout(()=>{if(panel.classList.contains('open'))$('spellbookCloseBtn').focus({preventScroll:true});},480);
+  else if(document.activeElement===$('spellbookCloseBtn'))toggle.focus({preventScroll:true});
+}
+
+function lifePips(life){return `<span class="life-meter" aria-label="${life} 点生命"><span class="life-pips">${Array.from({length:6},(_,index)=>`<i class="${index<life?'live':''}"></i>`).join('')}</span><b>${life}/6</b></span>`;}
+function sceneLifePips(life){return `<span class="table-life-pips" aria-label="${life} 点生命">${Array.from({length:6},(_,index)=>`<i class="${index<life?'live':''}"></i>`).join('')}</span>`;}
 function spellArt(spell,className=''){return `<img class="spell-art${className?` ${className}`:''}" src="./assets/spells/spell-${spell}.svg" alt="" aria-hidden="true">`;}
 function stone(spell,{back=false,small=false}={}){const info=spell?SPELLS[spell-1]:null;return `<span class="magic-stone${back?' back':''}${small?' small':''}"${info?` title="${esc(info.name)}"`:''}>${!back&&info?spellArt(info.id):''}<b>${back?'?':info?.id||'?'}</b>${!back&&info?`<small>${esc(info.icon)}</small>`:''}</span>`;}
-function miniStones(values){return values.length?values.map(value=>`<span class="mini-stone" title="${esc(SPELLS[value-1].name)}">${value}</span>`).join(''):'<span class="empty-label">暂无</span>';}
+function discardPiles(values){
+  const counts=Array.from({length:8},(_,index)=>values.filter(value=>value===index+1).length);
+  const piles=counts.flatMap((count,index)=>count?[{spell:index+1,count}]:[]);
+  return piles.length?piles.map(({spell,count})=>`<span class="discard-group" title="${esc(SPELLS[spell-1].name)}，共 ${count} 张"><span class="discard-stack">${Array.from({length:Math.min(count,3)},(_,stackIndex)=>`<img src="./assets/spells/spell-${spell}.svg" alt="" aria-hidden="true" style="--stack-index:${stackIndex};--stack-angle:${stackIndex-1}deg">`).join('')}</span><b>×${count}</b></span>`).join(''):'<span class="empty-label">暂无弃牌</span>';
+}
+function sceneHand(player){const middle=(player.rack.length-1)/2;return `<div class="table-hand-3d">${player.rack.map((spell,index)=>`<span class="table-card-3d${spell?' face':' back'}" style="--card-offset:${index-middle}">${spell?spellArt(spell):'<b>?</b>'}</span>`).join('')}</div>`;}
+function animateTopHandChanges(before,after){
+  if(!before||!after||before.round!==after.round)return;
+  for(const player of after.players){
+    const previous=before.players.find(candidate=>candidate.id===player.id);
+    if(!previous||JSON.stringify(previous.rack)===JSON.stringify(player.rack))continue;
+    const seat=playerSeat(player.id);
+    seat?.classList.add('hand-updated');
+    setTimeout(()=>seat?.classList.remove('hand-updated'),320);
+  }
+}
 
 function renderLineup(){
   const bots=AI_PROFILES.slice(0,setup.playerCount-1);
@@ -41,13 +81,17 @@ function choosePlayers(playerCount){
 
 async function startGame(){
   cancelVisuals();
+  setLogOpen(false);
+  setSpellbookOpen(false);
   clearTimeout(botTimer);
   clearTimeout(resultTimer);
   game=new AbracadaGame({playerCount:setup.playerCount,mode:setup.mode});
   game.startGame();
   $('lobby').classList.add('hidden');
   $('game').classList.remove('hidden');
+  document.body.classList.add('game-active');
   $('resultLayer').classList.add('hidden');
+  winnerShowcase3d?.hide();
   const showingTower=setup.mode==='score';
   busy=showingTower;
   refresh({schedule:!showingTower});
@@ -62,20 +106,24 @@ async function startGame(){
 
 function returnToLobby(){
   cancelVisuals();
+  setLogOpen(false);
+  setSpellbookOpen(false);
   clearTimeout(botTimer);
   clearTimeout(resultTimer);
   game=null;
   view=null;
   busy=false;
   $('resultLayer').classList.add('hidden');
+  winnerShowcase3d?.hide();
   $('game').classList.add('hidden');
   $('lobby').classList.remove('hidden');
+  document.body.classList.remove('game-active');
 }
 
 function renderOpponents(){
   $('opponents').innerHTML=view.players.slice(1).map(player=>{
     const active=view.phase==='casting'&&view.activeIndex===player.id;
-    return `<article class="player-seat${active?' active':''}${player.life===0?' defeated':''}" data-player-id="${player.id}" style="--seat-color:${player.color}"><div class="seat-top"><span class="avatar" style="--avatar:${player.color}">${esc(player.name[0])}</span><span class="seat-name"><b>${esc(player.name)}</b><small>${esc(player.title)}</small></span>${view.mode==='score'?`<span class="score-badge">${player.score} 分</span>`:''}</div><div class="life-row"><span>生命 ${player.life}/6</span>${lifePips(player.life)}</div><div class="seat-stones">${player.rack.map(value=>stone(value)).join('')||'<span class="empty-label">法术石已清空</span>'}</div><span class="secret-badge">◇ 秘密石 ${player.secrets.length}</span></article>`;
+    return `<article class="player-seat${active?' active':''}${player.life===0?' defeated':''}" data-player-id="${player.id}" style="--seat-color:${player.color}"><div class="seat-top"><span class="avatar" style="--avatar:${player.color}">${esc(player.name[0])}</span><span class="seat-name"><b>${esc(player.name)}</b><small>${esc(player.title)}</small></span>${view.mode==='score'?`<span class="score-badge">${player.score} 分</span>`:''}<span class="seat-vitals">${lifePips(player.life)}</span></div><div class="seat-stones">${player.rack.map(value=>stone(value)).join('')||'<span class="empty-label">法术石已清空</span>'}</div><span class="secret-badge">◇ 秘密石 ${player.secrets.length}</span></article>`;
   }).join('');
 }
 
@@ -85,17 +133,31 @@ function renderHuman(){
   const secrets=player.secrets.length?player.secrets.map(value=>`${value} · ${SPELLS[value-1].name}`).join(' / '):'暂无秘密石';
   $('humanSeat').className=`human-seat${active?' active':''}${player.life===0?' defeated':''}`;
   $('humanSeat').dataset.playerId='0';
-  $('humanSeat').innerHTML=`<div class="seat-top"><span class="avatar" style="--avatar:${player.color}">你</span><span class="human-details"><b>${esc(player.name)}</b><small>${active?'正在施法':'等待回合'}</small></span></div><div class="human-rack">${player.rack.map(()=>stone(null,{back:true})).join('')||'<span class="empty-label">法术石已清空</span>'}</div><div class="human-meta">生命 <b>${player.life}/6</b>${lifePips(player.life)}${view.mode==='score'?`<span class="human-secrets">${player.score} 分 · ${esc(secrets)}</span>`:`<span class="human-secrets">${esc(secrets)}</span>`}</div>`;
+  $('humanSeat').innerHTML=`<div class="seat-top"><span class="avatar" style="--avatar:${player.color}">你</span><span class="seat-name"><b>${esc(player.name)}</b><small>${active?'正在施法':'等待回合'}</small></span>${view.mode==='score'?`<span class="score-badge">${player.score} 分</span>`:''}<span class="seat-vitals">${lifePips(player.life)}</span></div><div class="seat-stones human-rack">${player.rack.map(()=>stone(null,{back:true})).join('')||'<span class="empty-label">法术石已清空</span>'}</div><span class="secret-badge">◇ ${esc(secrets)}</span>`;
+}
+
+function renderTablePlayers(){
+  const count=view.players.length;
+  $('playerHands').style.setProperty('--player-count',String(count));
+  $('tablePlayers').innerHTML=view.players.map((player,index)=>{
+    const angle=Math.PI/2+index*Math.PI*2/count;
+    const x=50+Math.cos(angle)*39;
+    const y=47+Math.sin(angle)*30;
+    const scale=.72+y*.0045;
+    const active=view.phase==='casting'&&view.activeIndex===player.id;
+    return `<div class="table-player-3d${index===0?' self':''}${active?' active':''}${player.life===0?' defeated':''}" data-scene-player-id="${player.id}" style="--seat-x:${x.toFixed(2)}%;--seat-y:${y.toFixed(2)}%;--seat-scale:${scale.toFixed(3)};--seat-depth:${Math.round(y)};--seat-color:${player.color}">${sceneHand(player)}<span class="table-avatar" style="--avatar:${player.color}">${index===0?'你':esc(player.name[0])}</span><small>${esc(player.name)}</small>${sceneLifePips(player.life)}</div>`;
+  }).join('');
 }
 
 function renderTable(){
+  renderTablePlayers();
   $('drawCount').textContent=String(view.drawPileCount);
   $('secretCount').textContent=String(view.secretPoolCount);
   $('drawPileCount').textContent=String(view.drawPileCount);
   $('secretPileCount').textContent=String(view.secretPoolCount);
-  $('removedStones').innerHTML=miniStones(view.publicRemoved);
-  $('castStones').innerHTML=miniStones([...view.castStones].sort((left,right)=>left-right));
-  if(!dieRolling)setDie(view.die);
+  $('discardPiles').innerHTML=discardPiles([...view.publicRemoved,...view.castStones]);
+  magicTable3d?.sync(view);
+  if(!dieRolling)setDie(null);
   if(view.phase!=='casting'){
     $('turnGlyph').textContent='✦';
     $('turnHeadline').textContent='本轮已经结束';
@@ -117,6 +179,7 @@ function renderTable(){
 function setDie(value){
   const die=$('die');
   const cube=$('dieCube');
+  magicTable3d?.setDie(value);
   if(value===null||value===undefined){
     die.classList.add('hidden');
     die.removeAttribute('data-value');
@@ -135,6 +198,7 @@ function cancelVisuals(){
   busy=false;
   dieRolling=false;
   document.body.classList.remove('action-running');
+  magicTable3d?.cancelAnimations();
   document.querySelectorAll('.motion-stone,.failed-spell-burst,.life-change').forEach(element=>element.remove());
   document.querySelectorAll('.spell-failed,.spell-fizzle').forEach(element=>element.classList.remove('spell-failed','spell-fizzle'));
   $('dieCube')?.getAnimations().forEach(animation=>animation.cancel());
@@ -143,6 +207,14 @@ function cancelVisuals(){
 
 async function animateDie(value){
   if(![1,2,3].includes(value))return;
+  const table=await magicTableReady;
+  if(table){
+    dieRolling=true;
+    await table.rollDie(value,{hold:INFORMATION_HOLD_MS});
+    dieRolling=false;
+    table.setDie(null);
+    return;
+  }
   const die=$('die');
   const cube=$('dieCube');
   dieRolling=true;
@@ -151,8 +223,9 @@ async function animateDie(value){
   die.setAttribute('aria-label','魔法骰正在投掷');
   if(reducedMotion.matches){
     setDie(value);
-    dieRolling=false;
     await wait(INFORMATION_HOLD_MS);
+    setDie(null);
+    dieRolling=false;
     return;
   }
   const finalTransforms={1:'rotateX(720deg) rotateY(720deg) rotateZ(0deg)',2:'rotateX(720deg) rotateY(900deg) rotateZ(0deg)',3:'rotateX(720deg) rotateY(810deg) rotateZ(0deg)'};
@@ -167,6 +240,7 @@ async function animateDie(value){
   dieRolling=false;
   setDie(value);
   await wait(INFORMATION_HOLD_MS);
+  setDie(null);
 }
 
 function elementCenter(element){
@@ -175,9 +249,9 @@ function elementCenter(element){
   return {x:bounds.left+bounds.width/2,y:bounds.top+bounds.height/2};
 }
 
-function playerSeat(playerId){
-  return document.querySelector(`[data-player-id="${playerId}"]`);
-}
+function playerSeat(playerId){return document.querySelector(`[data-player-id="${playerId}"]`);}
+function scenePlayer(playerId){return document.querySelector(`[data-scene-player-id="${playerId}"]`);}
+function sceneHandFor(playerId){return scenePlayer(playerId)?.querySelector('.table-hand-3d');}
 
 async function flyStone(source,target,{spell=null,back=false,secret=false,delay=0,hold=0}={}){
   const origin=elementCenter(source);
@@ -195,13 +269,15 @@ async function flyStone(source,target,{spell=null,back=false,secret=false,delay=
   const deltaX=destination.x-origin.x;
   const deltaY=destination.y-origin.y;
   const animation=token.animate([
-    {transform:'translate3d(0,0,0) rotate(-10deg) scale(.65)',opacity:0},
-    {transform:'translate3d(0,-8px,0) rotate(-6deg) scale(1)',opacity:1,offset:.18},
-    {transform:`translate3d(${deltaX*.56}px,${deltaY*.46-38}px,0) rotate(-2deg) scale(1.08)`,opacity:1,offset:.64},
-    {transform:`translate3d(${deltaX}px,${deltaY}px,0) rotate(8deg) scale(.82)`,opacity:1},
+    {transform:'perspective(420px) translate3d(0,0,0) rotateX(68deg) rotateY(-34deg) rotateZ(-10deg) scale(.65)',opacity:0},
+    {transform:'perspective(420px) translate3d(0,-9px,34px) rotateX(22deg) rotateY(-18deg) rotateZ(-6deg) scale(1)',opacity:1,offset:.18},
+    {transform:`perspective(420px) translate3d(${deltaX*.56}px,${deltaY*.46-42}px,58px) rotateX(-18deg) rotateY(28deg) rotateZ(-2deg) scale(1.12)`,opacity:1,offset:.64},
+    {transform:`perspective(420px) translate3d(${deltaX}px,${deltaY}px,0) rotateX(4deg) rotateY(-8deg) rotateZ(8deg) scale(.82)`,opacity:1},
   ],{duration:480,delay,easing:'cubic-bezier(.2,.76,.2,1)',fill:'forwards'});
   await animation.finished.catch(()=>{});
+  if(target.id==='castFocus')target.classList.add('cast-arriving');
   if(hold)await wait(hold);
+  target.classList.remove('cast-arriving');
   token.remove();
 }
 
@@ -230,16 +306,34 @@ async function animateFailedCast(source,spell){
   core.classList.remove('spell-fizzle');
 }
 
-function animateCast(action){
+async function animateCast(action){
   if(action.type!=='cast')return Promise.resolve();
-  const source=playerSeat(action.playerId);
-  if(!action.success)return animateFailedCast(source,action.spell);
+  const table=await magicTableReady;
+  if(table)return table.cast({...action,hold:INFORMATION_HOLD_MS});
+  const scene=scenePlayer(action.playerId);
+  if(!action.success)return animateFailedCast(scene||playerSeat(action.playerId),action.spell);
   if(reducedMotion.matches)return wait(INFORMATION_HOLD_MS);
-  return flyStone(source,$('castStones'),{spell:action.spell,hold:INFORMATION_HOLD_MS});
+  return flyStone(sceneHandFor(action.playerId)||scene,$('castFocus'),{spell:action.spell,hold:INFORMATION_HOLD_MS});
+}
+
+async function animateSpellEffect(action){
+  if(action.type!=='cast'||!action.success)return;
+  const table=await magicTableReady;
+  await table?.spellEffect(action);
 }
 
 async function animateDraws(before,after,playerId){
-  const target=playerSeat(playerId);
+  const table=await magicTableReady;
+  if(table){
+    const drawCount=Math.max(0,before.drawPileCount-after.drawPileCount);
+    const secretCount=Math.max(0,before.secretPoolCount-after.secretPoolCount);
+    const animations=[];
+    for(let index=0;index<drawCount;index++)animations.push(table.draw({playerId,delay:index*90}));
+    for(let index=0;index<secretCount;index++)animations.push(table.draw({playerId,secret:true,delay:index*90}));
+    await Promise.all(animations);
+    return;
+  }
+  const target=sceneHandFor(playerId)||scenePlayer(playerId);
   const drawSource=document.querySelector('.draw-pile .pile-stone');
   const secretSource=document.querySelector('.secret-pile .pile-stone');
   const drawCount=Math.max(0,before.drawPileCount-after.drawPileCount);
@@ -255,9 +349,11 @@ async function animateDraws(before,after,playerId){
 }
 
 async function animateLifeChanges(changes=[]){
+  const table=await magicTableReady;
+  if(table){await Promise.all(changes.filter(change=>change.amount!==0).map(change=>table.lifeChange(change)));return;}
   if(reducedMotion.matches)return;
   const animations=changes.filter(change=>change.amount!==0).map(async change=>{
-    const seat=playerSeat(change.playerId);
+    const seat=scenePlayer(change.playerId)||playerSeat(change.playerId);
     const center=elementCenter(seat);
     if(!seat||!center)return;
     const healing=change.amount>0;
@@ -292,8 +388,13 @@ function dragonFailureStages(action,before,after){
   return {
     rolledDamage,
     normalDamage,
-    intermediate:{...before,players:before.players.map(player=>player.id===action.playerId?{...player,life:player.life-rolledDamage}:player)},
+    intermediatePlayers:after.players.map(player=>player.id===action.playerId?{...player,life:beforePlayer.life-rolledDamage}:player),
   };
+}
+
+function actionLifeView(previous,next,players=next?.players){
+  if(!previous||!next||previous.round!==next.round||previous.phase!=='casting')return next;
+  return {...next,phase:previous.phase,activeIndex:previous.activeIndex,players};
 }
 
 function newlyRevealedSecret(before,after,playerId){
@@ -317,23 +418,28 @@ async function performAction(execute,messageForAction){
     if(epoch!==actionEpoch||!game)return;
     if(action.roll!==null&&action.roll!==undefined)await animateDie(action.roll);
     if(epoch!==actionEpoch||!game)return;
+    await animateSpellEffect(action);
+    if(epoch!==actionEpoch||!game)return;
     const dragonStages=dragonFailureStages(action,before,after);
     if(dragonStages){
-      view=dragonStages.intermediate;
+      view=actionLifeView(before,after,dragonStages.intermediatePlayers);
       render();
       await animateLifeChanges([{playerId:action.playerId,amount:-dragonStages.rolledDamage}]);
       await wait(INFORMATION_HOLD_MS);
-      view=after;
+      view=actionLifeView(before,after);
       render();
       await animateLifeChanges([{playerId:action.playerId,amount:-dragonStages.normalDamage}]);
     }else{
-      view=after;
+      view=actionLifeView(before,after);
       render();
       await animateLifeChanges(action.lifeChanges);
     }
+    view=after;
+    render();
     await animateDraws(before,after,action.playerId);
+    animateTopHandChanges(before,after);
     const secret=newlyRevealedSecret(before,after,action.playerId);
-    if(secret!==null)toast(`你获得的秘宝石是 ${secret} 号。`);
+    if(secret!==null)toast(`你获得的秘密石是 ${secret} 号。`);
   }catch(error){
     toast(error.message);
   }finally{
@@ -347,15 +453,16 @@ async function performAction(execute,messageForAction){
 
 function renderSpells(){
   const humanTurn=view.phase==='casting'&&view.activeIndex===0&&!busy;
-  const publicValues=[...view.publicRemoved,...view.castStones];
   $('castRule').textContent=view.lastSuccessfulSpell===null?'首次施法可选择任意编号':`连咏限制：只能选择 ${view.minimumSpell}–8 号`;
-  $('spellList').innerHTML=SPELLS.map(spell=>{
+  const buttons=SPELLS.map(spell=>{
     const illegal=spell.id<view.minimumSpell;
     const disabled=!humanTurn||illegal;
-    const publicCount=publicValues.filter(value=>value===spell.id).length;
-    return `<button class="spell-button${illegal?' illegal':''}" data-spell="${spell.id}" type="button" ${disabled?'disabled':''} title="${esc(spell.description)}"><span class="spell-symbol">${spellArt(spell.id)}</span><span class="spell-copy"><b>${esc(spell.name)}</b><small>${esc(spell.tag)} · ${esc(spell.description)}</small></span><span class="spell-number">${spell.id}<small>公开 ${publicCount}/${spell.copies}</small></span></button>`;
-  }).join('');
-  document.querySelectorAll('[data-spell]').forEach(button=>button.addEventListener('click',()=>humanCast(Number(button.dataset.spell))));
+    return `<button class="spell-button${illegal?' illegal':''}" data-spell="${spell.id}" type="button" ${disabled?'disabled':''} title="${esc(spell.description)}"><span class="spell-symbol">${spellArt(spell.id)}</span><span class="spell-copy"><span class="spell-title"><span class="spell-number">${spell.id}</span><b>${esc(spell.name)}</b></span><small>${esc(spell.tag)} · ${esc(spell.description)}</small></span></button>`;
+  });
+  $('spellListLeft').innerHTML=buttons.slice(0,4).join('');
+  $('spellListRight').innerHTML=buttons.slice(4).join('');
+  $('spellbookToggle').classList.toggle('ready',humanTurn);
+  document.querySelectorAll('[data-spell]').forEach(button=>button.addEventListener('click',()=>{setSpellbookOpen(false);humanCast(Number(button.dataset.spell));}));
   $('stopBtn').classList.toggle('hidden',!view.canStop||busy);
 }
 
@@ -414,13 +521,14 @@ function scheduleBot(){
 
 async function showResult(){
   if(!game||!view.roundResult)return;
-  if(view.mode==='score'){
-    const round=view.round;
-    const afterScores=view.players.map(player=>player.score);
-    const beforeScores=afterScores.map((score,id)=>score-(view.roundResult.points[id]||0));
-    await showTowerProgress({players:view.players,fromScores:beforeScores,toScores:afterScores,title:`第 ${round} 轮攀登结算`,subtitle:'本轮积分推动法师向塔顶前进'});
-    if(!game||view.round!==round||!view.roundResult)return;
-  }
+  setLogOpen(false);
+  setSpellbookOpen(false);
+  $('resultLayer').classList.add('hidden');
+  const table=await magicTableReady;
+  document.body.classList.add('round-outcome-playing');
+  try{await table?.roundOutcome(view.roundResult);}
+  finally{document.body.classList.remove('round-outcome-playing');}
+  if(!game||!view.roundResult)return;
   const finished=view.phase==='game-complete';
   const humanWon=(finished?view.gameWinnerIds:view.roundResult.winnerIds).includes(0);
   $('resultEyebrow').textContent=finished?'TRIAL COMPLETE':'ROUND COMPLETE';
@@ -432,6 +540,21 @@ async function showResult(){
     const winner=view.gameWinnerIds.includes(player.id);
     return `<div class="score-row"><span>${esc(player.name)} · 生命 ${player.life}</span><strong>${winner?'胜出':'—'}</strong><b>${player.secrets.length?'◇'.repeat(player.secrets.length):''}</b></div>`;
   }).join('');
+  const resultCard=$('resultLayer').querySelector('.result-card');
+  const scoreMode=view.mode==='score';
+  resultCard.classList.toggle('score-result',scoreMode);
+  const highestScore=Math.max(...view.players.map(player=>player.score));
+  const champions=finished&&scoreMode&&highestScore>=8?view.players.filter(player=>player.score===highestScore):[];
+  const champion=champions.length===1?champions[0]:null;
+  resultCard.classList.toggle('game-result',Boolean(champion));
+  $('winnerShowcase').classList.toggle('hidden',!champion);
+  if(champion){$('winnerName').textContent=`${champion.name} · ${champion.score} 分`;winnerShowcase3d?.show(champion);}
+  else winnerShowcase3d?.hide();
+  if(scoreMode){
+    const afterScores=view.players.map(player=>player.score);
+    const beforeScores=afterScores.map((score,id)=>score-(view.roundResult.points[id]||0));
+    renderTowerProgress($('resultTower'),{players:view.players,fromScores:beforeScores,toScores:afterScores});
+  }else{$('resultTower').replaceChildren();delete $('resultTower').dataset.towerKey;}
   $('resultBtn').querySelector('span').textContent=finished?'再玩一局':'进入下一轮';
   $('resultLayer').classList.remove('hidden');
 }
@@ -439,6 +562,7 @@ async function showResult(){
 function resultAction(){
   if(!game)return;
   $('resultLayer').classList.add('hidden');
+  winnerShowcase3d?.hide();
   if(view.phase==='round-complete'){
     game.nextRound();
     refresh();
@@ -456,14 +580,23 @@ document.querySelectorAll('[data-mode]').forEach(button=>button.addEventListener
 document.querySelectorAll('[data-players]').forEach(button=>button.addEventListener('click',()=>choosePlayers(Number(button.dataset.players))));
 $('startBtn').addEventListener('click',startGame);
 $('restartBtn').addEventListener('click',returnToLobby);
-$('stopBtn').addEventListener('click',humanStop);
+$('stopBtn').addEventListener('click',()=>{setSpellbookOpen(false);humanStop();});
 $('resultBtn').addEventListener('click',resultAction);
 $('resultExitBtn').addEventListener('click',returnToLobby);
+$('logToggleBtn').addEventListener('click',()=>{setSpellbookOpen(false);setLogOpen(!$('logPanel').classList.contains('open'));});
+$('logCloseBtn').addEventListener('click',()=>setLogOpen(false));
+$('logBackdrop').addEventListener('click',()=>setLogOpen(false));
+$('spellbookToggle').addEventListener('click',()=>{setLogOpen(false);setSpellbookOpen(!$('spellbookPanel').classList.contains('open'));});
+$('spellbookCloseBtn').addEventListener('click',()=>setSpellbookOpen(false));
+$('spellbookBackdrop').addEventListener('click',()=>setSpellbookOpen(false));
 $('clearLogBtn').addEventListener('click',()=>$('eventLog').scrollTo({top:$('eventLog').scrollHeight,behavior:'smooth'}));
-document.querySelectorAll('[data-help]').forEach(button=>button.addEventListener('click',()=>$('helpDialog').showModal()));
+document.querySelectorAll('[data-help]').forEach(button=>button.addEventListener('click',()=>{setLogOpen(false);setSpellbookOpen(false);$('helpDialog').showModal();}));
 $('helpCloseBtn').addEventListener('click',()=>$('helpDialog').close());
 $('helpDialog').addEventListener('click',event=>{if(event.target===$('helpDialog'))$('helpDialog').close();});
 document.addEventListener('keydown',event=>{
+  if(event.key==='Escape'&&$('logPanel').classList.contains('open')){setLogOpen(false);return;}
+  if(event.key==='Escape'&&$('spellbookPanel').classList.contains('open')){setSpellbookOpen(false);return;}
+  if($('logPanel').classList.contains('open'))return;
   if($('helpDialog').open||!$('resultLayer').classList.contains('hidden'))return;
   if(event.key.toLowerCase()==='s'&&view?.canStop)humanStop();
   if(/^[1-8]$/.test(event.key)&&view?.activeIndex===0)humanCast(Number(event.key));

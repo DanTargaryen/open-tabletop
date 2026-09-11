@@ -1,5 +1,8 @@
 import {AI_PROFILES,SPELLS} from './engine.js';
-import {showTowerProgress} from './tower-progress.js';
+import {renderTowerProgress,showTowerProgress} from './tower-progress.js';
+import {createCharacterPreview} from './character-preview.js';
+import {characterForSeat} from './characters.js';
+import {createWinnerShowcase} from './winner-showcase.js';
 
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>'"]/g,character=>({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' })[character]);
@@ -25,6 +28,39 @@ let dieRolling=false;
 let lastRevealId=0;
 let openingTowerShown=false;
 const climbedRounds=new Set();
+const animatedOutcomes=new Set();
+const pendingOutcomeAnimations=new Set();
+let payloadQueue=Promise.resolve();
+let payloadGeneration=0;
+let resultScoreTransition=null;
+let magicTable3d=null;
+const characterPreview=createCharacterPreview($('waitingCharacterCanvas'),{
+  selected:characterForSeat(0).key,
+  onSelect:async seat=>{if(room?.status==='waiting')await roomCommand('seat',{seat});},
+  onBlocked:message=>toast(message),
+});
+const winnerShowcase3d=createWinnerShowcase($('winnerCanvas'));
+const magicTableReady=import('./three-table.js').then(({createMagicTable3D})=>{
+  magicTable3d=createMagicTable3D($('magicTableCanvas'));
+  if(magicTable3d&&view)magicTable3d.sync(view);
+  return magicTable3d;
+}).catch(error=>{console.warn('3D magic table could not start',error);return null;});
+
+function setLogOpen(open){
+  const panel=$('logPanel'),backdrop=$('logBackdrop'),toggle=$('logToggleBtn');
+  panel.classList.toggle('open',open);backdrop.classList.toggle('open',open);panel.inert=!open;
+  panel.setAttribute('aria-hidden',String(!open));toggle.setAttribute('aria-expanded',String(open));
+  if(open){$('eventLog').scrollTop=$('eventLog').scrollHeight;setTimeout(()=>{if(panel.classList.contains('open'))$('logCloseBtn').focus();},320);}
+  else if(document.activeElement===$('logCloseBtn'))toggle.focus();
+}
+
+function setSpellbookOpen(open){
+  const panel=$('spellbookPanel'),backdrop=$('spellbookBackdrop'),toggle=$('spellbookToggle');
+  panel.classList.toggle('open',open);backdrop.classList.toggle('open',open);panel.inert=!open;
+  panel.setAttribute('aria-hidden',String(!open));toggle.setAttribute('aria-expanded',String(open));
+  if(open)setTimeout(()=>{if(panel.classList.contains('open'))$('spellbookCloseBtn').focus({preventScroll:true});},480);
+  else if(document.activeElement===$('spellbookCloseBtn'))toggle.focus({preventScroll:true});
+}
 
 function readSession(){try{return JSON.parse(localStorage.getItem(SESSION_KEY)||'null');}catch{return null;}}
 function saveSession(next){session=next;if(next)localStorage.setItem(SESSION_KEY,JSON.stringify(next));else localStorage.removeItem(SESSION_KEY);}
@@ -50,6 +86,8 @@ async function roomApi(path,{method='GET',body,token=session?.token}={}){
 
 function showOnly(section){
   for(const id of ['onlineLobby','roomWaiting','game'])$(id).classList.toggle('hidden',id!==section);
+  document.body.classList.toggle('game-active',section==='game');
+  if(section!=='game'){setLogOpen(false);setSpellbookOpen(false);}
 }
 
 function portalTab(name){
@@ -70,15 +108,17 @@ function renderWaiting(){
   $('waitingCode').textContent=room.code;
   const mode=room.mode==='score'?'积分模式':'单局模式';
   $('waitingDescription').textContent=`${room.playerCount} 人法师塔 · ${mode}。真人不足时，${room.aiCount} 个空位将在开局时由塔灵补齐。`;
-  const bySeat=new Map(room.roster.map(member=>[member.seat,member]));
+  const bySeat=new Map(room.roster.map(member=>[member.towerSeat,member]));
+  characterPreview?.setSeats({count:room.playerCount,members:room.roster,currentMemberId:room.selfId});
   $('roomRoster').innerHTML=Array.from({length:room.playerCount},(_,seat)=>{
     const member=bySeat.get(seat);
     if(!member){
       const profile=AI_PROFILES[(seat+AI_PROFILES.length-1)%AI_PROFILES.length];
       return `<article class="roster-seat bot"><span class="roster-avatar" style="--seat-color:${profile.color}">✦</span><b>塔灵候补</b><small>开局后 AI 入席</small></article>`;
     }
-    const self=member.id===room.selfId;
-    return `<article class="roster-seat${self?' self':''}"><span class="roster-avatar" style="--seat-color:${self?'#f5e4ad':'#91e6dc'}">${esc(member.name[0])}</span><b>${esc(member.name)}${member.owner?' · 房主':''}</b><small class="${member.ready?'ready':''}">${member.connected?(member.ready?'准备完成':'尚未准备'):'暂时离线'}</small>${room.isOwner&&!self?`<button class="kick-seat" data-kick="${esc(member.id)}" type="button">移出席位</button>`:''}</article>`;
+    const ownSeat=member.id===room.selfId;
+    const character=characterForSeat(seat);
+    return `<article class="roster-seat${ownSeat?' self':''}"><span class="roster-avatar" style="--seat-color:${character.color}">${esc(member.name[0])}</span><b>${esc(member.name)}${member.owner?' · 房主':''}</b><em>${seat+1} 号座</em><small class="${member.ready?'ready':''}">${member.connected?(member.ready?'准备完成':'尚未准备'):'暂时离线'}</small>${room.isOwner&&!ownSeat?`<button class="kick-seat" data-kick="${esc(member.id)}" type="button">移出席位</button>`:''}</article>`;
   }).join('');
   document.querySelectorAll('[data-kick]').forEach(button=>button.addEventListener('click',()=>roomCommand('kick',{memberId:button.dataset.kick})));
   $('readyRoomBtn').classList.toggle('active',room.selfReady);
@@ -90,16 +130,32 @@ function renderWaiting(){
   setNetworkStatus('ROOM CONNECTED');
 }
 
-function lifePips(life){return `<span class="life-pips" aria-label="${life} 点生命">${Array.from({length:6},(_,index)=>`<i class="${index<life?'live':''}"></i>`).join('')}</span>`;}
+function lifePips(life){return `<span class="life-meter" aria-label="${life} 点生命"><span class="life-pips">${Array.from({length:6},(_,index)=>`<i class="${index<life?'live':''}"></i>`).join('')}</span><b>${life}/6</b></span>`;}
+function sceneLifePips(life){return `<span class="table-life-pips" aria-label="${life} 点生命">${Array.from({length:6},(_,index)=>`<i class="${index<life?'live':''}"></i>`).join('')}</span>`;}
 function spellArt(spell,className=''){return `<img class="spell-art${className?` ${className}`:''}" src="./assets/spells/spell-${spell}.svg" alt="" aria-hidden="true">`;}
 function stone(spell,{back=false}={}){const info=spell?SPELLS[spell-1]:null;return `<span class="magic-stone${back?' back':''}"${info?` title="${esc(info.name)}"`:''}>${!back&&info?spellArt(info.id):''}<b>${back?'?':info?.id||'?'}</b>${!back&&info?`<small>${esc(info.icon)}</small>`:''}</span>`;}
-function miniStones(values){return values.length?values.map(value=>`<span class="mini-stone" title="${esc(SPELLS[value-1].name)}">${value}</span>`).join(''):'<span class="empty-label">暂无</span>';}
+function discardPiles(values){
+  const counts=Array.from({length:8},(_,index)=>values.filter(value=>value===index+1).length);
+  const piles=counts.flatMap((count,index)=>count?[{spell:index+1,count}]:[]);
+  return piles.length?piles.map(({spell,count})=>`<span class="discard-group" title="${esc(SPELLS[spell-1].name)}，共 ${count} 张"><span class="discard-stack">${Array.from({length:Math.min(count,3)},(_,stackIndex)=>`<img src="./assets/spells/spell-${spell}.svg" alt="" aria-hidden="true" style="--stack-index:${stackIndex};--stack-angle:${stackIndex-1}deg">`).join('')}</span><b>×${count}</b></span>`).join(''):'<span class="empty-label">暂无弃牌</span>';
+}
+function sceneHand(player){const middle=(player.rack.length-1)/2;return `<div class="table-hand-3d">${player.rack.map((spell,index)=>`<span class="table-card-3d${spell?' face':' back'}" style="--card-offset:${index-middle}">${spell?spellArt(spell):'<b>?</b>'}</span>`).join('')}</div>`;}
+function animateTopHandChanges(before,after){
+  if(!before||!after||before.round!==after.round)return;
+  for(const player of after.players){
+    const previous=before.players.find(candidate=>candidate.id===player.id);
+    if(!previous||JSON.stringify(previous.rack)===JSON.stringify(player.rack))continue;
+    const seat=playerSeat(player.id);
+    seat?.classList.add('hand-updated');
+    setTimeout(()=>seat?.classList.remove('hand-updated'),320);
+  }
+}
 
 function renderOpponents(){
   $('opponents').innerHTML=view.players.slice(1).map(player=>{
     const active=view.phase==='casting'&&view.activeIndex===player.id;
     const role=player.isRemoteHuman?(player.connected?'真人':'离线'):player.isBot?'塔灵 AI':player.title;
-    return `<article class="player-seat${active?' active':''}${player.life===0?' defeated':''}${player.isRemoteHuman&&!player.connected?' offline':''}" data-player-id="${player.id}" style="--seat-color:${player.color}"><div class="seat-top"><span class="avatar" style="--avatar:${player.color}">${esc(player.name[0])}</span><span class="seat-name"><b>${esc(player.name)}</b><small>${esc(player.title)}</small></span><span class="remote-label${player.isBot?' bot':''}">${esc(role)}</span></div><div class="life-row"><span>生命 ${player.life}/6</span>${lifePips(player.life)}</div><div class="seat-stones">${player.rack.map(value=>stone(value)).join('')||'<span class="empty-label">法术石已清空</span>'}</div><span class="secret-badge">◇ 秘密石 ${player.secrets.length}</span></article>`;
+    return `<article class="player-seat${active?' active':''}${player.life===0?' defeated':''}${player.isRemoteHuman&&!player.connected?' offline':''}" data-player-id="${player.id}" style="--seat-color:${player.color}"><div class="seat-top"><span class="avatar" style="--avatar:${player.color}">${esc(player.name[0])}</span><span class="seat-name"><b>${esc(player.name)}</b><small>${esc(player.title)}</small></span>${view.mode==='score'?`<span class="score-badge">${player.score} 分</span>`:''}<span class="remote-label${player.isBot?' bot':''}">${esc(role)}</span><span class="seat-vitals">${lifePips(player.life)}</span></div><div class="seat-stones">${player.rack.map(value=>stone(value)).join('')||'<span class="empty-label">法术石已清空</span>'}</div><span class="secret-badge">◇ 秘密石 ${player.secrets.length}</span></article>`;
   }).join('');
 }
 
@@ -109,12 +165,26 @@ function renderHuman(){
   const secrets=player.secrets.length?player.secrets.map(value=>`${value} · ${SPELLS[value-1].name}`).join(' / '):'暂无秘密石';
   $('humanSeat').className=`human-seat${active?' active':''}${player.life===0?' defeated':''}`;
   $('humanSeat').dataset.playerId='0';
-  $('humanSeat').innerHTML=`<div class="seat-top"><span class="avatar" style="--avatar:${player.color}">你</span><span class="human-details"><b>${esc(player.name)}</b><small>${active?'轮到你施法':'等待其他法师'}</small></span></div><div class="human-rack">${player.rack.map(()=>stone(null,{back:true})).join('')||'<span class="empty-label">法术石已清空</span>'}</div><div class="human-meta">生命 <b>${player.life}/6</b>${lifePips(player.life)}${view.mode==='score'?`<span class="human-secrets">${player.score} 分 · ${esc(secrets)}</span>`:`<span class="human-secrets">${esc(secrets)}</span>`}</div>`;
+  $('humanSeat').innerHTML=`<div class="seat-top"><span class="avatar" style="--avatar:${player.color}">你</span><span class="seat-name"><b>${esc(player.name)}</b><small>${active?'轮到你施法':'等待其他法师'}</small></span>${view.mode==='score'?`<span class="score-badge">${player.score} 分</span>`:''}<span class="seat-vitals">${lifePips(player.life)}</span></div><div class="seat-stones human-rack">${player.rack.map(()=>stone(null,{back:true})).join('')||'<span class="empty-label">法术石已清空</span>'}</div><span class="secret-badge">◇ ${esc(secrets)}</span>`;
   $('turnProgress').classList.toggle('hidden',!active);
+}
+
+function renderTablePlayers(){
+  const count=view.players.length;
+  $('playerHands').style.setProperty('--player-count',String(count));
+  $('tablePlayers').innerHTML=view.players.map((player,index)=>{
+    const angle=Math.PI/2+index*Math.PI*2/count;
+    const x=50+Math.cos(angle)*39;
+    const y=47+Math.sin(angle)*30;
+    const scale=.72+y*.0045;
+    const active=view.phase==='casting'&&view.activeIndex===player.id;
+    return `<div class="table-player-3d${index===0?' self':''}${active?' active':''}${player.life===0?' defeated':''}" data-scene-player-id="${player.id}" style="--seat-x:${x.toFixed(2)}%;--seat-y:${y.toFixed(2)}%;--seat-scale:${scale.toFixed(3)};--seat-depth:${Math.round(y)};--seat-color:${player.color}">${sceneHand(player)}<span class="table-avatar" style="--avatar:${player.color}">${index===0?'你':esc(player.name[0])}</span><small>${esc(player.name)}</small>${sceneLifePips(player.life)}</div>`;
+  }).join('');
 }
 
 function setDie(value){
   const transforms={1:'rotateX(0deg) rotateY(0deg)',2:'rotateX(0deg) rotateY(180deg)',3:'rotateX(0deg) rotateY(90deg)'};
+  magicTable3d?.setDie(value);
   $('die').classList.toggle('hidden',value===null);
   if(value!==null){$('die').setAttribute('aria-label',`魔法骰掷出 ${value}`);$('dieCube').style.transform=transforms[value];}
 }
@@ -126,9 +196,11 @@ function elementCenter(element){
 }
 
 function playerSeat(playerId){return document.querySelector(`[data-player-id="${playerId}"]`);}
+function scenePlayer(playerId){return document.querySelector(`[data-scene-player-id="${playerId}"]`);}
+function sceneHandFor(playerId){return scenePlayer(playerId)?.querySelector('.table-hand-3d');}
 
 async function animateFailedCast(action){
-  const source=playerSeat(action.playerId);
+  const source=scenePlayer(action.playerId)||playerSeat(action.playerId);
   const core=document.querySelector('.tower-core');
   const center=elementCenter(core);
   if(!source||!core||!center||reducedMotion.matches){await wait(INFORMATION_HOLD_MS);return;}
@@ -154,9 +226,12 @@ async function animateFailedCast(action){
 }
 
 async function flyCastStone(action){
+  const table=await magicTableReady;
+  if(table)return table.cast({...action,hold:INFORMATION_HOLD_MS});
   if(!action.success)return animateFailedCast(action);
-  const origin=elementCenter(playerSeat(action.playerId));
-  const destination=elementCenter($('castStones'));
+  const origin=elementCenter(sceneHandFor(action.playerId)||scenePlayer(action.playerId));
+  const target=$('castFocus');
+  const destination=elementCenter(target);
   if(!origin||!destination||reducedMotion.matches){await wait(INFORMATION_HOLD_MS);return;}
   const token=document.createElement('span');
   token.className='motion-stone';
@@ -167,14 +242,22 @@ async function flyCastStone(action){
   const deltaX=destination.x-origin.x;
   const deltaY=destination.y-origin.y;
   const animation=token.animate([
-    {transform:'translate3d(0,0,0) rotate(-10deg) scale(.65)',opacity:0},
-    {transform:'translate3d(0,-8px,0) rotate(-6deg) scale(1)',opacity:1,offset:.18},
-    {transform:`translate3d(${deltaX*.56}px,${deltaY*.46-38}px,0) rotate(-2deg) scale(1.08)`,opacity:1,offset:.64},
-    {transform:`translate3d(${deltaX}px,${deltaY}px,0) rotate(8deg) scale(.82)`,opacity:1},
+    {transform:'perspective(420px) translate3d(0,0,0) rotateX(68deg) rotateY(-34deg) rotateZ(-10deg) scale(.65)',opacity:0},
+    {transform:'perspective(420px) translate3d(0,-9px,34px) rotateX(22deg) rotateY(-18deg) rotateZ(-6deg) scale(1)',opacity:1,offset:.18},
+    {transform:`perspective(420px) translate3d(${deltaX*.56}px,${deltaY*.46-42}px,58px) rotateX(-18deg) rotateY(28deg) rotateZ(-2deg) scale(1.12)`,opacity:1,offset:.64},
+    {transform:`perspective(420px) translate3d(${deltaX}px,${deltaY}px,0) rotateX(4deg) rotateY(-8deg) rotateZ(8deg) scale(.82)`,opacity:1},
   ],{duration:480,easing:'cubic-bezier(.2,.76,.2,1)',fill:'forwards'});
   await animation.finished.catch(()=>{});
+  target.classList.add('cast-arriving');
   await wait(INFORMATION_HOLD_MS);
+  target.classList.remove('cast-arriving');
   token.remove();
+}
+
+async function animateSpellEffect(action){
+  if(!action?.success)return;
+  const table=await magicTableReady;
+  await table?.spellEffect(action);
 }
 
 async function flyDrawStone(source,target,{secret=false,delay=0}={}){
@@ -190,10 +273,10 @@ async function flyDrawStone(source,target,{secret=false,delay=0}={}){
   const deltaX=destination.x-origin.x;
   const deltaY=destination.y-origin.y;
   const animation=token.animate([
-    {transform:'translate3d(0,0,0) rotate(8deg) scale(.7)',opacity:0},
-    {transform:'translate3d(0,-10px,0) rotate(4deg) scale(1)',opacity:1,offset:.2},
-    {transform:`translate3d(${deltaX*.55}px,${deltaY*.45-34}px,0) rotate(-4deg) scale(1.06)`,opacity:1,offset:.64},
-    {transform:`translate3d(${deltaX}px,${deltaY}px,0) rotate(-8deg) scale(.78)`,opacity:0},
+    {transform:'perspective(420px) translate3d(0,0,0) rotateX(76deg) rotateY(18deg) rotateZ(8deg) scale(.7)',opacity:0},
+    {transform:'perspective(420px) translate3d(0,-10px,30px) rotateX(32deg) rotateY(96deg) rotateZ(4deg) scale(1)',opacity:1,offset:.2},
+    {transform:`perspective(420px) translate3d(${deltaX*.55}px,${deltaY*.45-38}px,54px) rotateX(-12deg) rotateY(214deg) rotateZ(-4deg) scale(1.08)`,opacity:1,offset:.64},
+    {transform:`perspective(420px) translate3d(${deltaX}px,${deltaY}px,0) rotateX(5deg) rotateY(360deg) rotateZ(-8deg) scale(.78)`,opacity:0},
   ],{duration:520,delay,easing:'cubic-bezier(.2,.76,.2,1)',fill:'forwards'});
   await animation.finished.catch(()=>{});
   token.remove();
@@ -201,6 +284,16 @@ async function flyDrawStone(source,target,{secret=false,delay=0}={}){
 
 async function animateDie(value){
   if(![1,2,3].includes(value))return;
+  const table=await magicTableReady;
+  if(table){
+    transientDie=value;
+    dieRolling=true;
+    await table.rollDie(value,{hold:INFORMATION_HOLD_MS});
+    dieRolling=false;
+    transientDie='hidden';
+    table.setDie(null);
+    return;
+  }
   const die=$('die');
   const cube=$('dieCube');
   transientDie=value;
@@ -210,6 +303,8 @@ async function animateDie(value){
   if(reducedMotion.matches){
     setDie(value);
     await wait(INFORMATION_HOLD_MS);
+    setDie(null);
+    transientDie='hidden';
     dieRolling=false;
     return;
   }
@@ -224,17 +319,20 @@ async function animateDie(value){
   animation.cancel();
   setDie(value);
   await wait(INFORMATION_HOLD_MS);
+  setDie(null);
+  transientDie='hidden';
   dieRolling=false;
 }
 
 function renderTable(){
+  renderTablePlayers();
   $('drawCount').textContent=String(view.drawPileCount);
   $('secretCount').textContent=String(view.secretPoolCount);
   $('drawPileCount').textContent=String(view.drawPileCount);
   $('secretPileCount').textContent=String(view.secretPoolCount);
-  $('removedStones').innerHTML=miniStones(view.publicRemoved);
-  $('castStones').innerHTML=miniStones([...view.castStones].sort((left,right)=>left-right));
-  if(!dieRolling)setDie(transientDie==='hidden'?null:transientDie??view.die);
+  $('discardPiles').innerHTML=discardPiles([...view.publicRemoved,...view.castStones]);
+  magicTable3d?.sync(view);
+  if(!dieRolling)setDie(null);
   if(view.phase!=='casting'){$('turnGlyph').textContent='✦';$('turnHeadline').textContent='本轮已经结束';$('turnDetail').textContent=view.roundResult?.summary||'等待结算';return;}
   const actor=view.players[view.activeIndex];
   if(actor.id===0){$('turnGlyph').textContent=view.turnCastCount?'✧':'?';$('turnHeadline').textContent=view.turnCastCount?'法术奏效，继续吗？':'轮到你施法';$('turnDetail').textContent=view.turnCastCount?`可选择 ${view.minimumSpell}–8 号，或及时收手`:'观察公开信息，猜测自己的法术石';}
@@ -243,14 +341,15 @@ function renderTable(){
 
 function renderSpells(){
   const ownTurn=view.phase==='casting'&&view.activeIndex===0&&!commandBusy&&!revealHolding;
-  const publicValues=[...view.publicRemoved,...view.castStones];
   $('castRule').textContent=view.lastSuccessfulSpell===null?'首次施法可选择任意编号':`连咏限制：只能选择 ${view.minimumSpell}–8 号`;
-  $('spellList').innerHTML=SPELLS.map(spell=>{
+  const buttons=SPELLS.map(spell=>{
     const illegal=spell.id<view.minimumSpell;
-    const publicCount=publicValues.filter(value=>value===spell.id).length;
-    return `<button class="spell-button${illegal?' illegal':''}" data-spell="${spell.id}" type="button" ${!ownTurn||illegal?'disabled':''} title="${esc(spell.description)}"><span class="spell-symbol">${spellArt(spell.id)}</span><span class="spell-copy"><b>${esc(spell.name)}</b><small>${esc(spell.tag)} · ${esc(spell.description)}</small></span><span class="spell-number">${spell.id}<small>公开 ${publicCount}/${spell.copies}</small></span></button>`;
-  }).join('');
-  document.querySelectorAll('[data-spell]').forEach(button=>button.addEventListener('click',()=>sendAction('cast',Number(button.dataset.spell))));
+    return `<button class="spell-button${illegal?' illegal':''}" data-spell="${spell.id}" type="button" ${!ownTurn||illegal?'disabled':''} title="${esc(spell.description)}"><span class="spell-symbol">${spellArt(spell.id)}</span><span class="spell-copy"><span class="spell-title"><span class="spell-number">${spell.id}</span><b>${esc(spell.name)}</b></span><small>${esc(spell.tag)} · ${esc(spell.description)}</small></span></button>`;
+  });
+  $('spellListLeft').innerHTML=buttons.slice(0,4).join('');
+  $('spellListRight').innerHTML=buttons.slice(4).join('');
+  $('spellbookToggle').classList.toggle('ready',ownTurn);
+  document.querySelectorAll('[data-spell]').forEach(button=>button.addEventListener('click',()=>{setSpellbookOpen(false);sendAction('cast',Number(button.dataset.spell));}));
   $('stopBtn').classList.toggle('hidden',!view.canStop||commandBusy);
 }
 
@@ -262,8 +361,12 @@ function renderEvents(){
 
 function renderResult(){
   const complete=room.status==='round-complete'||room.status==='finished';
-  $('resultLayer').classList.toggle('hidden',!complete||revealHolding);
-  if(!complete||!view.roundResult||revealHolding)return;
+  const outcomePlaying=pendingOutcomeAnimations.size>0||document.body.classList.contains('round-outcome-playing');
+  $('resultLayer').classList.toggle('hidden',!complete||revealHolding||outcomePlaying);
+  if(!complete||!view.roundResult){winnerShowcase3d?.hide();return;}
+  if(revealHolding||outcomePlaying)return;
+  if($('logPanel').classList.contains('open'))setLogOpen(false);
+  if($('spellbookPanel').classList.contains('open'))setSpellbookOpen(false);
   const finished=room.status==='finished';
   const winners=finished?view.gameWinnerIds:view.roundResult.winnerIds;
   const humanWon=winners.includes(0);
@@ -272,6 +375,23 @@ function renderResult(){
   $('resultTitle').textContent=finished?(humanWon?'你完成了试炼':'试炼已有胜者'):(humanWon?'你赢得本轮':'本轮结束');
   $('resultSummary').textContent=view.roundResult.summary;
   $('scoreTable').innerHTML=view.players.map(player=>view.mode==='score'?`<div class="score-row"><span>${esc(player.name)} · 生命 ${player.life}</span><strong>${view.roundResult.points[player.id]?`+${view.roundResult.points[player.id]}`:'—'}</strong><b>${player.score} 分</b></div>`:`<div class="score-row"><span>${esc(player.name)} · 生命 ${player.life}</span><strong>${view.gameWinnerIds.includes(player.id)?'胜出':'—'}</strong><b>${player.secrets.length?'◇'.repeat(player.secrets.length):''}</b></div>`).join('');
+  const resultCard=$('resultLayer').querySelector('.result-card');
+  const scoreMode=view.mode==='score';resultCard.classList.toggle('score-result',scoreMode);
+  const highestScore=Math.max(...view.players.map(player=>player.score));
+  const champions=finished&&scoreMode&&highestScore>=8?view.players.filter(player=>player.score===highestScore):[];
+  const champion=champions.length===1?champions[0]:null;
+  resultCard.classList.toggle('game-result',Boolean(champion));
+  $('winnerShowcase').classList.toggle('hidden',!champion);
+  if(champion){$('winnerName').textContent=`${champion.name} · ${champion.score} 分`;winnerShowcase3d?.show(champion);}
+  else winnerShowcase3d?.hide();
+  if(scoreMode){
+    const transition=resultScoreTransition?.round===view.round?resultScoreTransition:null;
+    const afterScores=transition?.afterScores||view.players.map(player=>player.score);
+    const beforeScores=transition?.beforeScores||afterScores.map((score,id)=>score-(view.roundResult.points[id]||0));
+    const animate=!climbedRounds.has(view.round);
+    renderTowerProgress($('resultTower'),{players:view.players,fromScores:beforeScores,toScores:afterScores,animate});
+    climbedRounds.add(view.round);
+  }else{$('resultTower').replaceChildren();delete $('resultTower').dataset.towerKey;}
   const allReady=room.roster.every(member=>member.ready&&member.connected);
   const button=$('resultBtn');
   button.disabled=commandBusy||(!room.isOwner&&room.selfReady)||(room.isOwner&&room.selfReady&&!allReady);
@@ -298,14 +418,25 @@ function dragonFailureStages(action,before,after){
   return {
     rolledDamage,
     normalDamage,
-    intermediate:{...before,players:before.players.map(player=>player.id===action.playerId?{...player,life:player.life-rolledDamage}:player)},
+    intermediatePlayers:after.players.map(player=>player.id===action.playerId?{...player,life:beforePlayer.life-rolledDamage}:player),
   };
 }
 
+function actionLifeView(previous,next,players=next?.players){
+  if(!previous||!next||previous.round!==next.round||previous.phase!=='casting')return next;
+  return {...next,phase:previous.phase,activeIndex:previous.activeIndex,players};
+}
+
+function syncOutcomeAnimationLock(){
+  document.body.classList.toggle('round-outcome-playing',pendingOutcomeAnimations.size>0);
+}
+
 async function animateLifeChangeBatch(changes){
+  const table=await magicTableReady;
+  if(table){await Promise.all(changes.filter(change=>change.amount!==0).map(change=>table.lifeChange(change)));return;}
   if(reducedMotion.matches)return;
   const animations=changes.map(async change=>{
-      const seat=playerSeat(change.playerId);
+      const seat=scenePlayer(change.playerId)||playerSeat(change.playerId);
       const center=elementCenter(seat);
       if(!seat||!center)return;
       const healing=change.amount>0;
@@ -340,6 +471,21 @@ async function animateActionLifeChanges(previous,next){
 
 async function animateDraws(previous,next){
   if(!previous||!next||previous.round!==next.round)return;
+  const table=await magicTableReady;
+  if(table){
+    const animations=[];
+    let drawIndex=0,secretIndex=0;
+    for(const player of next.players){
+      const before=previous.players.find(candidate=>candidate.id===player.id);
+      if(!before)continue;
+      const drawn=Math.max(0,player.rack.length-before.rack.length);
+      const secrets=Math.max(0,player.secrets.length-before.secrets.length);
+      for(let index=0;index<drawn;index++)animations.push(table.draw({playerId:player.id,delay:drawIndex++*90}));
+      for(let index=0;index<secrets;index++)animations.push(table.draw({playerId:player.id,secret:true,delay:secretIndex++*90}));
+    }
+    await Promise.all(animations);
+    return;
+  }
   const drawSource=document.querySelector('.draw-pile .pile-stone');
   const secretSource=document.querySelector('.secret-pile .pile-stone');
   const drawAnimations=[];
@@ -348,7 +494,7 @@ async function animateDraws(previous,next){
   let secretIndex=0;
   for(const player of next.players){
     const before=previous.players.find(candidate=>candidate.id===player.id);
-    const target=playerSeat(player.id);
+    const target=sceneHandFor(player.id)||scenePlayer(player.id);
     if(!before||!target)continue;
     const drawn=Math.max(0,player.rack.length-before.rack.length);
     const secrets=Math.max(0,player.secrets.length-before.secrets.length);
@@ -373,17 +519,39 @@ function renderGame(){
   setNetworkStatus('TOWER ONLINE');
 }
 
-async function applyPayload(payload){
+function applyPayload(payload){
+  const generation=payloadGeneration;
+  const task=payloadQueue.then(()=>generation===payloadGeneration?applyPayloadNow(payload):undefined);
+  payloadQueue=task.catch(()=>{});
+  return task;
+}
+
+async function applyPayloadNow(payload){
+  if(room?.code===payload.room.code&&payload.room.version<room.version){schedulePoll();return;}
   const previousView=view;
   const reveal=payload.room.reveal;
   const shouldReveal=reveal?.type==='cast'&&reveal.id!==lastRevealId&&payload.room.serverNow<=reveal.until;
   const finalView=payload.game;
   const dragonStages=shouldReveal?dragonFailureStages(reveal,previousView,finalView):null;
-  const startsScoreGame=payload.game?.mode==='score'&&payload.room.status==='playing'&&payload.game.round===1&&(!previousView||previousView.phase==='game-complete');
-  if(startsScoreGame){openingTowerShown=false;climbedRounds.clear();}
+  const startsGame=payload.room.status==='playing'&&payload.game?.round===1&&(!previousView||previousView.phase==='game-complete');
+  const startsScoreGame=startsGame&&payload.game.mode==='score';
+  if(startsGame){animatedOutcomes.clear();pendingOutcomeAnimations.clear();syncOutcomeAnimationLock();}
+  if(startsScoreGame){openingTowerShown=false;resultScoreTransition=null;climbedRounds.clear();}
   const showOpeningTower=startsScoreGame&&!openingTowerShown;
   const showRoundTower=payload.game?.mode==='score'&&['round-complete','finished'].includes(payload.room.status)&&!climbedRounds.has(payload.game.round);
-  const shouldAnimate=shouldReveal||hasStateAnimations(previousView,payload.game)||showOpeningTower||showRoundTower;
+  if(showRoundTower){
+    const afterScores=payload.game.players.map(player=>player.score);
+    const beforeScores=previousView?.round===payload.game.round?previousView.players.map(player=>player.score):afterScores.map((score,id)=>score-(payload.game.roundResult?.points[id]||0));
+    resultScoreTransition={round:payload.game.round,beforeScores,afterScores};
+  }
+  const outcomeKey=payload.game?.roundResult?`${payload.game.round}:${payload.game.roundResult.kind}:${(payload.game.roundResult.winnerIds||[]).join(',')}:${(payload.game.roundResult.loserIds||[]).join(',')}`:null;
+  const showRoundOutcome=Boolean(outcomeKey)&&(!previousView?.roundResult||previousView.round!==payload.game.round)&&!animatedOutcomes.has(outcomeKey);
+  if(showRoundOutcome){
+    animatedOutcomes.add(outcomeKey);
+    pendingOutcomeAnimations.add(outcomeKey);
+    syncOutcomeAnimationLock();
+  }
+  const shouldAnimate=shouldReveal||hasStateAnimations(previousView,payload.game)||showOpeningTower||showRoundTower||showRoundOutcome;
   if(reveal?.id)lastRevealId=reveal.id;
   if(shouldAnimate){
     revealHolding=true;
@@ -391,7 +559,7 @@ async function applyPayload(payload){
     document.body.classList.add('action-running');
   }
   room=payload.room;
-  view=dragonStages?previousView:finalView;
+  view=shouldReveal&&previousView?previousView:finalView;
   receivedAt=Date.now();
   if(payload.token)saveSession({code:room.code,token:payload.token,name:$('onlineName').value.trim()});
   history.replaceState(null,'',`${location.pathname}?room=${room.code}`);
@@ -402,24 +570,32 @@ async function applyPayload(payload){
         toast(reveal.success?`${reveal.spell} 号法术成功！`:`${reveal.spell} 号法术失败。`);
         await flyCastStone(reveal);
         if(reveal.roll!==null&&reveal.roll!==undefined)await animateDie(reveal.roll);
+        await animateSpellEffect(reveal);
       }
       if(dragonStages){
-        view=dragonStages.intermediate;
+        view=actionLifeView(previousView,finalView,dragonStages.intermediatePlayers);
         renderGame();
         await animateLifeChangeBatch([{playerId:reveal.playerId,amount:-dragonStages.rolledDamage}]);
         await wait(INFORMATION_HOLD_MS);
-        view=finalView;
+        view=actionLifeView(previousView,finalView);
         renderGame();
         await animateLifeChangeBatch([{playerId:reveal.playerId,amount:-dragonStages.normalDamage}]);
       }else{
-        view=finalView;
+        view=actionLifeView(previousView,finalView);
+        renderGame();
         await animateActionLifeChanges(previousView,finalView);
       }
+      view=finalView;
+      renderGame();
       await animateDraws(previousView,finalView);
+      if(showRoundOutcome){
+        const table=await magicTableReady;
+        await table?.roundOutcome(finalView.roundResult);
+      }
       if(shouldReveal&&reveal.success&&reveal.spell===4&&reveal.playerId===0){
         const previousCount=previousView?.players[0].secrets.length??0;
         const secret=view.players[0].secrets.slice(previousCount).find(Number.isInteger);
-        if(secret!==undefined)toast(`你获得的秘宝石是 ${secret} 号。`);
+        if(secret!==undefined)toast(`你获得的秘密石是 ${secret} 号。`);
       }
       if(showOpeningTower){
         openingTowerShown=true;
@@ -427,20 +603,18 @@ async function applyPayload(payload){
         await showTowerProgress({players:view.players,fromScores:scores,toScores:scores,title:'试炼开始',subtitle:'所有法师从塔底出发，率先取得 8 分者登顶'});
       }
       if(showRoundTower){
-        climbedRounds.add(view.round);
-        const afterScores=view.players.map(player=>player.score);
-        const beforeScores=previousView?.round===view.round?previousView.players.map(player=>player.score):afterScores.map((score,id)=>score-(view.roundResult?.points[id]||0));
-        await showTowerProgress({players:view.players,fromScores:beforeScores,toScores:afterScores,title:`第 ${view.round} 轮攀登结算`,subtitle:'本轮积分推动法师向塔顶前进'});
+        resultScoreTransition={...resultScoreTransition,round:view.round};
       }
     }finally{
       view=finalView;
       revealHolding=false;
       transientDie=null;
       dieRolling=false;
+      if(showRoundOutcome){pendingOutcomeAnimations.delete(outcomeKey);syncOutcomeAnimationLock();}
       document.body.classList.remove('action-running');
       document.querySelectorAll('.motion-stone,.failed-spell-burst,.life-change').forEach(element=>element.remove());
       document.querySelectorAll('.spell-failed,.spell-fizzle,.taking-damage,.receiving-heal,.drawing').forEach(element=>element.classList.remove('spell-failed','spell-fizzle','taking-damage','receiving-heal','drawing'));
-      if(view)renderGame();
+      if(view){renderGame();animateTopHandChanges(previousView,finalView);}
     }
   }
   schedulePoll();
@@ -510,8 +684,11 @@ async function resultAction(){if(!room.selfReady)await roomCommand('ready',{read
 
 async function leaveRoom(){
   clearTimeout(pollTimer);clearInterval(countdownTimer);pollGeneration++;
+  payloadGeneration++;
+  magicTable3d?.cancelAnimations();
+  winnerShowcase3d?.hide();
   try{if(session)await roomApi(`/rooms/${session.code}/leave`,{method:'POST',body:{}});}catch(error){toast(error.message);}
-  saveSession(null);room=null;view=null;lastRevealId=0;openingTowerShown=false;climbedRounds.clear();history.replaceState(null,'',location.pathname);$('resultLayer').classList.add('hidden');showOnly('onlineLobby');updateResume();
+  saveSession(null);room=null;view=null;lastRevealId=0;openingTowerShown=false;resultScoreTransition=null;climbedRounds.clear();animatedOutcomes.clear();pendingOutcomeAnimations.clear();syncOutcomeAnimationLock();history.replaceState(null,'',location.pathname);$('resultLayer').classList.add('hidden');showOnly('onlineLobby');updateResume();
 }
 
 async function copyInvite(){
@@ -539,15 +716,21 @@ $('readyRoomBtn').addEventListener('click',toggleReady);
 $('startRoomBtn').addEventListener('click',startTrial);
 $('leaveWaitingBtn').addEventListener('click',leaveRoom);
 $('restartBtn').addEventListener('click',leaveRoom);
-$('stopBtn').addEventListener('click',()=>sendAction('stop'));
+$('stopBtn').addEventListener('click',()=>{setSpellbookOpen(false);sendAction('stop');});
 $('resultBtn').addEventListener('click',resultAction);
 $('resultExitBtn').addEventListener('click',leaveRoom);
+$('logToggleBtn').addEventListener('click',()=>{setSpellbookOpen(false);setLogOpen(!$('logPanel').classList.contains('open'));});
+$('logCloseBtn').addEventListener('click',()=>setLogOpen(false));
+$('logBackdrop').addEventListener('click',()=>setLogOpen(false));
+$('spellbookToggle').addEventListener('click',()=>{setLogOpen(false);setSpellbookOpen(!$('spellbookPanel').classList.contains('open'));});
+$('spellbookCloseBtn').addEventListener('click',()=>setSpellbookOpen(false));
+$('spellbookBackdrop').addEventListener('click',()=>setSpellbookOpen(false));
 $('clearLogBtn').addEventListener('click',()=>$('eventLog').scrollTo({top:$('eventLog').scrollHeight,behavior:'smooth'}));
-document.querySelectorAll('[data-help]').forEach(button=>button.addEventListener('click',()=>$('helpDialog').showModal()));
+document.querySelectorAll('[data-help]').forEach(button=>button.addEventListener('click',()=>{setLogOpen(false);setSpellbookOpen(false);$('helpDialog').showModal();}));
 $('helpCloseBtn').addEventListener('click',()=>$('helpDialog').close());
 $('helpDialog').addEventListener('click',event=>{if(event.target===$('helpDialog'))$('helpDialog').close();});
 document.addEventListener('visibilitychange',()=>{if(session)schedulePoll(0);});
-document.addEventListener('keydown',event=>{if($('helpDialog').open||!$('resultLayer').classList.contains('hidden'))return;if(event.key.toLowerCase()==='s'&&view?.canStop)sendAction('stop');if(/^[1-8]$/.test(event.key)&&view?.activeIndex===0)sendAction('cast',Number(event.key));});
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&$('logPanel').classList.contains('open')){setLogOpen(false);return;}if(event.key==='Escape'&&$('spellbookPanel').classList.contains('open')){setSpellbookOpen(false);return;}if($('logPanel').classList.contains('open')||$('helpDialog').open||!$('resultLayer').classList.contains('hidden'))return;if(event.key.toLowerCase()==='s'&&view?.canStop)sendAction('stop');if(/^[1-8]$/.test(event.key)&&view?.activeIndex===0)sendAction('cast',Number(event.key));});
 
 function updateTurnCountdown(){
   const progress=$('turnProgress');

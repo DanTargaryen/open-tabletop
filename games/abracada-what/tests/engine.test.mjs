@@ -81,6 +81,17 @@ test('two-player lightning damages the opponent only once',()=>{
   assert.equal(game._s.players[1].life,5);
 });
 
+test('a successful dragon deals exactly the rolled damage without failure damage',()=>{
+  const game=started({playerCount:3});
+  game._s.players[0].rack=[1,8];
+  game._roll=()=>{game._s.die=2;return 2;};
+  const result=game.cast(1);
+  assert.equal(result.success,true);
+  assert.equal(result.roll,2);
+  assert.deepEqual(game._s.players.map(player=>player.life),[6,4,4]);
+  assert.deepEqual(result.lifeChanges,[{playerId:1,amount:-2},{playerId:2,amount:-2}]);
+});
+
 test('all healing, directional, group, and secret spell effects resolve',()=>{
   const dragon=started({playerCount:3});
   dragon._s.players[0].rack=[1,8];
@@ -141,6 +152,22 @@ test('score mode awards attacker, survivors, and secret bonuses',()=>{
   assert.equal(game._s.phase,'round-complete');
   assert.deepEqual(game._s.roundResult.points,[4,1,0]);
   assert.deepEqual(game._s.players.map(player=>player.score),[4,1,0]);
+});
+
+test('score mode ends only with one highest player at eight or more points',()=>{
+  const tied=started({playerCount:3,mode:'score'});
+  tied._s.players[0].score=8;
+  tied._s.players[1].score=8;
+  tied._finishRound({kind:'self-fail',loserIds:[2]});
+  assert.equal(tied._s.phase,'round-complete');
+  assert.deepEqual(tied._s.gameWinnerIds,[]);
+
+  const unique=started({playerCount:3,mode:'score'});
+  unique._s.players[0].score=8;
+  unique._s.players[1].score=7;
+  unique._finishRound({kind:'self-fail',loserIds:[2]});
+  assert.equal(unique._s.phase,'game-complete');
+  assert.deepEqual(unique._s.gameWinnerIds,[0]);
 });
 
 test('single mode ends immediately without changing scores',()=>{
