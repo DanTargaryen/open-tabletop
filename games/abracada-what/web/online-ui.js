@@ -3,6 +3,7 @@ import {renderTowerProgress,showTowerProgress} from './tower-progress.js';
 import {createCharacterPreview} from './character-preview.js';
 import {characterForSeat} from './characters.js';
 import {createWinnerShowcase} from './winner-showcase.js';
+import {bindAudioControls,gameAudio} from './audio.js';
 
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>'"]/g,character=>({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' })[character]);
@@ -45,6 +46,7 @@ const magicTableReady=import('./three-table.js').then(({createMagicTable3D})=>{
   if(magicTable3d&&view)magicTable3d.sync(view);
   return magicTable3d;
 }).catch(error=>{console.warn('3D magic table could not start',error);return null;});
+bindAudioControls();
 
 function setLogOpen(open){
   const panel=$('logPanel'),backdrop=$('logBackdrop'),toggle=$('logToggleBtn');
@@ -56,8 +58,10 @@ function setLogOpen(open){
 
 function setSpellbookOpen(open){
   const panel=$('spellbookPanel'),backdrop=$('spellbookBackdrop'),toggle=$('spellbookToggle');
+  const changed=panel.classList.contains('open')!==open;
   panel.classList.toggle('open',open);backdrop.classList.toggle('open',open);panel.inert=!open;
   panel.setAttribute('aria-hidden',String(!open));toggle.setAttribute('aria-expanded',String(open));
+  if(changed)gameAudio.playBook(open);
   if(open)setTimeout(()=>{if(panel.classList.contains('open'))$('spellbookCloseBtn').focus({preventScroll:true});},480);
   else if(document.activeElement===$('spellbookCloseBtn'))toggle.focus({preventScroll:true});
 }
@@ -226,6 +230,7 @@ async function animateFailedCast(action){
 }
 
 async function flyCastStone(action){
+  gameAudio.playCast(action);
   const table=await magicTableReady;
   if(table)return table.cast({...action,hold:INFORMATION_HOLD_MS});
   if(!action.success)return animateFailedCast(action);
@@ -256,6 +261,7 @@ async function flyCastStone(action){
 
 async function animateSpellEffect(action){
   if(!action?.success)return;
+  gameAudio.playSpell(action.spell);
   const table=await magicTableReady;
   await table?.spellEffect(action);
 }
@@ -284,6 +290,7 @@ async function flyDrawStone(source,target,{secret=false,delay=0}={}){
 
 async function animateDie(value){
   if(![1,2,3].includes(value))return;
+  gameAudio.playDie();
   const table=await magicTableReady;
   if(table){
     transientDie=value;
@@ -431,7 +438,8 @@ function syncOutcomeAnimationLock(){
   document.body.classList.toggle('round-outcome-playing',pendingOutcomeAnimations.size>0);
 }
 
-async function animateLifeChangeBatch(changes){
+async function animateLifeChangeBatch(changes,{sound=true}={}){
+  if(sound)gameAudio.playLifeChanges(changes);
   const table=await magicTableReady;
   if(table){await Promise.all(changes.filter(change=>change.amount!==0).map(change=>table.lifeChange(change)));return;}
   if(reducedMotion.matches)return;
@@ -460,17 +468,23 @@ async function animateLifeChangeBatch(changes){
   await Promise.all(animations);
 }
 
-async function animateActionLifeChanges(previous,next){
-  if(!previous||!next||previous.round!==next.round||reducedMotion.matches)return;
+async function animateActionLifeChanges(previous,next,{sound=true}={}){
+  if(!previous||!next||previous.round!==next.round)return;
   const changes=next.players.flatMap(player=>{
     const before=previous.players.find(candidate=>candidate.id===player.id);
     return !before||before.life===player.life?[]:[{playerId:player.id,amount:player.life-before.life}];
   });
-  await animateLifeChangeBatch(changes);
+  await animateLifeChangeBatch(changes,{sound});
 }
 
 async function animateDraws(previous,next){
   if(!previous||!next||previous.round!==next.round)return;
+  const totalDraws=next.players.reduce((total,player)=>{
+    const before=previous.players.find(candidate=>candidate.id===player.id);
+    if(!before)return total;
+    return total+Math.max(0,player.rack.length-before.rack.length)+Math.max(0,player.secrets.length-before.secrets.length);
+  },0);
+  gameAudio.playDraw(totalDraws);
   const table=await magicTableReady;
   if(table){
     const animations=[];
@@ -583,7 +597,7 @@ async function applyPayloadNow(payload){
       }else{
         view=actionLifeView(previousView,finalView);
         renderGame();
-        await animateActionLifeChanges(previousView,finalView);
+        await animateActionLifeChanges(previousView,finalView,{sound:reveal?.spell!==8});
       }
       view=finalView;
       renderGame();

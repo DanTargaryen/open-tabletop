@@ -441,7 +441,7 @@ class MagicTable3D{
   }
 
   dieRotation(value){
-    if(value===2)return new THREE.Euler(-Math.PI/2,0,0);
+    if(value===2)return new THREE.Euler(Math.PI/2,0,0);
     if(value===3)return new THREE.Euler(0,0,-Math.PI/2);
     return new THREE.Euler(0,0,0);
   }

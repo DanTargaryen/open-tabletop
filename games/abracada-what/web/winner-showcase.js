@@ -23,15 +23,23 @@ export function createWinnerShowcase(canvas){
   const loader=new GLTFLoader();
   const modelCache=new Map();
   const animationPromise=loader.loadAsync(MODEL_URL('animations/general.glb'));
-  let model=null,mixer=null,currentKey='',generation=0,visible=false,disposed=false,frame=0,lastFrame=performance.now();
+  let model=null,mixer=null,celebrationClip=null,currentKey='',generation=0,visible=false,disposed=false,frame=0,lastFrame=performance.now(),celebrationStartedAt=0;
 
   function cachedModel(character){
     if(!modelCache.has(character.key))modelCache.set(character.key,loader.loadAsync(MODEL_URL(`characters/${character.model}`)));
     return modelCache.get(character.key);
   }
 
+  function startCelebration(){
+    if(!model||!mixer||!celebrationClip)return;
+    celebrationStartedAt=performance.now();
+    mixer.stopAllAction();
+    mixer.clipAction(celebrationClip).reset().setLoop(THREE.LoopRepeat,Infinity).fadeIn(.2).play();
+  }
+
   async function show({characterKey,color='#f2cb78'}={}){
-    const character=characterForKey(characterKey);visible=true;stage.classList.remove('hidden');ring.material.color.set(color);rimLight.color.set(character.color);
+    const character=characterForKey(characterKey),wasVisible=visible;visible=true;stage.classList.remove('hidden');ring.material.color.set(color);rimLight.color.set(character.color);
+    if(!wasVisible&&currentKey===character.key&&model){startCelebration();return;}
     if(currentKey===character.key&&model)return;
     const request=++generation;currentKey=character.key;
     try{
@@ -42,18 +50,24 @@ export function createWinnerShowcase(canvas){
       const tint=new THREE.Color(character.color);
       model.traverse(object=>{if(object.isMesh){object.castShadow=true;object.receiveShadow=true;const materials=Array.isArray(object.material)?object.material:[object.material];const cloned=materials.map(material=>{const next=material.clone();next.color?.lerp(tint,.38);return next;});object.material=Array.isArray(object.material)?cloned:cloned[0];}});model.add(createSeatAccent(character.key));scene.add(model);
       mixer=new THREE.AnimationMixer(model);
-      const clip=animations.animations.find(animation=>animation.name==='Cheering')||animations.animations.find(animation=>animation.name==='Idle_A');
-      if(clip){const action=mixer.clipAction(clip);action.reset().setLoop(THREE.LoopRepeat,Infinity).fadeIn(.2).play();}
+      celebrationClip=animations.animations.find(animation=>animation.name==='Cheering')||animations.animations.find(animation=>animation.name==='Idle_A');
+      startCelebration();
       stage.classList.add('winner-loaded');
     }catch(error){console.warn('Winner character showcase could not load',error);stage.classList.add('winner-fallback');}
   }
 
-  function hide(){visible=false;generation++;stage.classList.add('hidden');mixer?.stopAllAction();if(model){scene.remove(model);model=null;}mixer=null;currentKey='';}
+  function hide(){visible=false;generation++;stage.classList.add('hidden');mixer?.stopAllAction();if(model){scene.remove(model);model=null;}mixer=null;celebrationClip=null;currentKey='';}
   function resize(){const width=Math.max(1,stage.clientWidth),height=Math.max(1,stage.clientHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(width,height,false);camera.aspect=width/height;camera.updateProjectionMatrix();}
   const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(stage);resize();
   function animate(time){
     if(disposed)return;
     const delta=Math.min(.05,(time-lastFrame)/1000);lastFrame=time;if(visible)mixer?.update(delta);
+    if(visible&&model&&celebrationStartedAt){
+      const phase=((time-celebrationStartedAt)%1380)/1380*Math.PI*2;
+      const hop=(1-Math.cos(phase*3))*.5;
+      model.position.y=-.04+hop*.11;model.rotation.y=Math.sin(phase)*.12;model.rotation.z=Math.sin(phase*2)*.025;
+      model.scale.setScalar(.96*(1+(1-Math.cos(phase))*.055));
+    }
     ring.rotation.z+=delta*.28;ring.material.opacity=.48+Math.sin(time*.0025)*.12;rimLight.intensity=15+Math.sin(time*.0019)*2;
     if(visible)renderer.render(scene,camera);frame=requestAnimationFrame(animate);
   }

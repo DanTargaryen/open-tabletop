@@ -1,6 +1,7 @@
 import {AbracadaGame,AI_PROFILES,SPELLS} from './engine.js';
 import {renderTowerProgress,showTowerProgress} from './tower-progress.js';
 import {createWinnerShowcase} from './winner-showcase.js';
+import {bindAudioControls,gameAudio} from './audio.js';
 
 const $=id=>document.getElementById(id);
 const esc=value=>String(value).replace(/[&<>'"]/g,character=>({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' })[character]);
@@ -24,6 +25,7 @@ const magicTableReady=import('./three-table.js').then(({createMagicTable3D})=>{
   if(magicTable3d&&view)magicTable3d.sync(view);
   return magicTable3d;
 }).catch(error=>{console.warn('3D magic table could not start',error);return null;});
+bindAudioControls();
 
 function setLogOpen(open){
   const panel=$('logPanel'),backdrop=$('logBackdrop'),toggle=$('logToggleBtn');
@@ -35,8 +37,10 @@ function setLogOpen(open){
 
 function setSpellbookOpen(open){
   const panel=$('spellbookPanel'),backdrop=$('spellbookBackdrop'),toggle=$('spellbookToggle');
+  const changed=panel.classList.contains('open')!==open;
   panel.classList.toggle('open',open);backdrop.classList.toggle('open',open);panel.inert=!open;
   panel.setAttribute('aria-hidden',String(!open));toggle.setAttribute('aria-expanded',String(open));
+  if(changed)gameAudio.playBook(open);
   if(open)setTimeout(()=>{if(panel.classList.contains('open'))$('spellbookCloseBtn').focus({preventScroll:true});},480);
   else if(document.activeElement===$('spellbookCloseBtn'))toggle.focus({preventScroll:true});
 }
@@ -207,6 +211,7 @@ function cancelVisuals(){
 
 async function animateDie(value){
   if(![1,2,3].includes(value))return;
+  gameAudio.playDie();
   const table=await magicTableReady;
   if(table){
     dieRolling=true;
@@ -308,6 +313,7 @@ async function animateFailedCast(source,spell){
 
 async function animateCast(action){
   if(action.type!=='cast')return Promise.resolve();
+  gameAudio.playCast(action);
   const table=await magicTableReady;
   if(table)return table.cast({...action,hold:INFORMATION_HOLD_MS});
   const scene=scenePlayer(action.playerId);
@@ -318,15 +324,17 @@ async function animateCast(action){
 
 async function animateSpellEffect(action){
   if(action.type!=='cast'||!action.success)return;
+  gameAudio.playSpell(action.spell);
   const table=await magicTableReady;
   await table?.spellEffect(action);
 }
 
 async function animateDraws(before,after,playerId){
+  const drawCount=Math.max(0,before.drawPileCount-after.drawPileCount);
+  const secretCount=Math.max(0,before.secretPoolCount-after.secretPoolCount);
+  gameAudio.playDraw(drawCount+secretCount);
   const table=await magicTableReady;
   if(table){
-    const drawCount=Math.max(0,before.drawPileCount-after.drawPileCount);
-    const secretCount=Math.max(0,before.secretPoolCount-after.secretPoolCount);
     const animations=[];
     for(let index=0;index<drawCount;index++)animations.push(table.draw({playerId,delay:index*90}));
     for(let index=0;index<secretCount;index++)animations.push(table.draw({playerId,secret:true,delay:index*90}));
@@ -336,8 +344,6 @@ async function animateDraws(before,after,playerId){
   const target=sceneHandFor(playerId)||scenePlayer(playerId);
   const drawSource=document.querySelector('.draw-pile .pile-stone');
   const secretSource=document.querySelector('.secret-pile .pile-stone');
-  const drawCount=Math.max(0,before.drawPileCount-after.drawPileCount);
-  const secretCount=Math.max(0,before.secretPoolCount-after.secretPoolCount);
   const animations=[];
   if(drawCount)drawSource?.classList.add('drawing');
   if(secretCount)secretSource?.classList.add('drawing');
@@ -348,7 +354,8 @@ async function animateDraws(before,after,playerId){
   secretSource?.classList.remove('drawing');
 }
 
-async function animateLifeChanges(changes=[]){
+async function animateLifeChanges(changes=[],{sound=true}={}){
+  if(sound)gameAudio.playLifeChanges(changes);
   const table=await magicTableReady;
   if(table){await Promise.all(changes.filter(change=>change.amount!==0).map(change=>table.lifeChange(change)));return;}
   if(reducedMotion.matches)return;
@@ -432,7 +439,7 @@ async function performAction(execute,messageForAction){
     }else{
       view=actionLifeView(before,after);
       render();
-      await animateLifeChanges(action.lifeChanges);
+      await animateLifeChanges(action.lifeChanges,{sound:action.spell!==8});
     }
     view=after;
     render();
