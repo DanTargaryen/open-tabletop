@@ -315,3 +315,5 @@ async function boot(){
   render();withSounds([],{silent:true});scheduleBot();
 }
 boot();
+
+document.querySelector('#tabletopHome')?.addEventListener('click',event=>{if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;if(online&&session&&room?.status!=='finished'&&!confirm('返回大厅后，房间会继续运行，轮到你时超时会自动行动。重新进入好友联机可尝试恢复座位。确定返回大厅吗？'))event.preventDefault();});

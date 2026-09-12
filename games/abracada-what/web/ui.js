@@ -614,3 +614,5 @@ if(['score','single'].includes(directParams.get('mode')))chooseMode(directParams
 if([2,3,4,5].includes(Number(directParams.get('players'))))choosePlayers(Number(directParams.get('players')));
 renderLineup();
 if(directParams.get('play')==='1')startGame();
+
+$('tabletopHome')?.addEventListener('click',event=>{if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;if(game&&view?.phase!=='game-complete'&&!confirm('返回大厅会结束当前单机对局，当前进度不会保存。确定返回大厅吗？'))event.preventDefault();});

@@ -1,0 +1,5 @@
+/* Keep the existing exit hit area while naming its destination during play. */
+.brand .return-label{display:none}
+.brand:focus-visible{outline:2px solid var(--gold);outline-offset:4px;border-radius:10px}
+body.game-active .site-header .brand-mark svg{display:none}
+body.game-active .site-header .brand-mark .return-label{display:block;font:600 11px/1.35 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;letter-spacing:0;text-align:center;white-space:nowrap}

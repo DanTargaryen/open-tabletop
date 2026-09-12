@@ -1,0 +1,5 @@
+/* Visible on small screens, including both table layout modes. */
+.topbar .collection-back{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 10px;flex:none;border:1px solid var(--line);border-radius:8px;color:var(--ink,#163a52);font-size:13px;font-weight:700;white-space:nowrap;text-decoration:none}
+.topbar .collection-back:hover{background:#163a520a;border-color:#163a5266}
+.topbar .collection-back:focus-visible{outline:2px solid #163a52;outline-offset:3px}
+@media(max-width:760px){.topbar,.game-active.compact-table .topbar,.game-active:not(.compact-table) .topbar{height:auto;min-height:92px;flex:0 0 auto;flex-wrap:wrap;gap:8px 14px;padding:9px 12px}.topbar .top-actions{flex-basis:100%;margin-left:0;justify-content:flex-end;gap:14px}.topbar .collection-back{font-size:12px}.topbar .brand{margin-right:auto}}
