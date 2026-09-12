@@ -29,11 +29,20 @@ Open Tabletop 的第一款游戏：六席无限注德州扑克，支持单人 AI
 
 行为对比与测量方法见 [AI 策略说明](../../docs/ai-strategies.md)。在仓库根目录运行 `node games/texas-holdem/scripts/measure-ai.mjs --hands 250 --difficulty standard` 可以重复当前策略的行为测量。
 
+## 音效
+
+发牌、翻开公共牌、过牌、跟注、加注、全押、弃牌、轮到你和本手结算各有简短提示音。音效默认开启，浏览器首次点击或按键后才会生效；右上角的音效按钮可关闭，之前保存的关闭偏好仍会保留。
+
+刷新、恢复存档、重连以及从后台返回标签页时，当前牌局先建立安静基线，不补播错过的行动。重复轮询不会重复响；切到后台、离开牌桌或关闭音效会取消已安排的声音。声音由浏览器本地合成，无外部录音、网络音频请求，也不使用发牌或 AI 的随机数。
+
+可在仓库根目录运行 `node --test games/texas-holdem/tests/audio*.test.mjs` 验证音效事件和 Web Audio 生命周期；实际扬声器听感另由浏览器验证。
+
 ## 文件
 
 - `web/engine.js`：规则、牌型评估与本地 AI。
 - `web/ui.js`、`web/online-ui.js`：单人和好友房界面。
 - `web/room-sync.js`：按座位隔离的轻量状态缓存。
+- `web/audio.js`、`web/audio-events.js`：本地合成音效、公开快照事件及重复声音抑制。
 - `server/rooms.mjs`：服务器掌握完整牌局，返回各座位允许看到的信息。
 - `server/api.mjs`：HTTP API 和可选 D1 存储适配。
 - `server/migrations/`：可选 Cloudflare D1 初始迁移。

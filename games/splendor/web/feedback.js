@@ -116,7 +116,7 @@ export class AcquisitionFeedback {
     const receipt=make('div','acquisition-receipt');receipt.append(this.portrait(event.card));
     const copy=make('div','acquisition-receipt-copy');copy.append(make('strong','',own?`${event.card.nameZh}加入队伍`:`${event.name}获得${event.card.nameZh}`),make('span','',this.rewardText(event)));receipt.append(copy);scene.append(receipt);
     this.status.textContent=`${event.replay?'动效回放。':''}${own?'':event.name+'，'}${heading}${event.card.nameZh}，${this.rewardText(event)}`;
-    if(own)try{this.onSound(event.kind);}catch{}
+    try{this.onSound(event.kind,event);}catch{}
     if(reduced) {
       receipt.classList.add('receipt-arrived');scene.dataset.phase='settle';this.pulse(event);
       if(event.replay)copy.prepend(make('small','feedback-replay-label','动效回放'));

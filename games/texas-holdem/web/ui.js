@@ -1,3 +1,5 @@
+import { PokerAudio, bindPokerAudio } from './audio.js';
+import { PokerSoundEvents } from './audio-events.js';
 import { PokerGame, evaluateHand, estimateEquity } from './engine.js';
 import { CHARACTER_THEMES, BRAND_ORDER, themeFor, remapLegacyText, tableLineFor } from './characters.js';
 
@@ -30,11 +32,12 @@ const ACHIEVEMENTS = [
 ];
 let game = null, view = null, mode = 'tournament', difficulty = 'normal', paused = false;
 let busy = false, botTimer = null, toastTimer = null, resultTimer = null, lastBoardKey = '', lastHandNumber = 0;
-let settings = {sound:false,speed:1,talk:true}, profile = {hands:0,wins:0,titles:0,biggestWin:0,unlocked:[]};
-let run = null, activeTab = 'live', audioCtx = null, storageWarning = false, lastSave = null;
+let settings = {sound:true,speed:1,talk:true}, profile = {hands:0,wins:0,titles:0,biggestWin:0,unlocked:[]};
+let run = null, activeTab = 'live', storageWarning = false, lastSave = null;
 let restoredGame = null, restoredRun = null;
 let banter={hand:0,count:0,seen:0,line:null,until:0};
 let banterTimer=null;
+const audio=new PokerAudio(),soundEvents=new PokerSoundEvents();
 
 function readStorage(key) { try { const value = localStorage.getItem(key); return value ? JSON.parse(value) : null; } catch { return null; } }
 function writeStorage(key,value) {
@@ -42,9 +45,9 @@ function writeStorage(key,value) {
  catch { if(!storageWarning) { storageWarning=true; toast('此浏览器无法自动保存。请在暂停菜单导出存档。'); } return false; }
 }
 function loadSettings() {
- const s = readStorage(SETTINGS_KEY); if(s) settings={sound:!!s.sound,speed:s.speed===2?2:1,talk:s.talk!==false};
+ const s = readStorage(SETTINGS_KEY); if(s) settings={sound:s.sound!==false,speed:s.speed===2?2:1,talk:s.talk!==false};
  const p = readStorage(PROFILE_KEY); if(p && typeof p==='object') profile={hands:Math.max(0,+p.hands||0),wins:Math.max(0,+p.wins||0),titles:Math.max(0,+p.titles||0),biggestWin:Math.max(0,+p.biggestWin||0),unlocked:Array.isArray(p.unlocked)?p.unlocked.filter(v=>ACHIEVEMENTS.some(a=>a.id===v)):[]};
- updateSoundButton(); $('speedBtn').innerHTML=`${settings.speed}× <span>节奏</span>`;
+ audio.setEnabled(settings.sound);updateSoundButton(); $('speedBtn').innerHTML=`${settings.speed}× <span>节奏</span>`;
 }
 function validateSave(envelope) {
  if(!envelope || envelope.version!==1 || !envelope.game) throw new Error('这不是有效的丝绒牌局存档');
@@ -70,16 +73,11 @@ function persist() {
 }
 function toast(message) { clearTimeout(toastTimer);$('toast').textContent=message;$('toast').classList.remove('hidden');toastTimer=setTimeout(()=>$('toast').classList.add('hidden'),4300); }
 function updateLobby() { $('lobbyHands').textContent=num(profile.hands);$('lobbyWins').textContent=num(profile.wins);$('lobbyTitles').textContent=num(profile.titles); }
-function updateSoundButton() { $('soundBtn').classList.toggle('sound-on',settings.sound);$('soundBtn').title=settings.sound?'关闭声音':'开启声音';$('soundBtn').setAttribute('aria-label',$('soundBtn').title); }
-function sound(kind='card') {
- if(!settings.sound) return;
- try {
-  if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-  if(audioCtx.state==='suspended') audioCtx.resume();
-  const now=audioCtx.currentTime, freqs=kind==='win'?[523.25,659.25,783.99]:kind==='chips'?[440,550]:kind==='fold'?[220]:[800];
-  freqs.forEach((frequency,i)=>{const osc=audioCtx.createOscillator(),gain=audioCtx.createGain();osc.type=kind==='card'?'triangle':'sine';osc.frequency.setValueAtTime(frequency,now+i*.08);gain.gain.setValueAtTime(0,now+i*.08);gain.gain.linearRampToValueAtTime(.045,now+i*.08+.008);gain.gain.exponentialRampToValueAtTime(.0001,now+i*.08+(kind==='win'?.34:.08));osc.connect(gain);gain.connect(audioCtx.destination);osc.start(now+i*.08);osc.stop(now+i*.08+.4);});
- } catch { /* Sound is optional. */ }
+function updateSoundButton() { $('soundBtn').classList.toggle('sound-on',settings.sound);$('soundBtn').title=settings.sound?'关闭音效':'开启音效';$('soundBtn').setAttribute('aria-label',$('soundBtn').title);$('soundBtn').setAttribute('aria-pressed',String(settings.sound)); }
+function playSnapshot(state,options={}) {
+ for(const {kind,delay} of soundEvents.observe(state,options))audio.play(kind,{delay});
 }
+function resetAudio(){audio.stop();soundEvents.reset();}
 function cardHTML(code,{mini=false,empty=false,winning=false}={}) {
  if(empty) return '<span class="card empty" aria-hidden="true"></span>';
  if(!code) return `<span class="card back${mini?' mini':''}" aria-label="对手暗牌"><span class="card-back-pattern">VP</span></span>`;
@@ -93,22 +91,23 @@ function isHumanTurn() { return game && !paused && !busy && !isComplete() && cur
 function difficultyValue(){return {easy:'casual',normal:'standard',hard:'expert'}[difficulty]||'standard';}
 function createGame() {
  clearTimeout(botTimer);clearTimeout(resultTimer);closeModal(false);paused=false;busy=false;lastBoardKey='';lastHandNumber=0;
- resetBanter();
+ resetBanter();resetAudio();
  game=new PokerGame({mode,difficulty:difficultyValue(),playerName:'你'});
  run={id:`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,hands:0,wins:0,net:0,history:[],recordedHand:0,titleRecorded:false,startedAt:new Date().toISOString()};
- game.startHand();showGame();sound('card');refresh();
+ game.startHand();showGame();refresh({announce:true});
 }
 function showGame() { $('lobby').classList.add('hidden');$('game').classList.remove('hidden');document.title='丝绒牌局 · 正在牌桌';window.scrollTo({top:0,behavior:'instant'}); }
 function goLobby() {
+ audio.stop();
  clearTimeout(botTimer);clearTimeout(resultTimer);paused=true;persist();closeModal(false);$('game').classList.add('hidden');$('lobby').classList.remove('hidden');document.title='VELVET POKER · 丝绒牌局';updateLobby();detectSave();window.scrollTo({top:0,behavior:'instant'});
 }
-function continueGame() { if(!restoredGame) return;game=restoredGame;run=restoredRun;paused=false;busy=false;lastBoardKey='';lastHandNumber=0;resetBanter(game.getPublicState());showGame();refresh(); }
+function continueGame() { if(!restoredGame) return;game=restoredGame;run=restoredRun;paused=false;busy=false;lastBoardKey='';lastHandNumber=0;resetBanter(game.getPublicState());resetAudio();showGame();refresh({bootstrap:true}); }
 function recordHand() {
  if(!isComplete()||run.recordedHand===view.handNumber)return;
  run.recordedHand=view.handNumber;run.hands++;profile.hands++;
  const own=view.lastResult.playerResults?.find(p=>p.id===0);
  const net=Number(own?.net||0),won=(view.lastResult.winners||[]).some(w=>w.id===0&&w.amount>0);
- if(won){run.wins++;profile.wins++;sound('win');}else sound('card');
+ if(won){run.wins++;profile.wins++;}
  run.net+=net;profile.biggestWin=Math.max(profile.biggestWin,net);
  const showdown=view.lastResult.showdown?(view.lastResult.playerResults||[]).filter(p=>!p.folded&&p.hole?.every(Boolean)&&p.bestCards?.length===5).map(p=>({id:p.id,name:p.name,hole:[...p.hole],bestCards:[...p.bestCards],handName:p.handName,won:p.won})):[];
  run.history.unshift({hand:view.handNumber,net,won,board:[...(view.lastResult.board||view.board)],hole:[...(view.players[0].hole||[])],summary:view.lastResult.summary||'',handName:own?.handName||'',pot:view.lastResult.totalPot||0,showdown,actions:(view.lastResult.actions||view.history.filter(x=>x.handNumber===view.handNumber)).map(x=>({text:x.text,type:x.type,playerId:x.playerId}))});run.history=run.history.slice(0,50);
@@ -117,8 +116,8 @@ function recordHand() {
  writeStorage(PROFILE_KEY,profile);if(newAchievements.length)setTimeout(()=>toast(`解锁成就 · ${newAchievements.map(a=>a.title).join(' / ')}`),600);
  if(view.gameOver) {clearTimeout(resultTimer);resultTimer=setTimeout(()=>{if(!paused&&!$('game').classList.contains('hidden'))showEnd();},1100);}
 }
-function refresh({schedule=true}={}) {
- view=game.getPublicState();recordHand();updateBanter();renderGame();persist();if(schedule) scheduleAI();
+function refresh({schedule=true,bootstrap=false,announce=false}={}) {
+ view=game.getPublicState();playSnapshot(view,{bootstrap,announce});recordHand();updateBanter();renderGame();persist();if(schedule) scheduleAI();
 }
 function renderGame() {
  const s=view,finished=isComplete(),human=s.players[0];
@@ -228,7 +227,7 @@ function scheduleAI() {
  botTimer=setTimeout(()=>{
   if(paused||busy||!game||isComplete()||currentPlayer()?.isHuman)return;
   busy=true;
-  try{const action=game.botAction();sound(action?.type==='fold'?'fold':'chips');}
+  try{game.botAction();}
   catch(e){paused=true;toast(`牌局已安全暂停：${e.message}`);}
   finally{busy=false;refresh();}
  },delay);
@@ -239,14 +238,14 @@ function humanAction(type) {
  if(type==='call')type=legal.canCheck?'check':'call';
  let amount;if(type==='raise'){amount=Number($('raiseSlider').value);if(amount>=legal.allInTo)type='all-in';if(!legal.canRaise&&!legal.canAllIn)return;}
  busy=true;clearTimeout(botTimer);
- try{game.act(type,amount);sound(type==='fold'?'fold':'chips');}
+ try{game.act(type,amount);}
  catch(e){toast(`未执行：${e.message}`);}
  finally{busy=false;refresh();}
 }
 function nextHand() {
  if(!game||busy||paused||!isComplete())return;if(view.gameOver){showEnd();return;}
  clearTimeout(botTimer);clearTimeout(resultTimer);lastBoardKey='';busy=true;
- try{game.nextHand();sound('card');}
+ try{game.nextHand();}
  catch(e){toast(`无法开始下一手：${e.message}`);}
  finally{busy=false;refresh();}
 }
@@ -305,12 +304,16 @@ function exportSave() {
 function importSave() {
  const input=document.createElement('input');input.type='file';input.accept='.json,application/json';
  input.onchange=async()=>{const file=input.files?.[0];if(!file)return;if(file.size>2*1024*1024){toast('存档过大，请选择 2 MB 以内的 JSON 文件。');return;}
-  try{const envelope=JSON.parse(await file.text()),r=validateSave(envelope);const s=r.game.getPublicState();openModal(`<h2 class="modal-title">接着这手牌打。</h2><p class="modal-copy">${s.mode==='practice'?'自由练习':'单桌锦标赛'} · 第 ${num(s.handNumber)} 手<br>你的筹码：${num(s.players[0].stack)}<br>导入会替换此设备当前的牌局存档。已有成就仍然保留。</p><div class="modal-actions"><button class="primary-btn" id="confirmImport">确认导入 <span>→</span></button><button class="secondary-btn" data-command="resume">取消</button></div>`);$('confirmImport').onclick=()=>{clearTimeout(botTimer);clearTimeout(resultTimer);game=r.game;run=r.run;paused=false;busy=false;lastBoardKey='';lastHandNumber=0;closeModal(false);resetBanter(game.getPublicState());showGame();refresh();toast('存档已导入，欢迎回到牌桌。');};}
+  try{const envelope=JSON.parse(await file.text()),r=validateSave(envelope);const s=r.game.getPublicState();openModal(`<h2 class="modal-title">接着这手牌打。</h2><p class="modal-copy">${s.mode==='practice'?'自由练习':'单桌锦标赛'} · 第 ${num(s.handNumber)} 手<br>你的筹码：${num(s.players[0].stack)}<br>导入会替换此设备当前的牌局存档。已有成就仍然保留。</p><div class="modal-actions"><button class="primary-btn" id="confirmImport">确认导入 <span>→</span></button><button class="secondary-btn" data-command="resume">取消</button></div>`);$('confirmImport').onclick=()=>{clearTimeout(botTimer);clearTimeout(resultTimer);game=r.game;run=r.run;paused=false;busy=false;lastBoardKey='';lastHandNumber=0;closeModal(false);resetBanter(game.getPublicState());resetAudio();showGame();refresh({bootstrap:true});toast('存档已导入，欢迎回到牌桌。');};}
   catch(e){toast(`导入失败：${e.message}`);}
  };input.click();
 }
 
-loadSettings();updateLobby();detectSave();
+loadSettings();bindPokerAudio(audio);
+// The next accepted state after returning to this tab establishes a silent baseline.
+document.addEventListener('visibilitychange',()=>{soundEvents.reset();});
+window.addEventListener('pagehide',resetAudio);
+updateLobby();detectSave();
 $('opponentLineup').innerHTML=BRAND_ORDER.map(brand=>{const t=CHARACTER_THEMES[brand];return `<span class="lineup-player"><img src="${t.icon}" alt="" draggable="false"><span>${t.name}</span></span>`;}).join('');
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('active',x===b));});
 document.querySelectorAll('[data-difficulty]').forEach(b=>b.onclick=()=>{difficulty=b.dataset.difficulty;document.querySelectorAll('[data-difficulty]').forEach(x=>x.classList.toggle('active',x===b));});
@@ -320,7 +323,7 @@ $('startBtn').onclick=()=>{
 };
 $('continueBtn').onclick=continueGame;$('helpBtn').onclick=showHelp;$('ranksBtn').onclick=showRankGuide;$('achievementsBtn').onclick=showAchievements;$('pauseBtn').onclick=showPause;
 $('brandBtn').onclick=()=>{if(game&&!$('game').classList.contains('hidden'))showPause();else window.scrollTo({top:0,behavior:'smooth'});};
-$('soundBtn').onclick=()=>{settings.sound=!settings.sound;writeStorage(SETTINGS_KEY,settings);updateSoundButton();if(settings.sound)sound('chips');};
+$('soundBtn').onclick=async()=>{settings.sound=!settings.sound;writeStorage(SETTINGS_KEY,settings);audio.setEnabled(settings.sound);updateSoundButton();if(settings.sound&&await audio.unlock())audio.play('check');};
 $('speedBtn').onclick=()=>{settings.speed=settings.speed===1?2:1;writeStorage(SETTINGS_KEY,settings);$('speedBtn').innerHTML=`${settings.speed}× <span>节奏</span>`;scheduleAI();};
 $('foldBtn').onclick=()=>humanAction('fold');$('callBtn').onclick=()=>humanAction('call');$('raiseBtn').onclick=()=>humanAction('raise');$('nextBtn').onclick=nextHand;$('raiseSlider').oninput=updateRaiseValue;
 document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>preset(b.dataset.preset));
