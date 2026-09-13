@@ -12,7 +12,7 @@ export function createWinnerShowcase(canvas){
   const scene=new THREE.Scene();
   const camera=new THREE.PerspectiveCamera(34,1,.1,20);camera.position.set(0,1.62,4.25);camera.lookAt(0,1.12,0);
   const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'high-performance'});
-  renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.setClearColor(0x000000,0);
+  renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;renderer.setClearColor(0x000000,0);
   const ambient=new THREE.HemisphereLight(0xe8dcff,0x21152c,2.4);
   const keyLight=new THREE.DirectionalLight(0xffd888,4.2);keyLight.position.set(-2.5,5,4);keyLight.castShadow=true;
   const rimLight=new THREE.PointLight(0x76d9d0,16,8,2);rimLight.position.set(2.6,2.2,-1.5);scene.add(ambient,keyLight,rimLight);

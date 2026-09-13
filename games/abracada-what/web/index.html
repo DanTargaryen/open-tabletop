@@ -27,12 +27,12 @@
  </section>
  <section class="setup-card" aria-labelledby="setupTitle">
   <div class="setup-heading"><span>开局设置</span><h2 id="setupTitle">选择你的试炼</h2></div>
-  <fieldset class="mode-picker">
+  <fieldset class="mode-picker" disabled>
    <legend>游戏模式</legend>
    <button class="mode-card active" data-mode="score" type="button"><span class="mode-number">01</span><span><b>积分模式</b><small>多轮进行，率先达到 8 分获胜</small></span><span class="radio-dot"></span></button>
    <button class="mode-card" data-mode="single" type="button"><span class="mode-number">02</span><span><b>单局模式</b><small>不累计积分，本轮结束即结算</small></span><span class="radio-dot"></span></button>
   </fieldset>
-  <fieldset class="player-picker">
+  <fieldset class="player-picker" disabled>
    <legend>总玩家人数</legend>
    <div class="player-options" id="playerOptions">
     <button type="button" data-players="2">2</button><button type="button" data-players="3">3</button><button class="active" type="button" data-players="4">4</button><button type="button" data-players="5">5</button>
@@ -40,7 +40,7 @@
    <p><b>1 名真人</b>入座，剩余 <strong id="botCount">3</strong> 个席位由本地 AI 填充。</p>
   </fieldset>
   <div class="lineup-preview" id="lineupPreview"></div>
-  <div class="setup-actions"><button class="primary-button" id="startBtn" type="button"><span>进入法师塔</span><span>↗</span></button><button class="rules-button" data-help type="button">查看游戏玩法</button></div>
+  <div class="setup-actions"><button class="primary-button" id="startBtn" type="button" disabled><span>正在准备法师塔…</span><span>↗</span></button><button class="rules-button" data-help type="button">查看游戏玩法</button></div>
   <p class="prototype-note">规则与界面原型 · 不使用原版美术 · AI 不调用外部模型</p>
  </section>
  <section class="tower-art" aria-hidden="true">

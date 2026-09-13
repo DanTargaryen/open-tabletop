@@ -29,21 +29,21 @@
  <section class="portal-console" aria-labelledby="portalTitle">
   <div class="portal-heading"><span>联机入口</span><h2 id="portalTitle">留下你的法师名</h2></div>
   <label class="field-label" for="onlineName">昵称</label>
-  <input class="online-input" id="onlineName" maxlength="16" autocomplete="nickname" placeholder="朋友会在法师塔中看到">
-  <div class="portal-tabs"><button class="active" type="button" data-portal-tab="create">开启召集</button><button type="button" data-portal-tab="join">回应邀请</button></div>
+  <input class="online-input" id="onlineName" disabled maxlength="16" autocomplete="nickname" placeholder="朋友会在法师塔中看到">
+  <div class="portal-tabs"><button class="active" type="button" data-portal-tab="create" disabled>开启召集</button><button type="button" data-portal-tab="join" disabled>回应邀请</button></div>
   <section class="portal-panel" id="createPanel">
    <label class="field-label" for="roomMode">试炼模式</label>
-   <select class="online-input" id="roomMode"><option value="score">积分模式 · 率先达到 8 分</option><option value="single">单局模式 · 一轮定胜负</option></select>
+   <select class="online-input" id="roomMode" disabled><option value="score">积分模式 · 率先达到 8 分</option><option value="single">单局模式 · 一轮定胜负</option></select>
    <label class="field-label" for="roomPlayers">法师塔总席位</label>
-   <select class="online-input" id="roomPlayers"><option value="2">2 人塔</option><option value="3">3 人塔</option><option value="4" selected>4 人塔</option><option value="5">5 人塔</option></select>
+   <select class="online-input" id="roomPlayers" disabled><option value="2">2 人塔</option><option value="3">3 人塔</option><option value="4" selected>4 人塔</option><option value="5">5 人塔</option></select>
    <p class="field-hint">可以只有房主一位真人；未入席的位置由 AI 自动补齐。</p>
-   <button class="primary-button" id="createRoomBtn" type="button"><span>点亮法师塔</span><span>↗</span></button>
+   <button class="primary-button" id="createRoomBtn" type="button" disabled><span>正在准备联机入口…</span><span>↗</span></button>
   </section>
   <section class="portal-panel hidden" id="joinPanel">
    <label class="field-label" for="joinCode">六位房间码</label>
-   <input class="online-input code-input" id="joinCode" maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="例如 ARC234">
+   <input class="online-input code-input" id="joinCode" disabled maxlength="6" autocomplete="off" autocapitalize="characters" placeholder="例如 ARC234">
    <p class="field-hint">打开朋友发来的邀请链接时，房间码会自动填入。</p>
-   <button class="primary-button" id="joinRoomBtn" type="button"><span>进入传送门</span><span>→</span></button>
+   <button class="primary-button" id="joinRoomBtn" type="button" disabled><span>进入传送门</span><span>→</span></button>
   </section>
   <button class="resume-button hidden" id="resumeRoomBtn" type="button">恢复上次的法师席位</button>
   <p class="online-error" id="netError" role="status"></p>
