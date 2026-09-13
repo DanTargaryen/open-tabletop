@@ -21,7 +21,7 @@ export function createCharacterPreview(canvas,{selected,onSelect,onBlocked}={}){
   scene.fog=new THREE.FogExp2(0x0c0b18,.055);
   const camera=new THREE.PerspectiveCamera(38,1,.1,40);camera.position.set(0,3.15,10.8);camera.lookAt(0,1.15,0);
   const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'high-performance'});
-  renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.setClearColor(0x080713,0);
+  renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;renderer.setClearColor(0x080713,0);
   const ambient=new THREE.HemisphereLight(0xc9c2ff,0x25152b,2.15);
   const keyLight=new THREE.DirectionalLight(0xffe0a0,3.5);keyLight.position.set(-3,6,5);keyLight.castShadow=true;
   const portalLight=new THREE.PointLight(0x76d9d0,18,12,2);portalLight.position.set(0,2.4,-1.3);scene.add(ambient,keyLight,portalLight);
