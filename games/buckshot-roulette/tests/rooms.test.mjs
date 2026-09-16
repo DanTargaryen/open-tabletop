@@ -171,6 +171,26 @@ test('state polls keep a heartbeat without rewriting the room',async()=>{
   assert.equal(after.room.members[0].connected,true);
 });
 
+test('shared stores keep presence visible across separate worker instances',async()=>{
+  const f=await setup();
+  f.store.persistHeartbeats=true;
+  const {BuckshotRooms:OtherWorker}=await import('../server/rooms.mjs?presence-worker');
+  const other=new OtherWorker(f.store,f.now);
+  f.advance(25000);
+  const before=(await f.store.get(f.code,f.now())).revision;
+  await f.service.request(f.code,f.players[0].token,'state');
+  const guest=await other.request(f.code,f.players[1].token,'state');
+  assert.equal(guest.room.members[0].connected,true);
+  const host=await f.service.request(f.code,f.players[0].token,'state');
+  assert.equal(host.room.members[1].connected,true);
+  assert.equal(host.room.version,guest.room.version);
+  const refreshed=(await f.store.get(f.code,f.now())).revision;
+  assert.equal(refreshed,before+2);
+  f.advance(1000);
+  await f.service.request(f.code,f.players[0].token,'state');
+  assert.equal((await f.store.get(f.code,f.now())).revision,refreshed);
+});
+
 test('a late poll still receives every action in order',async()=>{
   const f=await setup();await start(f);
   const row=await f.store.get(f.code,f.now());

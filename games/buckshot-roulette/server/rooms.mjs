@@ -132,7 +132,10 @@ export class BuckshotRooms{
       requireThat(member,403,'无法恢复座位，请检查所用浏览器。');
       touchHeartbeat(room.code,member.id,now);
       const mutation=!['state','join'].includes(operation);
-      if(mutation&&now-member.lastSeen>=30000){member.lastSeen=now;changed=true;}
+      // D1 is shared by independent Workers; their in-memory heartbeats are not.
+      // Keep local idle polls write-free, but persist shared presence at most every 10s.
+      if((this.store.persistHeartbeats&&now-member.lastSeen>=10000)||
+        (mutation&&now-member.lastSeen>=30000)){member.lastSeen=now;changed=true;}
       let duplicate=false;
       if(mutation){
         requireThat(typeof input.requestId==='string'&&/^[\w-]{8,80}$/.test(input.requestId),400,'缺少有效的请求编号。');
