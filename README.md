@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/DanTargaryen/open-tabletop/actions/workflows/ci.yml/badge.svg)](https://github.com/DanTargaryen/open-tabletop/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/Code-MIT-d2b77c)](LICENSE)
 
-一个可以自己运行、继续扩展的开源网页桌游合集。**现已包含德州扑克、璀璨宝石·宝可梦特别款与出包魔法师**：单人对战本地 AI，也可以创建房间与朋友联机，空位可由 AI 补齐。
+一个可以自己运行、继续扩展的开源网页桌游合集。**现已包含德州扑克、璀璨宝石·宝可梦特别款、出包魔法师与飞行棋**：单人对战本地 AI，也可以创建房间与朋友联机，空位可由 AI 补齐。
 
 [English](README.en.md) · [添加游戏](docs/adding-a-game.md) · [架构说明](docs/architecture.md) · [参与贡献](CONTRIBUTING.md)
 
@@ -10,11 +10,11 @@
 
 ## 先玩一局
 
-**[打开游戏大厅](https://velvet-poker-friends.linming-dracarys.chatgpt.site/)**，选择德州扑克或宝可梦，再选择单人模式或好友房。
+**[打开游戏大厅](https://velvet-poker-friends.linming-dracarys.chatgpt.site/)**，选择德州扑克、宝可梦、出包魔法师或飞行棋，再选择单人模式或好友房。
 
 [宝可梦特别款 · 单人冒险](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/splendor/) · [宝可梦特别款 · 好友联机](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/splendor/online) · [德州扑克试玩](https://velvet-poker-friends.linming-dracarys.chatgpt.site)
 
-统一首页已部署到现有 Sites 域名；两款游戏均支持单人 AI 和远端好友房。原游戏直达路径及旧的扑克房间邀请链接继续可用。
+统一首页已部署到现有 Sites 域名；四款游戏均支持单人 AI 和远端好友房，飞行棋还支持 2–4 人同屏。原游戏直达路径及旧的扑克房间邀请链接继续可用。
 
 德州扑克包含：
 
@@ -40,6 +40,12 @@
 
 卡表来自社区转录，尚未逐张核对实体版；55 种宝可梦均有本地角色图片，采用 The Artificial 作者自绘、允许署名分享的统一图标，无数字替补。详见 [玩法与运行](games/splendor/README.md) 及 [规则与素材来源](games/splendor/SOURCES.md)。宝可梦联机支持 Node 服务或 Cloudflare Workers + D1；Worker 需要应用独立的宝可梦房间与限流表迁移。
 
+## 飞行棋
+
+新增四机竞速：6 点起飞与续掷、同色跳格、虚线飞越、撞机、精确抵达与超点反弹。支持单人对本地规则 AI、2–4 人同屏轮流操作，以及 1–4 人好友房、AI 补位、准备开局和刷新恢复。游戏内可查看固定规则变体，包含独立叠机、无路障、无三连六惩罚。
+
+规则与界面分离；音效由本地 Web Audio 合成，音效开关持久化。好友房由服务端产生骰子、校验行动，45 秒超时后代执行一步操作，房间活动有效期 24 小时。详见 [飞行棋说明](games/aeroplane-chess/README.md) 与 [规则和素材来源](games/aeroplane-chess/SOURCES.md)。[单人 / 同屏试玩](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/aeroplane-chess/index.html) · [好友房](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/aeroplane-chess/online.html)。
+
 ## 本地运行
 
 需要 **Node.js 22.13 或更新版本**。首次运行时先安装本地依赖：
@@ -62,6 +68,8 @@ npm start
 | 宝可梦特别款好友房 | `/games/splendor/online.html` |
 | 出包魔法师本地模式 | `/games/abracada-what/index.html` |
 | 出包魔法师联机模式 | `/games/abracada-what/online.html` |
+| 飞行棋单人 / 同屏 | `/games/aeroplane-chess/index.html` |
+| 飞行棋好友房 | `/games/aeroplane-chess/online.html` |
 
 与同一局域网内的朋友一起玩：
 
@@ -96,19 +104,19 @@ npm test
 npm run build:static
 ```
 
-测试覆盖三款游戏的规则引擎、房间逻辑、隐藏信息投影、同步和根服务器。静态构建会将资源复制到 `.dist/public`；联机功能还需要提供 `/api/poker`、`/api/splendor` 与 `/api/abracada` 的 Node 或 Worker + D1 后端，单独托管静态文件不能提供房间服务。
+测试覆盖四款游戏的规则引擎、房间逻辑、隐藏信息投影、同步和根服务器。静态构建会将资源复制到 `.dist/public`；联机功能还需要提供 `/api/poker`、`/api/splendor`、`/api/abracada` 与 `/api/aeroplane` 的 Node 或 Worker + D1 后端，单独托管静态文件不能提供房间服务。
 
 默认入口是 `server/index.mjs`，适合在自己的 Node 环境中运行。仓库也提供可选的 Cloudflare 适配器：
 
 - `deploy/cloudflare/worker.mjs`
 - `deploy/cloudflare/wrangler.example.jsonc`
-- `deploy/cloudflare/migrations/`：扑克原有表与新增宝可梦表的顺序迁移；两款游戏使用独立表和限流。
+- `deploy/cloudflare/migrations/`：四款游戏的顺序迁移；每款游戏使用独立房间与限流表，飞行棋需应用 `0004_aeroplane_rooms.sql`。
 
 示例配置中的数据库信息是占位符。使用前需要自行创建并绑定资源；本仓库不附带任何可复用的托管账户或数据库 ID。具体边界见 [架构说明](docs/architecture.md)。
 
 ## 扩展合集
 
-每个游戏放在 `games/<game-id>/`，通过 `games/catalog.json` 出现在首页。当前目录包含 `texas-holdem`、`splendor` 与 `abracada-what`；未来游戏由实际实现和贡献逐步加入。
+每个游戏放在 `games/<game-id>/`，通过 `games/catalog.json` 出现在首页。当前目录包含 `texas-holdem`、`splendor`、`abracada-what` 与 `aeroplane-chess`；未来游戏由实际实现和贡献逐步加入。
 
 ```text
 games/
@@ -126,6 +134,10 @@ games/
     web/        本地与联机页面和资源
     server/     魔法师房间服务
     tests/      法术、计分、房间与隐藏信息测试
+  aeroplane-chess/
+    web/        单人、同屏、联机页面与共享规则引擎
+    server/     飞行棋权威房间服务
+    tests/      规则、房间与 HTTP 测试
 public/         合集首页
 server/         Node 服务入口
 deploy/         可选平台适配器

@@ -31,5 +31,16 @@
     "version": "0.2.0",
     "solo": "/games/abracada-what/index.html",
     "online": "/games/abracada-what/online.html"
+  },
+  {
+    "id": "aeroplane-chess",
+    "title": "飞行棋",
+    "subtitle": "AEROPLANE CLUB",
+    "description": "四架飞机，一场轻松的旅行。掷骰起飞、同色跳格、飞越捷径，和朋友一起把快乐飞得更远。",
+    "players": "1 人 AI / 2–4 人同屏 / 1–4 人好友房",
+    "category": "飞行棋",
+    "version": "0.1.0",
+    "solo": "/games/aeroplane-chess/index.html",
+    "online": "/games/aeroplane-chess/online.html"
   }
 ]

@@ -50,7 +50,17 @@ const fallbackArt = (index, category) => `
     <span class="art-index">${String(index + 1).padStart(2, '0')} / ${escape(category)}</span>
   </div>`;
 
+const aeroplaneArt = (index, category) => `
+  <div class="game-art aeroplane-art" aria-hidden="true"><img src="/games/aeroplane-chess/assets/airplane-club.jpg" alt="" loading="lazy"><span class="art-index">${String(index + 1).padStart(2, '0')} / ${escape(category)}</span></div>`;
+
 const presentations = {
+  'aeroplane-chess': {
+    className: 'game-card--aeroplane',
+    art: aeroplaneArt,
+    extraTag: '经典跳格 / 虚线飞越',
+    soloLabel: '单人 / 同屏',
+    note: '6 点起飞，四机抵达。好友房空位由本地 AI 补齐。',
+  },
   'texas-holdem': {
     className: 'game-card--poker',
     art: pokerArt,
@@ -103,7 +113,7 @@ try {
         <p class="game-description">${escape(presentation.description ?? game.description)}</p>
         <div class="game-tags"><span>${escape(game.players)}</span><span>${escape(presentation.extraTag)}</span></div>
         <div class="game-actions">
-          ${solo ? `<a class="button primary" href="${solo}" aria-label="${escape(game.title)}单人模式">单人模式 <span aria-hidden="true">→</span></a>` : ''}
+          ${solo ? `<a class="button primary" href="${solo}" aria-label="${escape(game.title)}单人模式">${escape(game.id === "aeroplane-chess" ? presentation.soloLabel : "单人模式")} <span aria-hidden="true">→</span></a>` : ''}
           ${online ? `<a class="button secondary" href="${online}" aria-label="${escape(game.title)}好友房">好友房 <span aria-hidden="true">↗</span></a>` : ''}
         </div>
         <p class="game-note">${escape(presentation.note)}</p>
@@ -111,5 +121,5 @@ try {
     </article>`;
   }).join('');
 } catch {
-  grid.innerHTML = '<p class="loading">暂时无法读取游戏列表，你仍可直接进入：<br><a href="/games/texas-holdem/index.html">丝绒牌局 · 单人</a> / <a href="/games/texas-holdem/online.html">丝绒牌局 · 好友房</a> / <a href="/games/splendor/index.html">璀璨宝石 · 宝可梦特别款 · 单人</a> / <a href="/games/splendor/online.html">璀璨宝石 · 宝可梦特别款 · 好友房</a> / <a href="/games/abracada-what/index.html">出包魔法师 · 单人</a> / <a href="/games/abracada-what/online.html">出包魔法师 · 好友房</a></p>';
+  grid.innerHTML = '<p class="loading">暂时无法读取游戏列表，你仍可直接进入：<br><a href="/games/texas-holdem/index.html">丝绒牌局 · 单人</a> / <a href="/games/texas-holdem/online.html">丝绒牌局 · 好友房</a> / <a href="/games/splendor/index.html">璀璨宝石 · 宝可梦特别款 · 单人</a> / <a href="/games/splendor/online.html">璀璨宝石 · 宝可梦特别款 · 好友房</a> / <a href="/games/abracada-what/index.html">出包魔法师 · 单人</a> / <a href="/games/abracada-what/online.html">出包魔法师 · 好友房</a> / <a href="/games/aeroplane-chess/index.html">飞行棋 · 单人 / 同屏</a> / <a href="/games/aeroplane-chess/online.html">飞行棋 · 好友房</a></p>';
 }
