@@ -42,5 +42,16 @@
     "version": "0.1.0",
     "solo": "/games/aeroplane-chess/index.html",
     "online": "/games/aeroplane-chess/online.html"
+  },
+  {
+    "id": "buckshot-roulette",
+    "title": "暗膛协议",
+    "subtitle": "CHAMBER PACT",
+    "description": "实弹与空弹混装的高压桌面博弈。读懂风险，使用道具，击败本地 AI 对手。",
+    "players": "1 人对战 AI / 2 人好友房",
+    "category": "暗膛协议",
+    "version": "0.2.0",
+    "solo": "/games/buckshot-roulette/index.html",
+    "online": "/games/buckshot-roulette/online.html"
   }
 ]

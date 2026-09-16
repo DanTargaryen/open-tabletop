@@ -4,7 +4,7 @@
 
 ![Open Tabletop collection](docs/collection-preview.jpg)
 
-An open-source collection of browser tabletop games that you can run yourself and extend. **The collection contains Texas Hold’em, unofficial Splendor: Pokémon, Abracada...What? and Aeroplane Chess implementations**, with solo play against local AI and online rooms for friends.
+An open-source collection of browser tabletop games that you can run yourself and extend. **The collection contains Texas Hold’em, unofficial Splendor: Pokémon, Abracada...What?, Aeroplane Chess and Chamber Pact**, with solo play against local AI and online rooms for friends.
 
 [中文](README.md) · [Add a game](docs/adding-a-game.md) · [Architecture](docs/architecture.md) · [Contributing](CONTRIBUTING.md)
 
@@ -12,7 +12,7 @@ An open-source collection of browser tabletop games that you can run yourself an
 
 [Open the game lobby](https://velvet-poker-friends.linming-dracarys.chatgpt.site)
 
-The public root URL is now the game-selection homepage, with solo and friend-room links for all four games. Existing poker URLs and root room invitations remain supported.
+The public root URL is now the game-selection homepage, with solo and friend-room links for all five games. Existing poker URLs and root room invitations remain supported.
 
 Texas Hold’em includes:
 
@@ -44,6 +44,12 @@ Aeroplane Chess is available at `/games/aeroplane-chess/index.html` (solo AI or 
 
 Friend rooms use server-generated dice, action validation, revision CAS, request deduplication, refresh recovery, 45-second action timeouts and a 24-hour activity TTL. Node storage is isolated in `aeroplane-rooms.json`; the optional Worker adapter requires migration `0004_aeroplane_rooms.sql`. Static files alone support local play. No remote AI or API key is needed. See [game documentation](games/aeroplane-chess/README.md). [Play solo / shared-screen](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/aeroplane-chess/index.html) or [open a friend room](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/aeroplane-chess/online.html).
 
+## Chamber Pact
+
+A high-pressure table duel with mixed live and blank shells. Solo play uses local rule AI (casual / standard / expert / pro). Friend rooms are two humans only, with no AI fill. Practice, night and challenge lighting modes; night hides the far side, and challenge reloads may turn the lights off.
+
+The engine settles first, then animation displays the same result; adrenaline injects, then steals the clicked opponent slot. Friend rooms pick a random first player and force a shot at the opponent after 90 seconds. Node storage is `buckshot-rooms.json`; the Worker adapter needs `0005_buckshot_rooms.sql`. [Solo](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/buckshot-roulette/index.html) · [Friend room](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/buckshot-roulette/online.html).
+
 ## Run locally
 
 Requires **Node.js 22.13 or newer**. Install the local dependencies before the first run:
@@ -68,6 +74,8 @@ Open <http://127.0.0.1:18772>.
 | Online Abracada...What? | `/games/abracada-what/online.html` |
 | Solo / shared-screen Aeroplane Chess | `/games/aeroplane-chess/index.html` |
 | Online Aeroplane Chess | `/games/aeroplane-chess/online.html` |
+| Solo Chamber Pact | `/games/buckshot-roulette/index.html` |
+| Online Chamber Pact | `/games/buckshot-roulette/online.html` |
 
 To play with friends on the same local network:
 
@@ -102,7 +110,7 @@ npm test
 npm run build:static
 ```
 
-Tests cover all four game engines, room behavior, hidden-information projections, synchronization, and the root server. The static build copies assets to `.dist/public`. Online play also requires a Node or Worker + D1 backend serving `/api/poker`, `/api/splendor`, `/api/abracada` and `/api/aeroplane`; static hosting alone does not provide rooms.
+Tests cover all five game engines, room behavior, hidden-information projections, synchronization, and the root server. The static build copies assets to `.dist/public`. Online play also requires a Node or Worker + D1 backend serving `/api/poker`, `/api/splendor`, `/api/abracada`, `/api/aeroplane` and `/api/buckshot`; static hosting alone does not provide rooms.
 
 The default entry point, `server/index.mjs`, runs in a Node environment you control. An optional Cloudflare adapter is included:
 
@@ -113,7 +121,7 @@ Database settings in the example configuration are placeholders. Create and bind
 
 ## Extend the collection
 
-Each game lives in `games/<game-id>/` and appears on the homepage through `games/catalog.json`. The catalog contains `texas-holdem`, `splendor`, `abracada-what` and `aeroplane-chess`; additional games will be added as they are implemented and contributed.
+Each game lives in `games/<game-id>/` and appears on the homepage through `games/catalog.json`. The catalog contains `texas-holdem`, `splendor`, `abracada-what`, `aeroplane-chess` and `buckshot-roulette`; additional games will be added as they are implemented and contributed.
 
 ```text
 games/
@@ -134,6 +142,10 @@ games/
   aeroplane-chess/
     web/        Solo, shared-screen and online UI with shared rules
     server/     Authoritative Aeroplane room service
+    tests/      Rules, rooms and HTTP tests
+  buckshot-roulette/
+    web/        Solo and friend-room UI, 3D table and models
+    server/     Authoritative Chamber Pact room service
     tests/      Rules, rooms and HTTP tests
 public/         Collection homepage
 server/         Node server entry point

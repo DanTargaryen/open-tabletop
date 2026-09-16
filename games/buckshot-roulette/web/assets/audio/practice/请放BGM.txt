@@ -1,0 +1,7 @@
+练习模式会从这三首里随机抽一首循环播放：
+
+  Before Every Load.mp3
+  General Release.mp3
+  Socket Calibration.mp3
+
+每次点「开始对局」或「再来一局」都会重新抽。尽量不连着播同一首。

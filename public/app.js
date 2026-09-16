@@ -42,6 +42,12 @@ const pokemonArt = (index, category) => `
     <span class="art-index">${String(index + 1).padStart(2, '0')} / ${escape(category)}</span>
   </div>`;
 
+const chamberArt = (index, category) => `
+  <div class="game-art chamber-art" aria-hidden="true">
+    <img src="/games/buckshot-roulette/assets/chamber-pact-home-card-v1.png" alt="" width="1672" height="626">
+    <span class="art-index">${String(index + 1).padStart(2, '0')} / ${escape(category)}</span>
+  </div>`;
+
 const fallbackArt = (index, category) => `
   <div class="game-art fallback-art" aria-hidden="true">
     <div class="felt-line"></div>
@@ -85,6 +91,15 @@ const presentations = {
     onlineLabel: '好友联机',
     note: '本地规则 AI 自动补位；每位对手只根据自己合法可见的信息推理。',
   },
+  'buckshot-roulette': {
+    className: 'game-card--chamber',
+    art: chamberArt,
+    extraTag: '双人对决',
+    description: '实弹与空弹混装的高压桌面博弈。读懂风险，使用道具，击败本地 AI 对手。',
+    soloLabel: '单人模式',
+    onlineLabel: '好友房',
+    note: '好友房只允许双人对决，没有 AI 补位。',
+  },
 };
 
 try {
@@ -121,5 +136,5 @@ try {
     </article>`;
   }).join('');
 } catch {
-  grid.innerHTML = '<p class="loading">暂时无法读取游戏列表，你仍可直接进入：<br><a href="/games/texas-holdem/index.html">丝绒牌局 · 单人</a> / <a href="/games/texas-holdem/online.html">丝绒牌局 · 好友房</a> / <a href="/games/splendor/index.html">璀璨宝石 · 宝可梦特别款 · 单人</a> / <a href="/games/splendor/online.html">璀璨宝石 · 宝可梦特别款 · 好友房</a> / <a href="/games/abracada-what/index.html">出包魔法师 · 单人</a> / <a href="/games/abracada-what/online.html">出包魔法师 · 好友房</a> / <a href="/games/aeroplane-chess/index.html">飞行棋 · 单人 / 同屏</a> / <a href="/games/aeroplane-chess/online.html">飞行棋 · 好友房</a></p>';
+  grid.innerHTML = '<p class="loading">暂时无法读取游戏列表，你仍可直接进入：<br><a href="/games/texas-holdem/index.html">丝绒牌局 · 单人</a> / <a href="/games/texas-holdem/online.html">丝绒牌局 · 好友房</a> / <a href="/games/splendor/index.html">璀璨宝石 · 宝可梦特别款 · 单人</a> / <a href="/games/splendor/online.html">璀璨宝石 · 宝可梦特别款 · 好友房</a> / <a href="/games/abracada-what/index.html">出包魔法师 · 单人</a> / <a href="/games/abracada-what/online.html">出包魔法师 · 好友房</a> / <a href="/games/aeroplane-chess/index.html">飞行棋 · 单人 / 同屏</a> / <a href="/games/aeroplane-chess/online.html">飞行棋 · 好友房</a> / <a href="/games/buckshot-roulette/index.html">暗膛协议 · 单人</a> / <a href="/games/buckshot-roulette/online.html">暗膛协议 · 好友房</a></p>';
 }
