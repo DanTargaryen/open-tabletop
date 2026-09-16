@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>暗膛协议 · Open Tabletop</title>
+<link rel="icon" href="/favicon.svg">
+<script type="importmap">{"imports":{"three":"/vendor/three.module.js"}}</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<main id="lobbyView">
+ <header>
+  <a class="back" href="/">← 回到大厅</a>
+  <div class="brand"><small>OPEN TABLETOP</small><h1>暗膛协议</h1></div>
+  <div class="head-actions">
+   <span class="head-note">单人对战本地 AI</span>
+   <a class="back" href="online.html">好友房</a>
+  </div>
+ </header>
+ <section class="intro" id="intro">
+  <p class="intro-lead">实弹与空弹混装在同一支枪里。你只知道数量，不知道顺序。</p>
+  <ul class="intro-rules">
+   <li><b>实弹</b>造成伤害，锯子会让它变成 2 点。</li>
+   <li><b>空弹</b>不造成伤害；对自己打出空弹可以继续行动。</li>
+   <li><b>道具</b>不结束回合，可以连续使用后再开枪。</li>
+  </ul>
+  <div class="intro-actions">
+   <div class="mode-wrap">
+    <button type="button" id="diffBtn" class="mode-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="diffMenu">
+     <small>AI 难度</small>
+     <span id="diffLabel">标准 AI</span>
+    </button>
+    <ul id="diffMenu" class="mode-menu hidden" role="listbox" aria-label="AI 难度">
+     <li><button type="button" role="option" data-diff="casual" aria-selected="false"><b>休闲 AI</b><span>会乱开枪</span></button></li>
+     <li><button type="button" role="option" data-diff="standard" aria-selected="true"><b>标准 AI</b><span>会用道具</span></button></li>
+     <li><button type="button" role="option" data-diff="expert" aria-selected="false"><b>专家 AI</b><span>不看弹序的最优</span></button></li>
+     <li><button type="button" role="option" data-diff="pro" aria-selected="false"><b>职业 AI</b><span>开挂看弹序</span></button></li>
+    </ul>
+   </div>
+   <button id="start" class="primary">开始对局</button>
+   <div class="mode-wrap">
+    <button type="button" id="modeBtn" class="mode-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="modeMenu">
+     <small>模式选择</small>
+     <span id="modeLabel">练习模式</span>
+    </button>
+    <ul id="modeMenu" class="mode-menu hidden" role="listbox" aria-label="对局模式">
+     <li><button type="button" role="option" data-mode="practice" aria-selected="true"><b>练习模式</b><span>灯亮着的完整牌桌</span></button></li>
+     <li><button type="button" role="option" data-mode="night" aria-selected="false"><b>黑夜模式</b><span>只看得见自己这一侧</span></button></li>
+     <li><button type="button" role="option" data-mode="challenge" aria-selected="false"><b>挑战模式</b><span>短弹仓，换弹后可能天黑</span></button></li>
+    </ul>
+   </div>
+  </div>
+ </section>
+</main>
+
+<!-- 对局视图铺满整个视口：没有边框，HUD 直接压在牌桌上。 -->
+<section id="game" class="hidden">
+ <canvas id="tableCanvas" class="table-canvas" aria-label="3D 牌桌"></canvas>
+ <div class="fallback-table" aria-hidden="true"><div class="fallback-gun"><span></span><span></span></div></div>
+ <div class="stage-grain" aria-hidden="true"></div>
+ <div class="stage-vignette" aria-hidden="true"></div>
+ <div class="fx-hit" id="fxHit" aria-hidden="true"></div>
+ <div class="fx-death" id="fxDeath" aria-hidden="true"></div>
+
+ <div class="hud">
+  <div class="hud-bar">
+   <a class="back" href="/">← 大厅</a>
+   <span class="round-label" id="round"></span>
+   <span class="turn-banner" id="turnBanner"></span>
+   <button type="button" class="quiet" data-tutorial aria-label="打开教程">教程</button>
+   <button type="button" id="bgmBtn" class="quiet bgm-btn" aria-pressed="true" aria-label="背景音乐">背景音乐</button>
+   <button id="restart" class="quiet">重新开始</button>
+  </div>
+
+  <div class="hud-seat seat-dealer">
+   <span class="seat-name">DEALER · 庄家</span>
+   <span class="charge" id="aiHp"></span>
+   <span class="seat-note" id="aiInfo"></span>
+  </div>
+
+  <div class="hud-chamber">
+   <span class="chamber-title">弹仓</span>
+   <strong id="ammoCount"></strong>
+   <span id="ammoMix"></span>
+   <span class="chamber-phone" id="phoneNotes"></span>
+   <span class="chamber-known" id="itemHint"></span>
+  </div>
+
+  <div class="hud-seat seat-player">
+   <span class="seat-name">PLAYER · 你</span>
+   <span class="charge" id="youHp"></span>
+   <span class="seat-note" id="youInfo"></span>
+  </div>
+
+  <!-- 事件只播报给读屏软件：画面上不再堆日志。 -->
+  <p class="sr-live" id="log" role="status" aria-live="polite"></p>
+
+  <!-- 3D 可用时这一组控件退到读屏/键盘通道；没有 WebGL 时它就是唯一的操作面板。 -->
+  <div class="hud-bottom">
+   <div class="controls">
+    <button class="plate plate-enemy" id="shootEnemy"><b>射击对手</b><small>把这一发用在庄家身上</small></button>
+    <button class="plate plate-self" id="shootSelf"><b>射击自己</b><small>空弹则继续行动</small></button>
+   </div>
+   <div class="inventory">
+    <div class="section-title"><h2>你的道具</h2><span class="hint">道具不结束回合</span></div>
+    <div id="items" class="items"></div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<div id="notice" class="notice hidden" role="dialog" aria-modal="true" aria-labelledby="noticeTitle" aria-describedby="noticeText">
+ <div class="notice-box">
+  <h2 id="noticeTitle">无法使用</h2>
+  <p id="noticeText"></p>
+  <button type="button" class="primary" id="noticeOk">知道了</button>
+ </div>
+</div>
+<section id="result" class="result hidden"></section>
+<script type="module" src="ui.js"></script>
+</body>
+</html>

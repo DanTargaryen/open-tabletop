@@ -1,5 +1,5 @@
 import {createServer} from 'node:http';
-import {readFile,realpath,stat} from 'node:fs/promises';
+import {readFile,readdir,realpath,stat} from 'node:fs/promises';
 import {resolve,dirname,extname,sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {networkInterfaces} from 'node:os';
@@ -12,10 +12,12 @@ import {handleSplendor} from '../games/splendor/server/api.mjs';
 import {SplendorError} from '../games/splendor/server/rooms.mjs';
 import {handleAeroplane} from '../games/aeroplane-chess/server/api.mjs';
 import {AeroplaneRoomError} from '../games/aeroplane-chess/server/rooms.mjs';
+import {handleBuckshot} from '../games/buckshot-roulette/server/api.mjs';
+import {BuckshotError} from '../games/buckshot-roulette/server/rooms.mjs';
 import {FileRoomStore} from './room-store.mjs';
 
 const projectRoot=resolve(dirname(fileURLToPath(import.meta.url)),'..');
-const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.mp3':'audio/mpeg','.ogg':'audio/ogg','.gltf':'model/gltf+json','.glb':'model/gltf-binary','.bin':'application/octet-stream','.json':'application/json; charset=utf-8'};
+const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.mp3':'audio/mpeg','.ogg':'audio/ogg','.wav':'audio/wav','.gltf':'model/gltf+json','.glb':'model/gltf-binary','.bin':'application/octet-stream','.json':'application/json; charset=utf-8'};
 const safeHeaders={'X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin'};
 
 export async function createTabletopServer({dataDir=resolve(projectRoot,'.data'),publicOrigin=null}={}){
@@ -24,6 +26,7 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
  const splendorStore=await new FileRoomStore(resolve(dataDir,'splendor-rooms.json')).init();
  const abracadaStore=await new FileRoomStore(resolve(dataDir,'abracada-rooms.json')).init();
  const aeroplaneStore=await new FileRoomStore(resolve(dataDir,'aeroplane-rooms.json')).init();
+ const buckshotStore=await new FileRoomStore(resolve(dataDir,'buckshot-rooms.json')).init();
  const catalog=JSON.parse(await readFile(resolve(projectRoot,'games/catalog.json'),'utf8'));
  const staticGames=new Map(catalog.map(game=>[`/games/${game.id}/`,resolve(projectRoot,'games',game.id,'web')]));
  const vendorFiles=new Map([
@@ -44,18 +47,22 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
   try{
    if(!req.url?.startsWith('/')||req.url.startsWith('//')){res.writeHead(400);res.end();return;}
    const url=new URL(req.url,publicOrigin||'http://'+req.headers.host);
-   if(url.pathname.startsWith('/api/aeroplane/')||url.pathname.startsWith('/api/poker/')||url.pathname.startsWith('/api/abracada/')||url.pathname.startsWith('/api/splendor/')){
+   if(url.pathname.startsWith('/api/aeroplane/')||url.pathname.startsWith('/api/poker/')||url.pathname.startsWith('/api/abracada/')||url.pathname.startsWith('/api/splendor/')||url.pathname.startsWith('/api/buckshot/')){
     const aeroplane=url.pathname.startsWith('/api/aeroplane/');
     const splendor=url.pathname.startsWith('/api/splendor/');
     const abracada=url.pathname.startsWith('/api/abracada/');
-    const handler=aeroplane?handleAeroplane:abracada?handleAbracada:handlePoker;
-    const roomStore=aeroplane?aeroplaneStore:abracada?abracadaStore:pokerStore;
-    const ErrorType=aeroplane?AeroplaneRoomError:splendor?SplendorError:abracada?AbracadaRoomError:RoomError;
+    const buckshot=url.pathname.startsWith('/api/buckshot/');
+    const handler=aeroplane?handleAeroplane:abracada?handleAbracada:buckshot?handleBuckshot:handlePoker;
+    const roomStore=aeroplane?aeroplaneStore:abracada?abracadaStore:buckshot?buckshotStore:pokerStore;
+    const ErrorType=aeroplane?AeroplaneRoomError:splendor?SplendorError:abracada?AbracadaRoomError:buckshot?BuckshotError:RoomError;
     const headers=new Headers();for(const[k,v]of Object.entries(req.headers))if(v)headers.set(k,Array.isArray(v)?v.join(','):v);
     // Untrusted forwarded IPs cannot evade the local create/join limiter.
     headers.set('cf-connecting-ip',req.socket.remoteAddress||'local');
     const request=new Request(url,{method:req.method,headers,...(!['GET','HEAD'].includes(req.method)?{body:Readable.toWeb(req),duplex:'half'}:{})});
-    const response=splendor?await handleSplendor(request,{store:splendorStore,limit:incoming=>limit(incoming,ErrorType)}):await handler(request,null,{store:roomStore,limit:incoming=>limit(incoming,ErrorType)});res.writeHead(response.status,{...safeHeaders,...Object.fromEntries(response.headers)});res.end(Buffer.from(await response.arrayBuffer()));return;
+    const limiter=incoming=>limit(incoming,ErrorType);
+    const response=splendor?await handleSplendor(request,{store:splendorStore,limit:limiter})
+      :await handler(request,null,{store:roomStore,limit:limiter});
+    res.writeHead(response.status,{...safeHeaders,...Object.fromEntries(response.headers)});res.end(Buffer.from(await response.arrayBuffer()));return;
    }
    if(!['GET','HEAD'].includes(req.method)){res.writeHead(405,{'Allow':'GET, HEAD'});res.end();return;}
    if(url.pathname==='/health'||url.pathname==='/games.json'){
@@ -70,6 +77,17 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
    for(const[prefix,root]of staticGames){if(path===prefix.slice(0,-1)){res.writeHead(302,{Location:prefix+url.search});res.end();return;}if(path.startsWith(prefix)){staticRoot=root;gamePrefix=prefix;break;}}
    path=gamePrefix?path.slice(gamePrefix.length):path.slice(1);
    if(!path)path='index.html';
+   const audioList=path.match(/^assets\/audio\/([^/]+)\/tracks\.json$/);
+   if(audioList){
+    const dir=resolve(staticRoot,'assets','audio',audioList[1]);
+    if(!dir.startsWith(staticRoot+sep)){res.writeHead(404);res.end();return;}
+    let names=[];
+    try{names=(await readdir(dir)).filter(name=>/\.(wav|mp3|ogg)$/i.test(name)).sort();}
+    catch{res.writeHead(404);res.end();return;}
+    const body=JSON.stringify(names);
+    res.writeHead(200,{...safeHeaders,'Content-Type':mime['.json'],'Cache-Control':'no-store'});
+    res.end(req.method==='HEAD'?undefined:body);return;
+   }
    if(!extname(path))path+='.html';
    const file=await realpath(resolve(staticRoot,path));
    if(!file.startsWith(staticRoot+sep)||!mime[extname(file)]||!(await stat(file)).isFile()){res.writeHead(404);res.end();return;}
@@ -80,7 +98,7 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
   }
  });
  server.requestTimeout=15000;server.headersTimeout=10000;
- return {server,store:pokerStore,splendorStore,stores:{poker:pokerStore,splendor:splendorStore,abracada:abracadaStore,aeroplane:aeroplaneStore},catalog,async close(){await new Promise((done,fail)=>server.close(error=>error?fail(error):done()));await Promise.all([pokerStore.close(),splendorStore.close(),abracadaStore.close(),aeroplaneStore.close()]);}};
+ return {server,store:pokerStore,splendorStore,stores:{poker:pokerStore,splendor:splendorStore,abracada:abracadaStore,aeroplane:aeroplaneStore,buckshot:buckshotStore},catalog,async close(){await new Promise((done,fail)=>server.close(error=>error?fail(error):done()));await Promise.all([pokerStore.close(),splendorStore.close(),abracadaStore.close(),aeroplaneStore.close(),buckshotStore.close()]);}};
 }
 
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){

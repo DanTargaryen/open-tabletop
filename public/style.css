@@ -61,3 +61,15 @@
 
 /* Aeroplane Chess keeps its own warm paper palette within the shared catalog. */
 .game-card--aeroplane{background:#243744;border-color:#d2bf9560}.aeroplane-art{background:#f6f3eb}.aeroplane-art img{width:100%;height:100%;object-fit:cover;object-position:50% 52%}.aeroplane-art .art-index{color:#23374a;background:#f6f3ebdd;padding:4px 8px;border-radius:5px}.game-card--aeroplane .game-description{color:#c0cbd0}.game-card--aeroplane .game-note{color:#a4b4bd}
+
+.game-card--chamber{background:#171412;border-color:#8f3a3345}
+.game-card--chamber .game-art{background:#0a0b0a}
+.chamber-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 58%}
+.chamber-art:after{content:"";position:absolute;inset:auto 0 0;height:48%;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(8,6,5,.62))}
+.game-card--chamber .art-index{z-index:1;color:#e6dfd0;text-shadow:0 1px 10px #000}
+.game-card--chamber .eyebrow{color:#d7bc7e}
+.game-card--chamber .game-copy h3{color:#eee7d0}
+.game-card--chamber .game-description{color:#b8b09c}
+.game-card--chamber .game-tags span{border-color:#8f3a3348;color:#d4cbb8}
+.game-card--chamber .secondary{border-color:#8f3a3360}
+.game-card--chamber .game-note{color:#8d8676}

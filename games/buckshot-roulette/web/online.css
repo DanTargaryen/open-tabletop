@@ -1,0 +1,57 @@
+.online-page #lobbyView,.online-page #roomWaiting{position:relative;z-index:2}
+.online-page #game.hidden{pointer-events:none}
+.online-page .hud-seat,.online-page .hud-chamber,.online-page .sr-live{pointer-events:none}
+.online-page .hud-bar,.online-page .hud-bottom{pointer-events:auto}
+.online-page .intro{max-width:720px}
+.field-label{display:block;margin:18px 0 8px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#8c8676}
+.online-input{
+  width:100%;max-width:420px;padding:12px 14px;
+  border:1px solid var(--edge);border-radius:2px;
+  background:#101110;color:var(--bone);font:inherit;
+}
+.online-input:focus{border-color:#93433c;outline:none}
+.room-code-input{font-family:ui-monospace,Consolas,monospace;font-size:22px;letter-spacing:.28em;text-transform:uppercase;max-width:100%}
+.room-entry-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:28px 0 12px;text-align:left}
+.room-entry-card{
+  padding:22px 20px;border:1px solid #24241f;border-left:3px solid var(--blood);
+  background:rgba(16,17,16,.7);
+}
+.room-entry-card h2{margin:0 0 10px;font-size:18px;letter-spacing:.08em}
+.room-entry-card .primary,.room-entry-card .quiet{width:100%;margin-top:14px}
+.field-hint{margin:0;font-size:13px;color:#8d8a7c;line-height:1.7}
+.online-error{min-height:22px;margin:8px 0 0;color:#e9bd94;font-size:14px}
+.room-waiting{max-width:760px;margin:48px auto 80px;padding:0 24px}
+.room-waiting .eyebrow{font-size:11px;letter-spacing:.2em;color:#6f6a5c}
+.room-waiting h1{
+  margin:10px 0 22px;
+  font:600 clamp(28px,4.4vw,40px)/1.15 "Arial Narrow",Impact,"Microsoft YaHei",sans-serif;
+  letter-spacing:.14em;text-transform:uppercase;color:#cbc4ae;
+}
+.invite-row{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px}
+.room-code{display:block;font:40px/1 ui-monospace,Consolas,monospace;letter-spacing:.22em;color:#ded7c1}
+.online-intro{margin:0 0 18px;color:#b4ae9c}
+.room-roster{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.roster-seat{
+  display:flex;align-items:center;gap:12px;padding:16px;
+  border:1px solid var(--edge);background:rgba(16,17,16,.7);
+}
+.roster-seat.empty{opacity:.55;border-style:dashed}
+.roster-avatar{
+  display:grid;place-items:center;width:40px;height:40px;flex:none;
+  border:1px solid #93433c;color:#e9bd94;font-size:14px;letter-spacing:.08em;
+}
+.roster-seat b{display:block;font-size:15px}
+.roster-seat small{display:block;margin-top:4px;color:#8d8a7c;font-size:12px}
+.roster-ready{margin-left:auto;color:#6f6a5c;font-size:12px;letter-spacing:.1em}
+.roster-ready.on{color:var(--volt)}
+.waiting-actions{display:flex;gap:12px;margin:22px 0 12px}
+.waiting-actions button{min-width:140px}
+.text-btn{background:none;border:0;box-shadow:none;padding:8px 0;color:#8d8a7c}
+.text-btn:hover{color:var(--bone)}
+.turn-clock{margin-left:auto;font-family:ui-monospace,Consolas,monospace;letter-spacing:.12em;color:var(--volt)}
+@media(max-width:720px){
+  .room-entry-grid,.room-roster{grid-template-columns:1fr}
+  .invite-row{flex-direction:column;align-items:flex-start}
+  .room-code{font-size:28px}
+  .waiting-actions button{flex:1;min-width:0}
+}
