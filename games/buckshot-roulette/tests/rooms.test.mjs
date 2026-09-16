@@ -128,3 +128,29 @@ test('opening turn is randomly either seat',async()=>{
   assert.equal(seen.has('player'),true);
   assert.equal(seen.has('ai'),true);
 });
+
+for(const seat of [0,1])for(const item of ['magnifier','burnerPhone']){
+  test(`seat ${seat} keeps a stolen ${item} result private, including reconnects`,async()=>{
+    const f=await setup();await start(f);
+    const row=await f.store.get(f.code,f.now()),actor=seat===0?'player':'ai',other=seat===0?'ai':'player';
+    row.room.game.turn=actor;
+    row.room.game.items[actor]=['adrenaline'];
+    row.room.game.items[other]=[item,item];
+    row.room.game.ammo=[{id:100,live:true},{id:101,live:false},{id:102,live:true}];
+    row.room.game.notes={player:{},ai:{}};
+    await f.store.cas(f.code,row.revision,row.room,row.expiresAt);
+    await request(f,seat,'action',{action:{type:'use',item:'adrenaline',slot:0}});
+    const own=await request(f,seat,'action',{action:{type:'steal',item,slot:1}});
+    assert.equal(own.game.lastEvent.stealSlot,1);
+    assert.equal(own.game.lastEvent.stolen,item);
+    assert.equal(own.game.records.player.length,1);
+    assert.equal(typeof own.game.lastEvent[item==='magnifier'?'revealed':'live'],'boolean');
+    if(item==='burnerPhone')assert.ok(own.game.lastEvent.position>=2);
+    for(let poll=0;poll<2;poll++){
+      const otherView=await f.service.request(f.code,f.players[1-seat].token,'state');
+      for(const field of ['revealed','position','live'])assert.equal(field in otherView.game.lastEvent,false,field);
+      assert.deepEqual(otherView.game.records.ai,[]);
+      assert.equal(otherView.game.known.ai,null);
+    }
+  });
+}

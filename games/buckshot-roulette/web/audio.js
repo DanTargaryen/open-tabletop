@@ -4,13 +4,13 @@ const BGM_VOL=.42;
 const FADE_MS=1800;
 const PLAY_WAIT_MS=800;
 const PRACTICE_TRACKS=[
-  'Before Every Load.wav',
-  'General Release.wav',
-  'Socket Calibration.wav',
+  'Before Every Load.mp3',
+  'General Release.mp3',
+  'Socket Calibration.mp3',
 ];
 const NIGHT_TRACKS=[
-  'Surrounded.wav',
-  "Twice or it's Luck.wav",
+  'Surrounded.mp3',
+  "Twice or it's Luck.mp3",
 ];
 const BGM={
   practice:{dir:'practice/',files:PRACTICE_TRACKS},

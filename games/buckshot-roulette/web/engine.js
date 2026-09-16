@@ -310,7 +310,8 @@ export function eventForViewer(event,side){
   const map=value=>value===side?'player':value===opponent(side)?'ai':value;
   const out={...event,actor:map(event.actor),target:event.target!==undefined?map(event.target):event.target,
     from:event.from!==undefined?map(event.from):event.from};
-  if(event.actor!==side&&(event.item==='magnifier'||event.item==='burnerPhone')){
+  const effectItem=event.item==='adrenaline'?event.stolen:event.item;
+  if(event.actor!==side&&(effectItem==='magnifier'||effectItem==='burnerPhone')){
     delete out.revealed;delete out.position;delete out.live;
   }
   if(event.followUp)out.followUp=eventForViewer(event.followUp,side);
