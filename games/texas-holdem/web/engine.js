@@ -15,11 +15,11 @@ const PHASE_NAMES = { preflop: '翻牌前', flop: '翻牌', turn: '转牌', rive
 const LIVE_PHASES = new Set(['preflop', 'flop', 'turn', 'river']);
 const BLIND_LEVELS = [[10, 20], [15, 30], [25, 50], [40, 80], [60, 120], [100, 200], [150, 300], [250, 500], [400, 800], [600, 1200], [1000, 2000], [1500, 3000], [2500, 5000], [4000, 8000], [8000, 16000]];
 export const PERSONALITIES = Object.freeze([
-  { brand: 'doubao', name: '豆包', label: '宽松跟进', style: 'loose', tightness: -.02, aggression: .68, bluff: .12, sticky: .07, open: .48, steal: .16, threeBet: .05, cbet: .55, semiBluff: .44, trap: .02, sizing: .45 },
-  { brand: 'chatgpt', name: 'ChatGPT', label: '位置进攻', style: 'balanced', tightness: -.025, aggression: .82, bluff: .21, sticky: .025, open: .50, steal: .38, threeBet: .11, cbet: .78, semiBluff: .62, trap: .04, sizing: .56 },
-  { brand: 'claude', name: 'Claude', label: '精选强攻', style: 'tight', tightness: .045, aggression: .87, bluff: .09, sticky: .005, open: .59, steal: .16, threeBet: .06, cbet: .64, semiBluff: .42, trap: .025, sizing: .72 },
-  { brand: 'glm', name: 'GLM', label: '主动施压', style: 'aggressive', tightness: -.055, aggression: .95, bluff: .29, sticky: .035, open: .43, steal: .55, threeBet: .19, cbet: .86, semiBluff: .79, trap: .01, sizing: .68 },
-  { brand: 'deepseek', name: 'DeepSeek', label: '埋伏反击', style: 'tricky', tightness: .005, aggression: .80, bluff: .22, sticky: .035, open: .51, steal: .31, threeBet: .12, cbet: .65, semiBluff: .86, trap: .22, sizing: .54 },
+  { brand: 'doubao', name: '豆包', label: '宽松跟进', style: 'loose', tightness: -.04, aggression: .76, bluff: .15, sticky: .12, open: .43, steal: .22, threeBet: .07, cbet: .64, semiBluff: .52, trap: .02, sizing: .45 },
+  { brand: 'chatgpt', name: 'ChatGPT', label: '位置进攻', style: 'balanced', tightness: -.03, aggression: .90, bluff: .25, sticky: .07, open: .50, steal: .44, threeBet: .15, cbet: .86, semiBluff: .73, trap: .03, sizing: .56 },
+  { brand: 'claude', name: 'Claude', label: '精选强攻', style: 'tight', tightness: .01, aggression: .94, bluff: .13, sticky: .065, open: .54, steal: .21, threeBet: .09, cbet: .75, semiBluff: .55, trap: .02, sizing: .72 },
+  { brand: 'glm', name: 'GLM', label: '主动施压', style: 'aggressive', tightness: -.055, aggression: .98, bluff: .34, sticky: .09, open: .42, steal: .60, threeBet: .24, cbet: .93, semiBluff: .88, trap: .01, sizing: .68 },
+  { brand: 'deepseek', name: 'DeepSeek', label: '埋伏反击', style: 'tricky', tightness: -.025, aggression: .87, bluff: .26, sticky: .085, open: .46, steal: .38, threeBet: .17, cbet: .76, semiBluff: .94, trap: .16, sizing: .54 },
 ]);
 
 export function cardRank(card) { return RANK_VALUE[card?.[0]] || 0; }
@@ -551,15 +551,20 @@ export class PokerGame {
     const recentRaises = raises.length - ownRaises;
     const previousAction = street.filter(entry => entry.playerId === player.id).at(-1);
     const noise = (random() - .5) * ({ casual: .24, standard: .10, expert: .035 }[s.difficulty]);
-    const rangeDiscount = s.difficulty === 'expert' ? Math.min(.13, recentRaises * .045) : Math.min(.08, recentRaises * .025);
+    const preflop = s.phase === 'preflop';
+    // Raw six-way showdown equity undervalues seeing a cheap flop: players yet
+    // to act may fold, and a speculative hand can improve before investing more.
+    // This playability allowance is a game policy, not a claimed equity estimate.
+    const cheapPreflop = preflop && raises.length <= 1 && legal.callAmount <= s.blinds.big * 3
+      && legal.callAmount <= player.stack * .08;
+    const rangeDiscount = (s.difficulty === 'expert' ? Math.min(.13, recentRaises * .045) : Math.min(.08, recentRaises * .025)) * (cheapPreflop ? .35 : 1);
     const equity = clamp(rawEquity + noise - rangeDiscount, .01, .995);
     const fairShare = 1 / (opponents + 1);
     const pot = this.pot;
     const potOdds = legal.callAmount / Math.max(1, pot + legal.callAmount);
     const stackRisk = legal.callAmount / Math.max(1, player.stack);
-    const preflop = s.phase === 'preflop';
     const riskPremium = (s.mode === 'tournament' && stackRisk > .45 ? .045 : .01) + personality.tightness;
-    const callValue = equity + personality.sticky - riskPremium;
+    let callValue = equity + personality.sticky - riskPremium + (cheapPreflop ? .16 : 0);
 
     const actingOrder = Array.from({ length: 6 }, (_, i) => (s.dealerIndex + 1 + i) % 6)
       .filter(id => !s.players[id].folded && !s.players[id].allIn && !s.players[id].eliminated);
@@ -593,12 +598,19 @@ export class PokerGame {
     } else {
       const made = evaluateUnchecked([...player.hole, ...s.board]);
       const draw = drawProfile(player.hole, s.board);
+      const boardMade = s.board.length === 5 ? evaluateUnchecked(s.board) : null;
+      const personalPair = made.category >= 1 && player.hole.some(card =>
+        player.hole.filter(other => cardRank(other) === cardRank(card)).length === 2 || s.board.some(other => cardRank(other) === cardRank(card)))
+        && (!boardMade || compareHands(made, boardMade) > 0);
+      // Continue a made hand/draw against a small price, never river air or a
+      // large stack commitment. Repeated raises retain the normal price test.
+      if (raises.length <= 1 && stackRisk <= .08 && legal.callAmount <= pot * .25 && (personalPair || draw.strong)) callValue += .065;
       const ranks = [...new Set(s.board.map(cardRank))].sort((a, b) => a - b);
       const wetBoard = [...SUITS].some(suit => s.board.filter(card => cardSuit(card) === suit).length >= 3)
         || ranks.some(rank => ranks.filter(value => value >= rank && value <= rank + 4).length >= 3);
       const preflopAggressor = s.handHistory.filter(entry => entry.phase === 'preflop' && ['raise', 'all-in'].includes(entry.type)).at(-1)?.playerId;
-      const multiway = opponents === 1 ? 1 : opponents === 2 ? .58 : opponents === 3 ? .25 : .10;
-      const comfortable = equity > (opponents === 1 ? .54 + personality.tightness : fairShare + .065 + personality.tightness * .5);
+      const multiway = opponents === 1 ? 1 : opponents === 2 ? .68 : opponents === 3 ? .38 : .18;
+      const comfortable = equity > (opponents === 1 ? .52 + personality.tightness : fairShare + .055 + personality.tightness * .5);
       const checkRaise = previousAction?.type === 'check' && s.currentBet > 0 && legal.canRaise;
       const valueChance = checkRaise ? Math.min(.98, personality.aggression + .10) : personality.aggression;
       const slowplay = legal.canCheck && monster && opponents <= 2 && !wetBoard && !previousAction && random() < personality.trap;
@@ -606,7 +618,7 @@ export class PokerGame {
       if (!intent && !ownRaises && raises.length <= 1 && canWinByFolds && made.category < 4 && stackRisk < .15) {
         if ((draw.strong || (draw.weak && inPosition)) && random() < personality.semiBluff * (opponents <= 2 ? 1 : .55) * (checkRaise ? .72 : 1)) intent = 'semi-bluff';
         else if (legal.canCheck && s.phase === 'flop' && preflopAggressor === player.id && !previousAction
-          && random() < personality.cbet * (opponents === 1 ? 1 : opponents === 2 ? .72 : .35) * (wetBoard ? .65 : 1)) intent = 'cbet';
+          && random() < personality.cbet * (opponents === 1 ? 1 : opponents === 2 ? .80 : .50) * (wetBoard ? .65 : 1)) intent = 'cbet';
         else if (legal.canCheck && inPosition && street.some(entry => entry.type === 'check' && entry.playerId !== player.id)
           && random() < personality.steal * multiway) intent = 'steal';
         else if (random() < personality.bluff * multiway * (s.currentBet ? .22 : 1) * (inPosition ? 1.15 : .75)) intent = 'bluff';
@@ -647,7 +659,7 @@ export class PokerGame {
     } else if (legal.canCheck) {
       action = { type: 'check' };
     } else if (callValue >= potOdds && (stackRisk < .38 || equity > .47 + riskPremium || legal.callAmount < s.blinds.big * 2)) {
-      const continueThreshold = personality.open - (raisedPot ? .08 : .15) - (inPosition ? .04 : 0) + Math.max(0, raises.length - 1) * .07;
+      const continueThreshold = Math.max(cheapPreflop ? .28 : 0, personality.open - (cheapPreflop ? (raisedPot ? .20 : .25) : (raisedPot ? .08 : .15)) - (inPosition ? .04 : 0) + Math.max(0, raises.length - 1) * .07);
       const weakPreflop = preflop && startStrength < continueThreshold;
       action = { type: weakPreflop ? 'fold' : 'call' };
     } else {

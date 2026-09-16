@@ -44,6 +44,8 @@ async function measure(config) {
     vpipHands: 0, pfrHands: 0,
     actions: Object.fromEntries(ACTION_TYPES.map(type => [type, 0])),
     totalActions: 0, postflopOpenBetOpportunities: 0, postflopOpenBets: 0,
+    preflopPaidDecisionOpportunities: 0, preflopPaidDecisionFolds: 0,
+    cheapPreflopRaiseOpportunities: 0, cheapPreflopRaiseFolds: 0,
     allInActions: 0, allInHands: 0,
   }));
   const bySeat = new Map(brands.map(brand => [brand.seat, brand]));
@@ -53,6 +55,7 @@ async function measure(config) {
     chipConservationChecks: 0, chipConservationViolations: 0,
     identityChecks: 0, identityViolations: 0,
   };
+  const handOutcomes = {completedHands: 0, handsReachingFlop: 0, playersReachingFlop: 0, preflopEndedHands: 0};
   let handNumber = 0, handActions = 0, failure = null;
 
   function checkState(state) {
@@ -76,6 +79,7 @@ async function measure(config) {
       let state = game.startHand();
       checkState(state);
       handActions = 0;
+      let flopPlayers = null;
       const flags = new Map(brands.map(brand => [brand.seat, {vpip: false, pfr: false, allIn: false}]));
       for (const brand of brands) brand.hands++;
       while (LIVE_PHASES.has(state.phase)) {
@@ -88,6 +92,11 @@ async function measure(config) {
         const legal = state.legalActions;
         const lastHistoryId = state.history.at(-1)?.id ?? 0;
         const preflop = state.phase === 'preflop';
+        const paidPreflopDecision = preflop && legal.callAmount > 0;
+        const preflopRaises = preflop ? state.history.filter(entry =>
+          entry.handNumber === state.handNumber && entry.phase === 'preflop' && ['raise', 'all-in'].includes(entry.type)).length : 0;
+        const cheapPreflopRaise = paidPreflopDecision && state.currentBet > state.blinds.big
+          && legal.callAmount <= 3 * state.blinds.big && legal.callAmount / player.stack <= .08 && preflopRaises <= 1;
         const openBetOpportunity = !preflop && state.currentBet === 0 && legal.canCheck && legal.canRaise;
         // Only the built-in botAction may make a bot decision. No hole cards,
         // observations, replacement RNG, or modified identities are supplied.
@@ -96,6 +105,11 @@ async function measure(config) {
           : game.botAction();
         if (!decision || decision.playerId !== seat) throw Error('Engine did not execute the expected actor');
         const next = game.getPublicState();
+        // Record the first public snapshot with a flop, including an automatic
+        // all-in runout that advances straight from preflop to completion.
+        if (flopPlayers === null && next.board.length >= 3) {
+          flopPlayers = next.players.filter(candidate => !candidate.folded && !candidate.eliminated).length;
+        }
         const events = next.history.filter(entry => entry.id > lastHistoryId && entry.playerId === seat && ACTION_TYPES.includes(entry.type));
         if (events.length !== 1) throw Error(`Expected one action event; observed ${events.length}`);
         const event = events[0];
@@ -108,6 +122,14 @@ async function measure(config) {
           const hand = flags.get(seat);
           brand.actions[event.type]++;
           brand.totalActions++;
+          if (paidPreflopDecision) {
+            brand.preflopPaidDecisionOpportunities++;
+            brand.preflopPaidDecisionFolds += Number(event.type === 'fold');
+          }
+          if (cheapPreflopRaise) {
+            brand.cheapPreflopRaiseOpportunities++;
+            brand.cheapPreflopRaiseFolds += Number(event.type === 'fold');
+          }
           const raised = event.type === 'raise' || event.type === 'all-in';
           hand.vpip ||= preflop && event.amount > 0;
           hand.pfr ||= preflop && raised;
@@ -132,13 +154,19 @@ async function measure(config) {
         brand.allInHands += Number(hand.allIn);
       }
       integrity.completedHands++;
+      handOutcomes.completedHands++;
+      if (flopPlayers === null) handOutcomes.preflopEndedHands++;
+      else {
+        handOutcomes.handsReachingFlop++;
+        handOutcomes.playersReachingFlop += flopPlayers;
+      }
     }
   } catch (error) {
     failure = {message: error.message, hand: handNumber, actionsInHand: handActions};
   }
 
   return {
-    schemaVersion: 1, ok: !failure,
+    schemaVersion: 2, ok: !failure,
     engine: {module: basename(fileURLToPath(config.engine)), sha256: createHash('sha256').update(source).digest('hex')},
     scenario: {
       mode: 'practice', difficulty: config.difficulty, handsRequested: config.hands, seed: SEED,
@@ -153,6 +181,10 @@ async function measure(config) {
       pfr: 'Hands containing a preflop raise, including a short all-in raise; divided by hands.',
       actions: 'Actual engine log categories; all-in calls remain call, all-in raises are all-in.',
       postflopOpenBet: 'Decision opportunities on flop/turn/river with currentBet=0 and both check and raise legal; the rate is opening bets divided by these opportunities.',
+      preflopPaidDecision: 'Preflop decision opportunities with legal.callAmount>0; fold rate is folds at these decisions divided by these opportunities, not by hands. A seat can face multiple decisions in one hand.',
+      cheapPreflopRaise: 'A subset of paid preflop decisions: currentBet>bigBlind, legal.callAmount<=3*bigBlind, legal.callAmount/pre-action remaining stack<=0.08, and at most one raise/all-in action logged on the current hand preflop street. Fold rate divides folds by these opportunities.',
+      flopPlayers: 'Players not folded or eliminated in the first public snapshot with at least three board cards, including players all-in. Automatic all-in runouts count as reaching the flop. averageFlopPlayers divides their sum by handsReachingFlop; averageFlopPlayersPerHand divides by completedHands, counting preflop endings as zero.',
+      preflopEnded: 'Completed hands ending before any flop is dealt. preflopEndedRate divides preflopEndedHands by completedHands; preflop all-ins with a dealt board are not preflop endings. Hand-outcome aggregates exclude an incomplete hand if measurement fails.',
       allIn: 'Actions paying the entire pre-action stack, including all-in calls; action rate divides by totalActions and hand rate divides by hands.',
       scope: 'Descriptive behavior against a passive human in six-seat practice games, not a win-rate or playing-strength benchmark.',
     },
@@ -161,9 +193,17 @@ async function measure(config) {
       vpipRate: ratio(brand.vpipHands, brand.hands),
       pfrRate: ratio(brand.pfrHands, brand.hands),
       postflopOpenBetRate: ratio(brand.postflopOpenBets, brand.postflopOpenBetOpportunities),
+      preflopPaidDecisionFoldRate: ratio(brand.preflopPaidDecisionFolds, brand.preflopPaidDecisionOpportunities),
+      cheapPreflopRaiseFoldRate: ratio(brand.cheapPreflopRaiseFolds, brand.cheapPreflopRaiseOpportunities),
       allInActionRate: ratio(brand.allInActions, brand.totalActions),
       allInHandRate: ratio(brand.allInHands, brand.hands),
     })),
+    handOutcomes: {
+      ...handOutcomes,
+      averageFlopPlayers: ratio(handOutcomes.playersReachingFlop, handOutcomes.handsReachingFlop),
+      averageFlopPlayersPerHand: ratio(handOutcomes.playersReachingFlop, handOutcomes.completedHands),
+      preflopEndedRate: ratio(handOutcomes.preflopEndedHands, handOutcomes.completedHands),
+    },
     integrity,
     ...(failure ? {error: failure} : {}),
   };
