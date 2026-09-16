@@ -1,6 +1,7 @@
 ﻿import * as THREE from '/vendor/three.module.js';
 import { GLTFLoader } from '/vendor/loaders/GLTFLoader.js';
 import { createDealerSculpt, sculptArmBone } from './dealer-model.js';
+import { findVisibleItemSlot } from './item-slots.js';
 
 /* 全部几何与贴图都是程序生成的原创资产：没有任何原作模型、贴图或采样。 */
 const TABLE={size:2.6,top:.08,floor:-1.15};
@@ -1034,15 +1035,7 @@ class BuckshotTable3D{
   }
 
   findItemSlot(side,{slot=null,id=null}={}){
-    const cells=this.itemSlots[side]||[];
-    if(Number.isInteger(slot)){
-      const byPick=cells.find(cell=>cell?.faceUp&&cell.hinge.userData.pick?.slot===slot);
-      if(byPick)return byPick;
-      const visual=cells[slot];
-      if(visual?.faceUp&&(!id||visual.id===id))return visual;
-    }
-    if(id)return cells.find(cell=>cell?.faceUp&&cell.id===id)||null;
-    return null;
+    return findVisibleItemSlot(this.itemSlots[side]||[],{slot,id});
   }
 
   bindItemPicks(state){
