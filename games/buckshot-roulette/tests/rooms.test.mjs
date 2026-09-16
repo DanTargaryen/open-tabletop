@@ -149,8 +149,40 @@ for(const seat of [0,1])for(const item of ['magnifier','burnerPhone']){
     for(let poll=0;poll<2;poll++){
       const otherView=await f.service.request(f.code,f.players[1-seat].token,'state');
       for(const field of ['revealed','position','live'])assert.equal(field in otherView.game.lastEvent,false,field);
+      for(const event of otherView.game.events||[]){
+        if(event.stolen!==item&&event.item!==item)continue;
+        for(const field of ['revealed','position','live'])assert.equal(field in event,false,field);
+      }
       assert.deepEqual(otherView.game.records.ai,[]);
       assert.equal(otherView.game.known.ai,null);
     }
   });
 }
+
+test('state polls keep a heartbeat without rewriting the room',async()=>{
+  const f=await setup();
+  const s=await start(f);
+  const before=(await f.store.get(f.code,f.now())).revision;
+  await f.service.request(f.code,f.players[0].token,'state');
+  f.advance(15000);
+  const after=await f.service.request(f.code,f.players[0].token,'state');
+  assert.equal(after.room.version,s.room.version);
+  assert.equal((await f.store.get(f.code,f.now())).revision,before);
+  assert.equal(after.room.members[0].connected,true);
+});
+
+test('a late poll still receives every action in order',async()=>{
+  const f=await setup();await start(f);
+  const row=await f.store.get(f.code,f.now());
+  const actor=row.room.game.turn,seat=actor==='player'?0:1;
+  row.room.game.items[actor]=['cigarette','beer'];
+  row.room.game.hp[actor]=1;
+  row.room.game.ammo=[{id:1,live:false},{id:2,live:true}];
+  await f.store.cas(f.code,row.revision,row.room,row.expiresAt);
+  await request(f,seat,'action',{action:{type:'use',item:'cigarette',slot:0}});
+  await request(f,seat,'action',{action:{type:'use',item:'beer',slot:0}});
+  const late=await f.service.request(f.code,f.players[1-seat].token,'state');
+  const kinds=(late.game.events||[]).filter(event=>event.kind==='item').map(event=>event.item);
+  assert.deepEqual(kinds.slice(-2),['cigarette','beer']);
+  assert.equal(late.game.lastEvent.item,'beer');
+});

@@ -5,9 +5,26 @@ export const ROOM_TTL=86400000,TURN_MS=90000;
 export class BuckshotError extends Error { constructor(status,message){ super(message); this.status=status; } }
 const requireThat=(ok,status,message)=>{ if(!ok) throw new BuckshotError(status,message); };
 const clone=value=>structuredClone(value);
+const heartbeats=new Map();
+const tokenHashes=new Map();
+const heartbeatKey=(code,id)=>code+'\0'+id;
+function touchHeartbeat(code,id,now){
+  heartbeats.set(heartbeatKey(code,id),now);
+  if(heartbeats.size>500){
+    for(const[key,seen]of heartbeats)if(now-seen>120000)heartbeats.delete(key);
+  }
+}
+function seenAt(room,member,now){
+  return Math.max(member.lastSeen||0,heartbeats.get(heartbeatKey(room.code,member.id))||0);
+}
 
 export async function hashToken(token){
-  return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token))),b=>b.toString(16).padStart(2,'0')).join('');
+  const cached=tokenHashes.get(token);
+  if(cached)return cached;
+  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token))),b=>b.toString(16).padStart(2,'0')).join('');
+  if(tokenHashes.size>400)tokenHashes.clear();
+  tokenHashes.set(token,hash);
+  return hash;
 }
 
 function nameOf(value){
@@ -27,7 +44,10 @@ function packEvent(room,result,{chain=false}={}){
   const event={seq:room.eventSeq,...result};
   if(result?.stolen&&!event.from)event.from=opponent(result.actor);
   if(chain&&room.lastEvent)room.lastEvent.followUp=event;
-  else room.lastEvent=event;
+  else{
+    room.lastEvent=event;
+    room.events=(room.events||[]).concat(event).slice(-24);
+  }
   return event;
 }
 
@@ -61,9 +81,10 @@ export function projectRoom(room,member,now){
   const side=sideOfSeat(member.seat);
   return {room:{code:room.code,version:room.version,status:room.status,capacity:2,
     selfId:member.id,selfSeat:member.seat,isOwner:member.id===room.ownerId,
-    members:active(room).map(m=>({id:m.id,name:m.name,seat:m.seat,ready:m.ready,owner:m.id===room.ownerId,connected:now-m.lastSeen<20000})),
+    members:active(room).map(m=>({id:m.id,name:m.name,seat:m.seat,ready:m.ready,owner:m.id===room.ownerId,connected:now-seenAt(room,m,now)<20000})),
     deadline:room.deadline,serverNow:now,expiresAt:room.expiresAt},
-    game:room.game?{...viewState(room.game,side),lastEvent:eventForViewer(room.lastEvent,side)}:null};
+    game:room.game?{...viewState(room.game,side),lastEvent:eventForViewer(room.lastEvent,side),
+      events:(room.events||[]).map(event=>eventForViewer(event,side))}:null};
 }
 
 export class BuckshotRooms{
@@ -81,7 +102,7 @@ export class BuckshotRooms{
         continue;
       }
       const owner={id:crypto.randomUUID(),name,tokenHash,seat:0,ready:true,lastSeen:now,left:false,processed:[]};
-      const room={schema:1,code,version:0,capacity:2,status:'waiting',ownerId:owner.id,members:[owner],game:null,deadline:null,eventSeq:0,lastEvent:null,expiresAt:now+ROOM_TTL};
+      const room={schema:1,code,version:0,capacity:2,status:'waiting',ownerId:owner.id,members:[owner],game:null,deadline:null,eventSeq:0,lastEvent:null,events:[],expiresAt:now+ROOM_TTL};
       if(await this.store.create(code,room,room.expiresAt))return {...projectRoom(room,owner,now),token};
       const raced=await this.store.get(code,now);
       const creator=raced&&active(raced.room).find(m=>m.tokenHash===tokenHash);
@@ -109,8 +130,9 @@ export class BuckshotRooms{
         room.members.push(member);room.version++;changed=true;
       }
       requireThat(member,403,'无法恢复座位，请检查所用浏览器。');
-      if(now-member.lastSeen>=10000){member.lastSeen=now;changed=true;}
+      touchHeartbeat(room.code,member.id,now);
       const mutation=!['state','join'].includes(operation);
+      if(mutation&&now-member.lastSeen>=30000){member.lastSeen=now;changed=true;}
       let duplicate=false;
       if(mutation){
         requireThat(typeof input.requestId==='string'&&/^[\w-]{8,80}$/.test(input.requestId),400,'缺少有效的请求编号。');
@@ -136,6 +158,7 @@ export class BuckshotRooms{
           room.game=freezeGame(g);
           room.status='playing';
           room.eventSeq=0;
+          room.events=[];
           packEvent(room,{kind:'start'});
           setDeadline(room,now);
         }else if(operation==='action'){
@@ -151,9 +174,10 @@ export class BuckshotRooms{
           setDeadline(room,now);
         }else if(operation==='rematch'){
           requireThat(member.id===room.ownerId&&room.status==='finished',403,'对局结束后由房主发起再来一局。');
-          room.status='waiting';room.game=null;room.deadline=null;room.lastEvent=null;room.eventSeq=0;
+          room.status='waiting';room.game=null;room.deadline=null;room.lastEvent=null;room.eventSeq=0;room.events=[];
           for(const m of active(room))m.ready=m.id===room.ownerId;
         }else if(operation==='leave'){
+          heartbeats.delete(heartbeatKey(room.code,member.id));
           member.left=true;
           if(member.id===room.ownerId)room.ownerId=active(room)[0]?.id||null;
           if(room.status==='playing'&&room.game&&!room.game.over){

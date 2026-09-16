@@ -360,7 +360,7 @@ class BuckshotTable3D{
     this.scene.add(this.ambientLight);
     const lamp=new THREE.SpotLight(0xffe2ba,3.1,7.5,.86,.42,0);
     lamp.position.set(0,2.5,.3);lamp.target.position.set(0,0,-.1);
-    lamp.castShadow=true;lamp.shadow.mapSize.set(1024,1024);lamp.shadow.bias=-.0012;
+    lamp.castShadow=true;lamp.shadow.mapSize.set(512,512);lamp.shadow.bias=-.0012;
     this.keyLight=lamp;
     this.scene.add(lamp,lamp.target);
     const fill=new THREE.PointLight(0xf0d9b0,.8,4.2,0);fill.position.set(0,1.5,1.1);
@@ -2422,13 +2422,18 @@ class BuckshotTable3D{
     this.camera.updateProjectionMatrix();
     this.cameraHome.copy(pose.pos);
     this.cameraTarget.copy(pose.look);
-    /* 全分辨率渲染：氛围交给灯光和配色，绝不用降采样换质感。上限 1.5 留出联机时的性能余量。 */
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
+    /* 全分辨率渲染：氛围交给灯光和配色。上限 1.25，好友房双开时少一点 GPU 负担。 */
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.25));
     this.renderer.setSize(width,height,false);
   }
 
   animate(time){
     try{
+      if(typeof document!=='undefined'&&document.hidden){
+        this.lastFrame=time;
+        this.frame=requestAnimationFrame(next=>this.animate(next));
+        return;
+      }
       const delta=Math.min((time-(this.lastFrame||time))/1000,.05);
       this.lastFrame=time;
       for(const tween of [...this.tweens]){
@@ -2445,9 +2450,10 @@ class BuckshotTable3D{
       }
       this.shake=Math.max(0,this.shake-delta*.22);
       const sway=Math.sin(time/2600)*.012;
+      const jitter=this.shake? (Math.random()-.5)*this.shake:0;
       this.camera.position.set(
-        this.cameraHome.x+sway+(Math.random()-.5)*this.shake,
-        this.cameraHome.y+(Math.random()-.5)*this.shake,
+        this.cameraHome.x+sway+jitter,
+        this.cameraHome.y+jitter,
         this.cameraHome.z);
       this.camera.lookAt(this.cameraTarget);
       if(this.night){
