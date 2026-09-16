@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f6f3eb"><meta name="description" content="四架飞机，一场轻松的旅行。飞行棋支持单人 AI、2–4 人同屏与好友房。"><title>飞行棋 · 好友房 · Open Tabletop</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="./style.css"></head>
+<body>
+  <header class="header"><a class="back-link" href="/" aria-label="返回桌游大厅">← <span>返回大厅</span></a><div class="wordmark"><h1>飞行棋</h1><p>AEROPLANE CLUB</p></div><nav><a id="mode-link" href="./online.html">好友房</a><button id="rules-button" disabled>玩法规则</button><button id="sound-button" aria-label="关闭音效" aria-pressed="false" disabled>♫</button></nav></header>
+  <main class="layout">
+    <section class="board-section" aria-label="飞行棋棋盘"><div id="board" class="board"></div><div class="rule-strip"><span><b>⚄ 6 点起飞</b><small>好运，从这里出发</small></span><span><b>✈ 同色跳格</b><small>一步，再快一步</small></span><span><b>⌁ 航线捷径</b><small>沿着虚线飞越</small></span><span><b>◎ 精确抵达</b><small>让每架飞机回家</small></span></div></section>
+    <aside class="rail">
+      <section id="room-panel" hidden>
+        <div id="room-entry"><h2>一起，飞一局。</h2><p class="muted">创建好友房，分享六位房间码。空位由 AI 补齐。</p><label>你的昵称<input id="nickname" maxlength="16" autocomplete="nickname" placeholder="给自己取个名字" value="飞行员"></label><label>机队数量<select id="room-count"><option value="2">2 支机队</option><option value="3">3 支机队</option><option value="4" selected>4 支机队</option></select></label><button id="create-room" class="primary wide" disabled>创建好友房</button><div class="join-row"><label>房间码<input id="room-code" maxlength="6" placeholder="六位房间码" autocomplete="off" autocapitalize="characters"></label><button id="join-room" disabled>加入</button></div><button id="resume-room" class="wide" hidden>重新连接原房间</button></div>
+        <div id="room-waiting" hidden><div class="room-title"><h2>候机室</h2><span id="waiting-code" class="room-code"></span></div><p class="muted">好友准备后即可开始，空位由 AI 补齐。</p><ul id="waiting-roster" class="waiting-roster"></ul><button id="ready-room" class="wide">准备</button><button id="start-room" class="primary wide" disabled>开始飞行</button></div>
+        <div id="room-tools" hidden><span id="connection">已连接</span><button id="copy-invite">复制邀请</button><button id="leave-room">离开房间</button></div>
+      </section>
+      <section id="turn-panel" aria-label="回合操作"><div id="turn-banner" class="turn-banner"><span id="active-icon" class="active-icon"></span><div><span id="active-color">红色机队</span><h2 id="turn-title">正在准备…</h2></div></div><div class="dice-stage"><div id="die" class="die" role="img" aria-label="尚未掷骰"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><button id="roll-button" class="primary roll-button" disabled>掷骰子</button><p id="turn-hint" class="turn-hint" aria-live="polite">掷出 6 点即可起飞</p><div id="move-choices" class="move-choices"></div></section>
+      <p id="error" class="error" role="alert" hidden></p>
+      <section id="roster" class="roster" aria-label="机队进度"></section>
+      <section id="result" class="result" hidden><h2 id="winner-title"></h2><p>四机抵达，这一程值得庆祝。</p><button id="play-again" class="primary wide">再飞一局</button></section>
+      <section class="log-section"><h2>☷ 航行记录</h2><ol id="event-log"><li>飞机就位，把快乐飞得更远。</li></ol></section>
+      <footer class="rail-footer"><span id="mode-label">单人 · 本地 AI</span><button id="new-game" disabled>新的一局 / 同屏</button></footer>
+    </aside>
+  </main>
+  <dialog id="setup-dialog"><form id="setup-form"><button type="button" class="close-dialog" data-close="setup-dialog" aria-label="关闭设置">×</button><h2>准备下一程</h2><p>当前本地棋局会在开始后替换。</p><label>玩法<select id="local-mode"><option value="solo">单人对战 AI</option><option value="local">好友同屏，轮流操作</option></select></label><label>机队数量<select id="player-count"><option value="2">2 支（红 / 绿）</option><option value="3">3 支</option><option value="4" selected>4 支</option></select></label><button class="primary wide" type="submit">开始新的一局</button></form></dialog>
+  <dialog id="rules-dialog"><button class="close-dialog" data-close="rules-dialog" aria-label="关闭规则">×</button><h2>一张棋盘，四支机队。</h2><p>让自己的四架飞机全部精确抵达终点，即可获胜。本合集采用下面这套固定规则。</p><ol class="rules-list"><li><b>起飞与轮次</b>掷出 6 点，可将机场里的一架飞机移到「起」点，也可移动已起飞飞机 6 格；行动后再掷一次。起飞本身不走 6 格。没有可动飞机时自动换人。</li><li><b>同色跳格</b>走完骰子点数后，落在自己的颜色上，自动跳到前方第四格。跳跃不会无限连锁，进入终点航道后不跳。</li><li><b>飞越捷径</b>直接走到本色虚线入口，飞越 12 格后再跳 4 格；若由跳格到达入口，只飞越 12 格。会撞回虚线交叉点上的对方飞机。</li><li><b>撞机与叠机</b>骰子落点、跳格落点和飞越落点均会把该格所有对方飞机送回机场；普通路过不撞。己方可叠放，但每次只移动一架，叠机不构成路障。起飞点独立，环道无安全格。</li><li><b>精确抵达</b>绕过外圈后转入本色航道。点数超出终点时，按多余步数反弹。抵达的飞机回到机场显示 ✓，不再移动。</li><li><b>本版约定</b>红色先手，顺时针轮转；两人使用红、绿对座。连续三个 6 不惩罚。首位四机抵达后结束。没有赌注、道具或隐藏骰子加成。</li><li><b>好友房</b>房主开局，空位补 AI；每个掷骰或选机阶段限时 45 秒，超时由 AI 执行一次操作。离席后由 AI 接管，刷新可恢复仍有效的座位；房间活动有效期 24 小时。</li></ol><p class="muted">传统玩法存在多个版本。本版保留经典起飞、跳格、飞越和反弹，并明确采用独立叠机规则。</p></dialog>
+  <noscript><p class="error">飞行棋需要启用 JavaScript 才能游玩。</p></noscript>
+  <script type="module" src="./ui.js"></script>
+</body></html>

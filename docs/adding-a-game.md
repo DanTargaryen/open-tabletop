@@ -2,7 +2,7 @@
 
 合集的组织单位是 `games/<game-id>/`。先做出一款可独立游玩的游戏，再将它登记到首页目录；不需要先抽象一个通用桌游引擎。
 
-当前实现是 `games/texas-holdem/` 与 `games/splendor/`，可参考它们的文件组织。扑克的规则和接口不要求其他游戏照搬。
+当前实现包含 `games/texas-holdem/`、`games/splendor/`、`games/abracada-what/` 与 `games/aeroplane-chess/`，可参考它们的文件组织。扑克的规则和接口不要求其他游戏照搬。
 
 ## 1. 建立游戏目录
 
@@ -19,7 +19,7 @@ games/my-game/
 
 `web/` 放公开的 HTML、CSS、JavaScript 和素材。浏览器入口使用 `/games/my-game/index.html`。`server/` 放服务端规则与房间逻辑；纯本地游戏可以省略。`tests/` 放行为测试，`scripts/` 仅在有开发工具时创建。
 
-服务端模块、测试、配置和运行数据都不应通过静态路由暴露。在 `server/index.mjs` 中接入新游戏 `web/` 目录的静态映射；当前扑克的映射是显式配置的，新增目录不会自动生效。不要为省事将整个 `games/` 目录作为可下载文件树。
+服务端模块、测试、配置和运行数据都不应通过静态路由暴露。在 `server/index.mjs` 中接入新游戏 `web/` 目录的静态映射；当前 Node 入口从游戏目录配置中建立到各游戏 `web/` 的静态映射；新增目录需要同时登记到目录配置。不要为省事将整个 `games/` 目录作为可下载文件树。
 
 ## 2. 做出可玩的最小版本
 

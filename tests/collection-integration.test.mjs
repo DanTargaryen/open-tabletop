@@ -8,7 +8,7 @@ import {randomBytes} from 'node:crypto';
 import {createTabletopServer} from '../server/index.mjs';
 import worker from '../deploy/cloudflare/worker.mjs';
 
-test('all three Node API adapters preserve rate-limit errors after integration', async t => {
+test('all four Node API adapters preserve rate-limit errors after integration', async t => {
   const dataDir = await mkdtemp(join(tmpdir(), 'tabletop-three-games-'));
   const app = await createTabletopServer({dataDir});
   await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
@@ -22,14 +22,14 @@ test('all three Node API adapters preserve rate-limit errors after integration',
     assert.equal(response.status, 415);
     await response.text();
   }
-  for (const game of ['poker', 'splendor', 'abracada']) {
+  for (const game of ['poker', 'splendor', 'abracada', 'aeroplane']) {
     const response = await fetch(`${base}/api/${game}/rooms`, {method:'POST', body:'{}'});
     assert.equal(response.status, 429, game);
     assert.match((await response.json()).error, /频繁/);
   }
 });
 
-test('configured Cloudflare migrations support independent rooms for all three games', async t => {
+test('configured Cloudflare migrations support independent rooms for all four games', async t => {
   const configUrl = new URL('../deploy/cloudflare/wrangler.example.jsonc', import.meta.url);
   const config = JSON.parse(await readFile(configUrl, 'utf8'));
   const migrationDir = new URL(config.d1_databases[0].migrations_dir + '/', configUrl);
@@ -50,7 +50,7 @@ test('configured Cloudflare migrations support independent rooms for all three g
     },
     async batch(statements) { return Promise.all(statements.map(statement => statement.run())); },
   };
-  for (const game of ['poker', 'splendor', 'abracada']) {
+  for (const game of ['poker', 'splendor', 'abracada', 'aeroplane']) {
     const base = `https://tabletop.example/api/${game}`;
     assert.equal((await worker.fetch(new Request(base + '/health'), {DB:db})).status, 200, game);
     const created = await worker.fetch(new Request(base + '/rooms', {
@@ -67,7 +67,7 @@ test('configured Cloudflare migrations support independent rooms for all three g
     assert.equal((await restored.json()).room.code, host.room.code);
     assert.equal((await worker.fetch(new Request(base + '/rooms/' + host.room.code), {DB:db})).status, 403);
   }
-  for (const game of ['poker', 'splendor', 'abracada']) {
+  for (const game of ['poker', 'splendor', 'abracada', 'aeroplane']) {
     assert.equal(sql.prepare(`SELECT COUNT(*) AS n FROM ${game}_rooms`).get().n, 1, game);
   }
 });
