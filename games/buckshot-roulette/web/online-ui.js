@@ -16,7 +16,7 @@ const save=(store,key,value)=>store.setItem(key,JSON.stringify(value));
 let table3d=null,session=null,room=null,state=null,pending=null;
 let busy=false,sending=false,polling=false,armed=false,arming=false;
 let pollTimer=null,clockTimer=null,shownRound=0,lastPlayedSeq=0,syncedAt=0,error='';
-let displayHold=null,enteredTable=false;
+let displayHold=null,enteredTable=false,queuedPoll=null,itemHtml='';
 
 import('./three-table.js').then(({createTable3D})=>{
   table3d=createTable3D($('tableCanvas'));
@@ -174,10 +174,11 @@ function render(){
   $('shootEnemy').disabled=!active||s.stealing;
   $('shootSelf').disabled=!active||s.stealing;
   const owner=s.stealing?'ai':'player';
-  $('items').innerHTML=s.items[owner].map((id,slot)=>{
+  const html=s.items[owner].map((id,slot)=>{
     const reason=s.stealing?(stealSlots().includes(slot)?null:'现在偷不了这件'):(s.itemReasons||[])[slot];
     return `<button class="item${reason?' blocked':''}" data-slot="${slot}" ${!active?'disabled':''} title="${reason||ITEM_DEFS[id].help}"><b>${ITEM_DEFS[id].name}</b><small>${reason||ITEM_DEFS[id].help}</small></button>`;
   }).join('');
+  if(html!==itemHtml){itemHtml=html;$('items').innerHTML=html;}
   table3d?.sync(s);
   table3d?.setPickable({
     gun:active&&!armed&&!s.stealing,
@@ -202,6 +203,16 @@ async function settle(next){
 }
 
 function eventSeq(event){return event?.followUp?eventSeq(event.followUp):event?.seq||0;}
+function queuedEvents(next){
+  const list=next?.events?.length?next.events:(next?.lastEvent?[next.lastEvent]:[]);
+  return list.filter(event=>event&&event.kind!=='start'&&event.seq>lastPlayedSeq);
+}
+function pollDelay(){
+  if(document.hidden)return 4000;
+  if(!room||room.status!=='playing'||!state||state.over)return 1600;
+  if(busy||state.turn!=='player')return 380;
+  return 900;
+}
 
 async function playRemoteEvent(event,before,after){
   if(!event||event.kind==='start'||event.kind==='leave')return;
@@ -267,6 +278,7 @@ function escapeHtml(value){
 function unlockUi(){
   busy=false;
   sending=false;
+  drainPoll();
   if(state)render();
   else if(room)renderWaiting();
 }
@@ -321,23 +333,35 @@ async function accept(data,{silent=false}={}){
   const starting=!silent&&room?.status==='waiting'&&data.room.status==='playing';
   room=data.room;error='';syncedAt=Date.now();
   const next=data.game;
-  const event=next?.lastEvent;
-  const shouldPlay=!silent&&event&&event.seq>lastPlayedSeq&&event.kind!=='start'&&before;
+  const events=silent?[]:queuedEvents(next);
   if(data.room.status==='waiting'||!next){
-    lastPlayedSeq=0;enteredTable=false;state=null;armed=false;
+    lastPlayedSeq=0;enteredTable=false;state=null;armed=false;itemHtml='';
     stopModeBgm();
     $('result').classList.add('hidden');
     renderWaiting();
     return;
   }
-  if(shouldPlay){
+  if(!silent&&events.length&&before){
     busy=true;
-    try{await playRemoteEvent(event,before,next);}
-    catch(err){console.warn(err);}
-    lastPlayedSeq=eventSeq(event);
-    state=next;
-    await settle(next);
+    try{
+      if(events.length>3||(before.round!=null&&next.round>before.round+1)){
+        lastPlayedSeq=eventSeq(events[events.length-1]);
+        state=next;
+        shownRound=next.round;
+        table3d?.resetLayout();
+        table3d?.sync(next);
+        if(table3d)await table3d.playReload(next);
+      }else{
+        for(const event of events){
+          await playRemoteEvent(event,before,next);
+          lastPlayedSeq=eventSeq(event);
+        }
+        state=next;
+        await settle(next);
+      }
+    }catch(err){console.warn(err);lastPlayedSeq=Math.max(lastPlayedSeq,eventSeq(events[events.length-1]));state=next;}
   }else{
+    const event=next.lastEvent;
     if(event)lastPlayedSeq=Math.max(lastPlayedSeq,eventSeq(event));
     state=next;
     if(starting||!enteredTable)await enterTable(next);
@@ -354,6 +378,22 @@ async function accept(data,{silent=false}={}){
   if(state?.over)showResult(state);
   else $('result').classList.add('hidden');
   render();
+  await drainPoll();
+}
+
+async function applyPoll(data){
+  const versionChanged=data.room.version!==room?.version||data.room.status!==room?.status||!!error;
+  if(versionChanged)await accept(data);
+  else{
+    room=data.room;syncedAt=Date.now();
+    if(room.status==='waiting')renderWaiting();
+    else updateCountdown();
+  }
+}
+
+async function drainPoll(){
+  const data=queuedPoll;queuedPoll=null;
+  if(data&&session)await applyPoll(data);
 }
 
 async function poll(){
@@ -364,11 +404,11 @@ async function poll(){
   const identity=session;
   try{
     if(!busy&&pending){busy=true;await sendPending();}
-    if(!busy&&!pending&&session===identity){
+    if(session===identity&&!pending){
       const data=await api('/rooms/'+identity.code,{token:identity.token});
       if(session!==identity)return;
-      const changed=JSON.stringify(data.room.members)!==JSON.stringify(room?.members)||data.room.version!==room?.version||!!error;
-      if(changed)await accept(data);else{room=data.room;syncedAt=Date.now();updateCountdown();}
+      if(busy)queuedPoll=data;
+      else await applyPoll(data);
     }
   }catch(e){
     if(session===identity){
@@ -379,7 +419,7 @@ async function poll(){
     }
   }finally{
     polling=false;
-    if(session)pollTimer=setTimeout(poll,document.hidden?4000:1200);
+    if(session)pollTimer=setTimeout(poll,pollDelay());
   }
 }
 
@@ -428,7 +468,7 @@ function clearSession(){
     sessionStorage.removeItem(SESSION);
     localStorage.removeItem('open-tabletop.buckshot.identity.'+session.code);
   }
-  session=null;room=null;state=null;pending=null;lastPlayedSeq=0;enteredTable=false;
+  session=null;room=null;state=null;pending=null;lastPlayedSeq=0;enteredTable=false;queuedPoll=null;itemHtml='';
   sessionStorage.removeItem(PENDING);
   clearTimeout(pollTimer);
   stopModeBgm();

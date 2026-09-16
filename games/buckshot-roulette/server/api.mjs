@@ -1,7 +1,7 @@
 import {BuckshotRooms,BuckshotError,hashToken} from './rooms.mjs';
 
 export class D1BuckshotRoomStore{
-  constructor(db){this.db=db;}
+  constructor(db){this.db=db;this.persistHeartbeats=true;}
   async get(code,now){const row=await this.db.prepare('SELECT revision,payload,expires_at FROM buckshot_rooms WHERE code=? AND expires_at>?').bind(code,now).first();return row?{revision:row.revision,room:JSON.parse(row.payload),expiresAt:row.expires_at}:null;}
   async create(code,room,expiresAt){const result=await this.db.prepare('INSERT OR IGNORE INTO buckshot_rooms(code,revision,payload,expires_at) VALUES(?,0,?,?)').bind(code,JSON.stringify(room),expiresAt).run();return result.meta.changes===1;}
   async cas(code,revision,room,expiresAt){const result=await this.db.prepare('UPDATE buckshot_rooms SET revision=revision+1,payload=?,expires_at=? WHERE code=? AND revision=?').bind(JSON.stringify(room),expiresAt,code,revision).run();return result.meta.changes===1;}
