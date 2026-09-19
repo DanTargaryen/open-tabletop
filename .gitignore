@@ -20,3 +20,4 @@ deploy/cloudflare/wrangler.jsonc
 artifacts/
 .playwright-cli/
 output/playwright/
+games/anime-campus/web/assets/official/

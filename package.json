@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node server/index.mjs",
     "lan": "node server/index.mjs --host 0.0.0.0",
-    "test": "node --test",
+    "test": "node scripts/test.mjs",
     "test:browser": "node scripts/check-browser-playability.mjs",
     "build:static": "node scripts/build-static.mjs",
     "measure:poker-sync": "node games/texas-holdem/scripts/measure-sync.mjs"

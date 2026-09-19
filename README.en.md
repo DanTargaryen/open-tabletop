@@ -102,7 +102,7 @@ npm test
 npm run build:static
 ```
 
-Tests cover all four game engines, room behavior, hidden-information projections, synchronization, and the root server. The static build copies assets to `.dist/public`. Online play also requires a Node or Worker + D1 backend serving `/api/poker`, `/api/splendor`, `/api/abracada` and `/api/aeroplane`; static hosting alone does not provide rooms.
+Tests cover all five game engines, room behavior, hidden-information projections, synchronization, and the root server. The static build copies assets to `.dist/public`. Online play also requires a Node or Worker + D1 backend serving `/api/poker`, `/api/splendor`, `/api/abracada` and `/api/aeroplane`; static hosting alone does not provide rooms.
 
 The default entry point, `server/index.mjs`, runs in a Node environment you control. An optional Cloudflare adapter is included:
 
@@ -113,7 +113,7 @@ Database settings in the example configuration are placeholders. Create and bind
 
 ## Extend the collection
 
-Each game lives in `games/<game-id>/` and appears on the homepage through `games/catalog.json`. The catalog contains `texas-holdem`, `splendor`, `abracada-what` and `aeroplane-chess`; additional games will be added as they are implemented and contributed.
+Each game lives in `games/<game-id>/` and appears on the homepage through `games/catalog.json`. The catalog contains `texas-holdem`, `splendor`, `abracada-what`, `aeroplane-chess` and `anime-campus`; additional games will be added as they are implemented and contributed.
 
 ```text
 games/
@@ -146,3 +146,7 @@ Bug fixes, interaction improvements, and complete playable games are welcome. St
 ## License
 
 Original project code is licensed under the [MIT License](LICENSE). Third-party names, marks, and other assets remain subject to the rights and licenses described in [third-party notices](THIRD_PARTY_NOTICES.md).
+
+## Campus Festival (development version)
+
+`/games/anime-campus/index.html` adds a 60-space crossover adventure, 51 fixed-map events, six characters and six items. Play solo with rule-based AI, with 2–4 people sharing a screen, or in a Node friend room at `/games/anime-campus/online.html`. The new version is not yet published to the public demo above. Official portrait files are an optional Git-ignored local asset pack; see [game documentation](games/anime-campus/README.md).

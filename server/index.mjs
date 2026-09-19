@@ -12,6 +12,8 @@ import {handleSplendor} from '../games/splendor/server/api.mjs';
 import {SplendorError} from '../games/splendor/server/rooms.mjs';
 import {handleAeroplane} from '../games/aeroplane-chess/server/api.mjs';
 import {AeroplaneRoomError} from '../games/aeroplane-chess/server/rooms.mjs';
+import {handleCampus} from '../games/anime-campus/server/api.mjs';
+import {CampusRoomError} from '../games/anime-campus/server/rooms.mjs';
 import {FileRoomStore} from './room-store.mjs';
 
 const projectRoot=resolve(dirname(fileURLToPath(import.meta.url)),'..');
@@ -24,6 +26,7 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
  const splendorStore=await new FileRoomStore(resolve(dataDir,'splendor-rooms.json')).init();
  const abracadaStore=await new FileRoomStore(resolve(dataDir,'abracada-rooms.json')).init();
  const aeroplaneStore=await new FileRoomStore(resolve(dataDir,'aeroplane-rooms.json')).init();
+ const campusStore=await new FileRoomStore(resolve(dataDir,'anime-campus-rooms.json')).init();
  const catalog=JSON.parse(await readFile(resolve(projectRoot,'games/catalog.json'),'utf8'));
  const staticGames=new Map(catalog.map(game=>[`/games/${game.id}/`,resolve(projectRoot,'games',game.id,'web')]));
  const vendorFiles=new Map([
@@ -44,13 +47,14 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
   try{
    if(!req.url?.startsWith('/')||req.url.startsWith('//')){res.writeHead(400);res.end();return;}
    const url=new URL(req.url,publicOrigin||'http://'+req.headers.host);
-   if(url.pathname.startsWith('/api/aeroplane/')||url.pathname.startsWith('/api/poker/')||url.pathname.startsWith('/api/abracada/')||url.pathname.startsWith('/api/splendor/')){
+   if(url.pathname.startsWith('/api/anime-campus/')||url.pathname.startsWith('/api/aeroplane/')||url.pathname.startsWith('/api/poker/')||url.pathname.startsWith('/api/abracada/')||url.pathname.startsWith('/api/splendor/')){
+    const campus=url.pathname.startsWith('/api/anime-campus/');
     const aeroplane=url.pathname.startsWith('/api/aeroplane/');
     const splendor=url.pathname.startsWith('/api/splendor/');
     const abracada=url.pathname.startsWith('/api/abracada/');
-    const handler=aeroplane?handleAeroplane:abracada?handleAbracada:handlePoker;
-    const roomStore=aeroplane?aeroplaneStore:abracada?abracadaStore:pokerStore;
-    const ErrorType=aeroplane?AeroplaneRoomError:splendor?SplendorError:abracada?AbracadaRoomError:RoomError;
+    const handler=campus?handleCampus:aeroplane?handleAeroplane:abracada?handleAbracada:handlePoker;
+    const roomStore=campus?campusStore:aeroplane?aeroplaneStore:abracada?abracadaStore:pokerStore;
+    const ErrorType=campus?CampusRoomError:aeroplane?AeroplaneRoomError:splendor?SplendorError:abracada?AbracadaRoomError:RoomError;
     const headers=new Headers();for(const[k,v]of Object.entries(req.headers))if(v)headers.set(k,Array.isArray(v)?v.join(','):v);
     // Untrusted forwarded IPs cannot evade the local create/join limiter.
     headers.set('cf-connecting-ip',req.socket.remoteAddress||'local');
@@ -80,7 +84,7 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
   }
  });
  server.requestTimeout=15000;server.headersTimeout=10000;
- return {server,store:pokerStore,splendorStore,stores:{poker:pokerStore,splendor:splendorStore,abracada:abracadaStore,aeroplane:aeroplaneStore},catalog,async close(){await new Promise((done,fail)=>server.close(error=>error?fail(error):done()));await Promise.all([pokerStore.close(),splendorStore.close(),abracadaStore.close(),aeroplaneStore.close()]);}};
+ return {server,store:pokerStore,splendorStore,stores:{poker:pokerStore,splendor:splendorStore,abracada:abracadaStore,aeroplane:aeroplaneStore,campus:campusStore},catalog,async close(){await new Promise((done,fail)=>server.close(error=>error?fail(error):done()));await Promise.all([pokerStore.close(),splendorStore.close(),abracadaStore.close(),aeroplaneStore.close(),campusStore.close()]);}};
 }
 
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){

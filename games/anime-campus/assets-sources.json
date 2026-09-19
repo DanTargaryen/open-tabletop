@@ -1,0 +1,121 @@
+{
+  "retrieved": "2026-09-16",
+  "provenance": "official anime websites and TV Tokyo",
+  "copyright": "Images belong to the respective rights holders; no open-source license is asserted.",
+  "portraits": [
+    {
+      "id": "railgun",
+      "character": "御坂美琴",
+      "file": "railgun.png",
+      "source_page": "https://toaru-project.com/railgun_t/chara/mikoto.html",
+      "image_url": "https://toaru-project.com/railgun_t/core_sys/images/main/cont_chara/8_face.png",
+      "mime": "image/png",
+      "width": 702,
+      "height": 604,
+      "display_viewbox": [
+        137,
+        2,
+        324,
+        340
+      ],
+      "sha256": "ee64674a17e9622af5447040b1afc1abc7a36e6a538b4b48be2a549f565a94d5",
+      "bytes": 88693,
+      "treatment": "Original downloaded image bytes retained; SVG viewBox and circular clipping only"
+    },
+    {
+      "id": "april",
+      "character": "宫园薰",
+      "file": "april.png",
+      "source_page": "https://www.kimiuso.jp/character/",
+      "image_url": "https://www.kimiuso.jp/assets/img/chara/chara2_1.png",
+      "mime": "image/png",
+      "width": 778,
+      "height": 655,
+      "display_viewbox": [
+        93,
+        114,
+        204,
+        212
+      ],
+      "sha256": "5fd1e6fc982b722cd99ba5bef8b04a02d6489dc60c0f3fbf06b0d03d60994834",
+      "bytes": 361991,
+      "treatment": "Original downloaded image bytes retained; SVG viewBox and circular clipping only"
+    },
+    {
+      "id": "kaguya",
+      "character": "四宫辉夜",
+      "file": "kaguya.png",
+      "source_page": "https://kaguya.love/character/",
+      "image_url": "https://kaguya.love/assets/3rd/t/img/chara/img_face01-1.png",
+      "mime": "image/png",
+      "width": 250,
+      "height": 250,
+      "display_viewbox": [
+        34,
+        0,
+        202,
+        220
+      ],
+      "sha256": "331a111c2154db3c8951a1d409cb8ab38cf9ee0a1467ac556287c88ab1507a2f",
+      "bytes": 13559,
+      "treatment": "Original downloaded image bytes retained; SVG viewBox and circular clipping only"
+    },
+    {
+      "id": "toradora",
+      "character": "逢坂大河",
+      "file": "toradora.gif",
+      "source_page": "https://www.tv-tokyo.co.jp/contents/toradora/chara/",
+      "image_url": "https://www.tv-tokyo.co.jp/contents/toradora/images/chara/taiga.gif",
+      "mime": "image/gif",
+      "width": 500,
+      "height": 364,
+      "display_viewbox": [
+        286,
+        125,
+        214,
+        235
+      ],
+      "sha256": "2cf56e66fc9cd9354df82261e621463e75ed467eec911038b04c2e954743de05",
+      "bytes": 43782,
+      "treatment": "Original downloaded image bytes retained; SVG viewBox and circular clipping only"
+    },
+    {
+      "id": "violet",
+      "character": "薇尔莉特",
+      "file": "violet.png",
+      "source_page": "https://tv.violet-evergarden.jp/character/",
+      "image_url": "https://tv.violet-evergarden.jp/img/character/violetImg.png",
+      "mime": "image/png",
+      "width": 530,
+      "height": 520,
+      "display_viewbox": [
+        188,
+        68,
+        154,
+        190
+      ],
+      "sha256": "6093963b72d301805a9ff772ca3759fd0e8c587f10845d5b339f1eecdcf99fd2",
+      "bytes": 55251,
+      "treatment": "Original downloaded image bytes retained; SVG viewBox and circular clipping only"
+    },
+    {
+      "id": "chuni",
+      "character": "小鸟游六花",
+      "file": "chuni.png",
+      "source_page": "https://www.anime-chu-2.com/tv/character/rikka/",
+      "image_url": "https://www.anime-chu-2.com/tv/img/character/rikka/up01.png",
+      "mime": "image/png",
+      "width": 300,
+      "height": 450,
+      "display_viewbox": [
+        31,
+        10,
+        162,
+        209
+      ],
+      "sha256": "6f9d17f69cc755269db8ba0e73839a82a867c5d03358eb2a1a78209761850f04",
+      "bytes": 104749,
+      "treatment": "Original downloaded image bytes retained; SVG viewBox and circular clipping only"
+    }
+  ]
+}

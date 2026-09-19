@@ -42,5 +42,16 @@
     "version": "0.1.0",
     "solo": "/games/aeroplane-chess/index.html",
     "online": "/games/aeroplane-chess/online.html"
+  },
+  {
+    "id": "anime-campus",
+    "title": "放学后，掷个六！",
+    "subtitle": "AFTER SCHOOL / CAMPUS FESTIVAL",
+    "description": "一颗骰子，六个作品的校园祭。邂逅伙伴、完成委托、收下意外，与朋友一起走向闭幕舞台。",
+    "players": "1 人 AI / 2–4 人同屏 / 1–4 人好友房",
+    "category": "二次元冒险棋",
+    "version": "0.1.0",
+    "solo": "/games/anime-campus/index.html",
+    "online": "/games/anime-campus/online.html"
   }
 ]

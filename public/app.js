@@ -54,6 +54,7 @@ const aeroplaneArt = (index, category) => `
   <div class="game-art aeroplane-art" aria-hidden="true"><img src="/games/aeroplane-chess/assets/airplane-club.jpg" alt="" loading="lazy"><span class="art-index">${String(index + 1).padStart(2, '0')} / ${escape(category)}</span></div>`;
 
 const presentations = {
+  'anime-campus': {className:'game-card--campus', art:(i,c)=>`<div class="game-art aeroplane-art" aria-hidden="true"><img src="/games/anime-campus/assets/board.svg" alt="" loading="lazy"><span class="art-index">CAMPUS FESTIVAL / 60 格</span></div>`, extraTag:'六作品校园祭 / 事件与道具', note:'选择一位角色，和 AI 或好友走完一段放学旅程。'},
   'aeroplane-chess': {
     className: 'game-card--aeroplane',
     art: aeroplaneArt,
