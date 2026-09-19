@@ -1,3 +1,4 @@
+export const isOnlinePage=path=>/\/online(?:\.html)?\/?$/.test(path);
 // Each invitation resumes only its own room, without discarding other seats.
 export const IDENTITY='anime-campus.room.v1';
 const read=(storage,key)=>{try{return JSON.parse(storage.getItem(key));}catch{return null;}};

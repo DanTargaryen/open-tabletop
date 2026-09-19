@@ -1,11 +1,11 @@
-import {loadIdentity,rememberIdentity,forgetIdentity,reconcilePending} from './room-sync.js';
+import {isOnlinePage,loadIdentity,rememberIdentity,forgetIdentity,reconcilePending} from './room-sync.js';
 import {animateRoute} from './animation.js';
 import {drawCharacterTokens,tokenPosition,SEAT_COLORS} from './tokens.js';
 import {DATA} from './data.js';
 import {CHARACTERS,ITEMS,SKILLS,createGame,step,actorId,steps,legalActions,botAction,projectGame,validSavedGame} from './engine.js';
 
 const $=id=>document.getElementById(id),escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const online=location.pathname.endsWith('/online.html'),API='/api/anime-campus',SAVE='anime-campus.local.v1';
+const online=isOnlinePage(location.pathname),API='/api/anime-campus',SAVE='anime-campus.local.v1';
 let game=null,room=null,identity=null,selected='railgun',busy=false,paused=false,botTimer,pollTimer,networkBusy=false,generation=0,pendingRequest=null,lastActor=null,memoryAnswer=[],lastPending='',zoom=1,follow=true,sound=false,audioContext=null,loaded=false,drag=null;
 const chars=new Map(CHARACTERS.map(c=>[c.id,c])),avatar=id=>`assets/official/${id}.svg`,fallback='assets/avatar.svg';
 function read(storage,key){try{return JSON.parse(storage.getItem(key));}catch{return null;}}
