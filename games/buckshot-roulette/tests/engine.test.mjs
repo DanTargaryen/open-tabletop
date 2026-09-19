@@ -1,6 +1,7 @@
 import test from 'node:test'; import assert from 'node:assert/strict';
 import {createGame, shoot, useItem, publicState, skipIfCuffed, itemBlockReason, stealTargets,
   resolveSteal, loadRound, chooseAi, viewState, applyOnlineAction, freezeGame, thawGame, eventForViewer,
+  settleOnlineBoundary, chooseCompensation,
   ITEM_IDS, ITEM_CAP, MIN_HP, MAX_HP, CHALLENGE_MIN_HP, CHALLENGE_MAX_HP} from '../web/engine.js';
 const fixed=()=>.2;
 /* 直接摆弹仓时也要带实例 ID，手机记录靠它定位。 */
@@ -282,4 +283,123 @@ test('online view hides opponent notes and the chamber order',()=>{
  const peek={actor:'ai',item:'magnifier',revealed:true,live:true};
  assert.equal(eventForViewer(peek,'player').revealed,undefined);
  assert.equal(eventForViewer(peek,'ai').revealed,true);
+});
+
+test('victory achievements distinguish full, healthy, limit, night and pro wins',()=>{
+ const full=createGame({rng:fixed});full.maxHp=4;full.hp={player:4,ai:1};chamber(full,[true]);
+ let ids=shoot(full,'player','ai').achievements.map(entry=>entry.id);
+ assert.ok(ids.includes('geniusThreshold'));assert.ok(ids.includes('tooEasy'));assert.ok(!ids.includes('limit'));
+
+ const night=createGame({rng:fixed,mode:'night'});night.maxHp=4;night.hp={player:1,ai:1};chamber(night,[true]);
+ ids=shoot(night,'player','ai').achievements.map(entry=>entry.id);
+ assert.ok(ids.includes('lightsOut'));assert.ok(ids.includes('limit'));assert.ok(!ids.includes('tooEasy'));
+
+ const pro=createGame({rng:fixed,aiDifficulty:'pro'});pro.hp.ai=1;chamber(pro,[true]);
+ ids=shoot(pro,'player','ai').achievements.map(entry=>entry.id);
+ assert.ok(ids.includes('godBleeds'));
+});
+
+test('comeback unlocks once after a two-health deficit is recovered',()=>{
+ const g=createGame({rng:fixed});g.maxHp=5;g.hp={player:2,ai:4};chamber(g,[false,true]);
+ g.items.player=['magnifier'];
+ assert.deepEqual(useItem(g,'player','magnifier').achievements,[]);
+ g.hp.player=4;g.items.player=['beer'];
+ let ids=useItem(g,'player','beer').achievements.map(entry=>entry.id);
+ assert.deepEqual(ids,['backFromHell']);
+ g.hp.player=5;g.items.player=['saw'];
+ ids=useItem(g,'player','saw').achievements.map(entry=>entry.id);
+ assert.equal(ids.includes('backFromHell'),false);
+});
+
+test('dark hunter counts actual opponent damage across a night and triggers at dawn',()=>{
+ const g=createGame({rng:fixed,mode:'challenge'});g.maxHp=8;g.hp={player:8,ai:8};
+ g.lighting='night';g.achievementState.nightDamage.player=1;chamber(g,[true]);g.rng=()=>0;
+ const r=shoot(g,'player','ai');
+ assert.equal(g.lighting,'day');
+ assert.ok(r.achievements.some(entry=>entry.id==='darkHunter'&&entry.actor==='player'));
+ assert.equal(g.achievementState.nightDamage.player,0);
+});
+
+test('achievement actors are mapped for the other online seat',()=>{
+ const event={actor:'player',achievements:[{id:'limit',actor:'player'},{id:'darkHunter',actor:'ai'}]};
+ const guest=eventForViewer(event,'ai');
+ assert.deepEqual(guest.achievements,[{id:'limit',actor:'ai'},{id:'darkHunter',actor:'player'}]);
+});
+
+const compensationGame=()=>createGame({rng:fixed,compensationEnabled:true});
+function pendingBoundary(g,{weak='player',weakHp=2,strongHp=5,turn='ai'}={}){
+  g.hp[weak]=weakHp;g.hp[weak==='player'?'ai':'player']=strongHp;g.turn=turn;
+  g.ammo=[];g.pendingReload={beforeLighting:g.lighting,pendingTurn:turn};
+}
+
+test('single-player games keep the original immediate reload path',()=>{
+ const g=createGame({rng:fixed});chamber(g,[false]);const round=g.round;
+ shoot(g,'player','player');
+ assert.equal(g.round,round+1);assert.ok(g.ammo.length>=2);assert.equal(g.pendingReload,undefined);
+});
+
+test('multiplayer opens compensation only when the actual next actor is the leader',()=>{
+ const g=compensationGame();pendingBoundary(g);
+ const opened=settleOnlineBoundary(g);
+ assert.equal(opened.kind,'compensation_open');assert.equal(g.phase,'compensation');assert.equal(g.compensation.chooser,'player');
+});
+
+test('multiplayer skips compensation when the weak side has the next normal action',()=>{
+ const g=compensationGame();pendingBoundary(g,{turn:'player'});
+ const event=settleOnlineBoundary(g);
+ assert.equal(event.kind,'reload');assert.equal(g.phase,'playing');assert.equal(g.round,2);
+});
+
+test('event-level rare roll offers exactly one power strip',()=>{
+ const g=compensationGame();g.rng=()=>0;pendingBoundary(g);
+ settleOnlineBoundary(g);
+ assert.equal(g.compensation.rare,true);
+ assert.equal(g.compensation.offers.filter(id=>id==='powerStrip').length,1);
+ assert.notEqual(g.compensation.timeoutChoice,'powerStrip');
+});
+
+test('fruit knife creates a personal cap used by healing and full-health achievement',()=>{
+ const g=compensationGame();pendingBoundary(g);settleOnlineBoundary(g);
+ g.compensation.offers=['fruitKnife','reverseCoin'];
+ chooseCompensation(g,'player',0);
+ assert.equal(g.maxHpBySide.ai,5);
+ g.hp.ai=4;g.turn='ai';g.items.ai=['cigarette'];useItem(g,'ai','cigarette');
+ assert.equal(g.hp.ai,5);assert.equal(itemBlockReason(g,'ai','cigarette'),'生命值已满');
+});
+
+test('fuse reduces the first firearm hit of the upcoming round and then expires',()=>{
+ const g=compensationGame();pendingBoundary(g);settleOnlineBoundary(g);
+ g.compensation.offers=['spareFuse','reverseCoin'];chooseCompensation(g,'player',0);
+ g.turn='ai';chamber(g,[true,false]);
+ const shot=shoot(g,'ai','player');
+ assert.equal(shot.damage,0);assert.equal(shot.rawDamage,1);assert.equal(shot.fuseBlocked,true);assert.equal(g.effects.fuse.player,null);
+ const expiry=compensationGame();pendingBoundary(expiry);settleOnlineBoundary(expiry);
+ expiry.compensation.offers=['spareFuse','reverseCoin'];chooseCompensation(expiry,'player',0);
+ expiry.hp={player:4,ai:4};expiry.pendingReload={beforeLighting:expiry.lighting,pendingTurn:expiry.turn};
+ const boundary=settleOnlineBoundary(expiry);
+ assert.deepEqual(boundary.expiredFuses,['player']);assert.deepEqual(eventForViewer(boundary,'ai').expiredFuses,['ai']);
+});
+
+test('bore film is private, coin changes opener, and remote forces night',()=>{
+ const film=compensationGame();pendingBoundary(film);settleOnlineBoundary(film);film.compensation.offers=['boreFilm','reverseCoin'];
+ const event=chooseCompensation(film,'player',0);
+ assert.equal(viewState(film,'player').records.player.length,2);assert.equal(viewState(film,'ai').records.ai.length,0);
+ assert.equal(eventForViewer(event,'ai').item,'boreFilm');
+ const coin=compensationGame();pendingBoundary(coin);settleOnlineBoundary(coin);coin.compensation.offers=['reverseCoin','boreFilm'];chooseCompensation(coin,'player',0);assert.equal(coin.turn,'player');
+ const remote=compensationGame();remote.items.player=['adrenaline'];remote.items.ai=['adrenaline'];pendingBoundary(remote);settleOnlineBoundary(remote);remote.compensation.offers=['lightRemote','reverseCoin'];chooseCompensation(remote,'player',0);
+ assert.equal(remote.lighting,'night');assert.equal(remote.items.player.includes('adrenaline'),false);assert.equal(remote.items.ai.includes('adrenaline'),false);
+ remote.pendingReload={beforeLighting:'night',pendingTurn:'player'};remote.turn='player';settleOnlineBoundary(remote);
+ assert.equal(remote.lighting,'day','常规模式只强制一个黑夜回合');
+});
+
+test('power strip enters hidden random death and clears every temporary system',()=>{
+ const g=compensationGame();g.items={player:['saw'],ai:['cuffs']};g.cuffed.player=true;g.saw.ai=true;g.notes.player={7:true};
+ pendingBoundary(g);settleOnlineBoundary(g);g.compensation.offers=['powerStrip','reverseCoin'];chooseCompensation(g,'player',0);
+ assert.equal(g.randomDeath,true);assert.deepEqual(g.hp,{player:2,ai:2});assert.deepEqual(g.items,{player:[],ai:[]});
+ assert.equal(g.ammo.length,0,'随机死亡模式彻底停用原弹仓');
+ const view=viewState(g,'player');assert.equal(view.hp.player,null);assert.equal(view.ammoCount,null);assert.equal(view.liveCount,null);
+ const rolls=[.49,.5];g.rng=()=>rolls.shift();
+ const live=shoot(g,'ai','player');assert.equal(live.live,true);assert.equal(g.hp.player,1);assert.equal(g.ammo.length,0);
+ const blank=shoot(g,'player','ai');assert.equal(blank.live,false);assert.equal(g.hp.ai,2);assert.equal(g.ammo.length,0);
+ assert.equal(g.pendingReload,null,'独立随机射击不触发换弹或补偿');
 });

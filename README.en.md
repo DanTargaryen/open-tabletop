@@ -4,7 +4,7 @@
 
 ![Open Tabletop collection](docs/collection-preview.jpg)
 
-An open-source collection of browser tabletop games that you can run yourself and extend. **The collection contains Texas Hold’em, unofficial Splendor: Pokémon, Abracada...What?, Aeroplane Chess and Chamber Pact**, with solo play against local AI and online rooms for friends.
+An open-source collection of browser games that you can run yourself and extend. **The collection contains Texas Hold’em, unofficial Splendor: Pokémon, Abracada...What?, Aeroplane Chess, Chamber Pact and Steel Expedition**, with local AI, shared-screen play or online rooms depending on the game.
 
 [中文](README.md) · [Add a game](docs/adding-a-game.md) · [Architecture](docs/architecture.md) · [Contributing](CONTRIBUTING.md)
 
@@ -12,7 +12,7 @@ An open-source collection of browser tabletop games that you can run yourself an
 
 [Open the game lobby](https://velvet-poker-friends.linming-dracarys.chatgpt.site)
 
-The public root URL is now the game-selection homepage, with solo and friend-room links for all five games. Existing poker URLs and root room invitations remain supported.
+The public root URL is the six-game selection homepage. All six games provide friend rooms. Steel Expedition is a desktop 2D game with keyboard movement and mouse-or-keyboard aiming, weapon selection, firing and menus.
 
 Texas Hold’em includes:
 
@@ -50,6 +50,10 @@ A high-pressure table duel with mixed live and blank shells. Solo play uses loca
 
 The engine settles first, then animation displays the same result; adrenaline injects, then steals the clicked opponent slot. Friend rooms pick a random first player and force a shot at the opponent after 90 seconds. Node storage is `buckshot-rooms.json`; the Worker adapter needs `0005_buckshot_rooms.sql`. [Solo](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/buckshot-roulette/index.html) · [Friend room](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/buckshot-roulette/online.html).
 
+## Steel Expedition
+
+An original 2D turn-based artillery duel for desktop browsers. Move with `A/D`, pull backward on the lower-left slingshot control to fire in the opposite direction, or fine-tune aim and power with `W/S` and `Q/E`. Seven shells across four tiers unlock as the battle advances, while supply drops restore health or grant rare tier-four ammunition. Explosions damage tanks and permanently deform the layered terrain. In addition to solo rule AI, friend rooms offer four seats (A1, B1, A2 and B2). Humans can switch to any empty seat; the host adds AI manually, with no AI by default. Rooms support 1-vs-1, asymmetric teams and two humans against two AI. Solo and multiplayer share easy, normal and hard AI, camera behavior, ballistics and supply rules. The server authoritatively resolves movement, ballistics, damage and terrain in `A1 → B1 → A2 → B2` order. See [game documentation](games/steel-arc/README.md).
+
 ## Run locally
 
 Requires **Node.js 22.13 or newer**. Install the local dependencies before the first run:
@@ -76,6 +80,8 @@ Open <http://127.0.0.1:18772>.
 | Online Aeroplane Chess | `/games/aeroplane-chess/online.html` |
 | Solo Chamber Pact | `/games/buckshot-roulette/index.html` |
 | Online Chamber Pact | `/games/buckshot-roulette/online.html` |
+| Solo Steel Expedition | `/games/steel-arc/index.html` |
+| Online Steel Expedition | `/games/steel-arc/online.html` |
 
 To play with friends on the same local network:
 
@@ -110,7 +116,7 @@ npm test
 npm run build:static
 ```
 
-Tests cover all five game engines, room behavior, hidden-information projections, synchronization, and the root server. The static build copies assets to `.dist/public`. Online play also requires a Node or Worker + D1 backend serving `/api/poker`, `/api/splendor`, `/api/abracada`, `/api/aeroplane` and `/api/buckshot`; static hosting alone does not provide rooms.
+Tests cover all six game engines, plus room behavior, hidden-information projections and synchronization for all six online games. The static build copies assets to `.dist/public`; solo Steel Expedition works there without a backend. Online rooms, including `/api/steel-arc`, require a Node or Worker + D1 backend.
 
 The default entry point, `server/index.mjs`, runs in a Node environment you control. An optional Cloudflare adapter is included:
 
@@ -121,7 +127,7 @@ Database settings in the example configuration are placeholders. Create and bind
 
 ## Extend the collection
 
-Each game lives in `games/<game-id>/` and appears on the homepage through `games/catalog.json`. The catalog contains `texas-holdem`, `splendor`, `abracada-what`, `aeroplane-chess` and `buckshot-roulette`; additional games will be added as they are implemented and contributed.
+Each game lives in `games/<game-id>/` and appears on the homepage through `games/catalog.json`. The sixth entry is the 2D artillery game `steel-arc`, with solo and friend-room modes; additional games will be added as they are implemented and contributed.
 
 ```text
 games/

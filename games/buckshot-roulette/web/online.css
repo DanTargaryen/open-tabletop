@@ -46,9 +46,16 @@
 .roster-ready.on{color:var(--volt)}
 .waiting-actions{display:flex;gap:12px;margin:22px 0 12px}
 .waiting-actions button{min-width:140px}
+.mode-select{margin:6px 0 16px;color:var(--bone);background:#151614}
+.room-mode{margin:8px 0 0;color:#d0a55f;font-size:13px;letter-spacing:.08em}
 .text-btn{background:none;border:0;box-shadow:none;padding:8px 0;color:#8d8a7c}
 .text-btn:hover{color:var(--bone)}
 .turn-clock{margin-left:auto;font-family:ui-monospace,Consolas,monospace;letter-spacing:.12em;color:var(--volt)}
+.compensation-status{display:none;margin-top:7px;max-width:320px;color:#e1ad55;font-size:11px;line-height:1.45;letter-spacing:.08em;text-transform:uppercase;text-shadow:0 0 14px rgba(255,151,38,.35)}
+.compensation-status.on{display:block}
+.random-death-mode .charge{color:#6c5540;text-shadow:none;letter-spacing:.08em}
+.random-death-mode .hud-chamber{border-color:#5e3524;background:rgba(9,7,6,.86)}
+.random-death-mode .chamber-title{color:#bd6b34}
 @media(max-width:720px){
   .room-entry-grid,.room-roster{grid-template-columns:1fr}
   .invite-row{flex-direction:column;align-items:flex-start}

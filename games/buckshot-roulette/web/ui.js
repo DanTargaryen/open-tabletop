@@ -1,15 +1,17 @@
 import {createGame,publicState,shoot,useItem,chooseAi,skipIfCuffed,itemBlockReason,stealTargets,
-  resolveSteal,ITEM_DEFS,ITEM_IDS,MAX_HP,DIFFICULTIES} from './engine.js';
+  resolveSteal,ITEM_DEFS,ITEM_IDS,COMPENSATION_DEFS,MAX_HP,DIFFICULTIES} from './engine.js';
 import {playModeBgm,stopModeBgm,isBgmEnabled,setBgmEnabled} from './audio.js';
 import {bindTutorial} from './tutorial.js';
+import {showAchievements} from './achievements.js';
 const $=id=>document.getElementById(id);let game=null;let busy=false;let armed=false;let arming=false;let table3d=null;let shownRound=0;
 /* 扎完针才进入偷取选择：针筒已消耗，不能取消。 */
 let stealing=false;
+let debugShowcase=false;
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 /* 3D 牌桌是渐进增强：动态加载，失败或没有 WebGL 时页面自动留在 2D 备用桌面上（届时用底部的备用控件操作）。 */
-import('./three-table.js').then(({createTable3D})=>{table3d=createTable3D($('tableCanvas'));if(!table3d)return;table3d.onPick=onPick;table3d.revealHp=revealHp;if(game){render();table3d.playReload(publicState(game))}}).catch(error=>{console.warn('3D 牌桌无法启动',error)});
+import('./three-table.js').then(({createTable3D})=>{table3d=createTable3D($('tableCanvas'));if(!table3d)return;table3d.onPick=onPick;table3d.revealHp=revealHp;table3d.onCompensationHover=showCompensationTooltip;if(game){render();table3d.playReload(publicState(game))}}).catch(error=>{console.warn('3D 牌桌无法启动',error)});
 const MODES={
-  practice:{id:'practice',name:'练习模式',ready:true,hint:'灯亮着的完整牌桌'},
+  practice:{id:'practice',name:'常规模式',ready:true,hint:'灯亮着的完整牌桌'},
   night:{id:'night',name:'黑夜模式',ready:true,hint:'只看得见自己这一侧'},
   challenge:{id:'challenge',name:'挑战模式',ready:true,hint:'短弹仓，换弹后可能天黑'},
 };
@@ -41,6 +43,18 @@ function blockedNotice(id,reason){
   const name=ITEM_DEFS[id]?.name;
   showNotice(reason,name?`无法使用「${name}」`:'无法使用');
 }
+function showCompensationTooltip(info){
+  const tooltip=$('compensationTooltip');
+  const def=info&&COMPENSATION_DEFS[info.id];
+  if(!tooltip||!def){tooltip?.classList.add('hidden');return}
+  tooltip.replaceChildren();
+  const title=document.createElement('b'),help=document.createElement('small');
+  title.textContent=def.name;help.textContent=def.help;tooltip.append(title,help);
+  tooltip.classList.remove('hidden');
+  const box=tooltip.getBoundingClientRect();
+  tooltip.style.left=`${Math.max(8,Math.min(info.x+14,innerWidth-box.width-8))}px`;
+  tooltip.style.top=`${Math.max(8,Math.min(info.y+14,innerHeight-box.height-8))}px`;
+}
 const NAMES={player:'你',ai:'庄家'};
 const itemPayload=r=>({
   actor:r.actor,item:r.item,revealed:r.revealed,stolen:r.stolen,primed:r.primed,
@@ -56,18 +70,23 @@ const usableSlots=()=>game?game.items.player
 const ownSlots=()=>game?game.items.player.map((_,slot)=>slot):[];
 /* 偷取时高亮庄家手上合法的那几件。 */
 const stealSlots=()=>{
-  const legal=game?stealTargets(game,'player'):[];
+  const legal=debugShowcase?debugStealTargets():(game?stealTargets(game,'player'):[]);
   return game?game.items.ai.map((id,slot)=>({id,slot})).filter(({id})=>legal.includes(id)).map(({slot})=>slot):[];
 };
 const allAiSlots=()=>game?game.items.ai.map((_,slot)=>slot):[];
+const debugStealTargets=()=>stealTargets(game,'player').filter(id=>ITEM_DEFS[id]);
 
 /* 桌面交互：点枪举枪，再点亮起的目标牌决定打谁；道具点本体直接使用。 */
 function onPick(pick){
   if(busy||!game||game.over||game.turn!=='player'||game.cuffed.player)return;
+  if(debugShowcase&&pick.type==='item'&&pick.side==='ai'&&COMPENSATION_DEFS[pick.id]){
+    previewCompensation(pick.id,pick.slot);return;
+  }
   if(stealing){
     if(pick.type!=='item'||pick.side!=='ai')return;
     const steal=game.items.ai[pick.slot];
-    if(!steal||(pick.id&&steal!==pick.id)||!stealTargets(game,'player').includes(steal)){
+    const legal=debugShowcase?debugStealTargets():stealTargets(game,'player');
+    if(!steal||(pick.id&&steal!==pick.id)||!legal.includes(steal)){
       blockedNotice(steal||pick.id,'这件道具现在偷不了');return;
     }
     confirmSteal(steal,pick.slot);
@@ -81,6 +100,52 @@ function onPick(pick){
     if(reason){blockedNotice(id,reason);return}
     usePlayerItem(id,pick.slot);
   }
+}
+
+async function previewCompensation(item,slot){
+  if(busy)return;
+  showCompensationTooltip(null);
+  busy=true;render();
+  try{
+    addLog(`调试陈列：${COMPENSATION_DEFS[item].name}`);
+    const compensationState=publicState(game);
+    if(item==='fruitKnife')compensationState.maxHp.ai=game.hp.ai;
+    if(item==='boreFilm')compensationState.records.player=game.ammo.slice(0,2).map((shell,index)=>({position:index+1,live:shell.live}));
+    if(table3d)await table3d.playItem({actor:'player',from:'ai',item,slot,debug:true,compensationState});
+    game.items.ai.splice(slot,1);
+    if(item==='lightRemote'){
+      game.lighting='night';shownLighting='night';
+      $('game').classList.add('night-mode');
+      /* 调试陈列仍要能继续点庄家侧的其余模型，不套用黑夜的信息隐藏。 */
+      if(table3d)for(const cell of table3d.itemSlots.ai)cell.hinge.visible=true;
+      void playModeBgm(sceneBgm('night'),{fade:true});
+      addLog('电灯遥控器：下一轮已锁定为黑夜（调试中立即展示）。');
+    }else if(item==='fruitKnife'){
+      game.maxHpBySide.ai=game.hp.ai;
+      addLog(`折叠水果小刀：庄家生命上限已切到 ${game.hp.ai}。`);
+    }else if(item==='spareFuse'){
+      /* 调试陈列没有补偿后的换弹边界，直接挂到当前轮才能实测命中减伤。 */
+      game.effects.fuse.player=game.round;
+      addLog('备用保险丝：调试中已挂到当前弹仓；下一次枪械伤害会减少 1 点。');
+    }else if(item==='boreFilm'){
+      for(const shell of game.ammo.slice(0,2))game.notes.player[shell.id]=shell.live;
+      addLog('透膛底片：前两发弹药顺序已写入你的私人记录。');
+      if(table3d)await table3d.showBoreFilmInspection({state:publicState(game),actor:'player',duration:2600});
+    }else if(item==='reverseCoin'){
+      game.turn='player';
+      addLog('反面硬币：行动灯已从庄家转回你；下一轮由弱势方先手。');
+    }else if(item==='powerStrip'){
+      game.randomDeath=true;game.hp={player:2,ai:2};game.maxHp=2;
+      game.maxHpBySide={player:2,ai:2};game.items={player:[],ai:[]};
+      game.ammo=[];
+      game.cuffed={player:false,ai:false};game.cuffLock={player:false,ai:false};
+      game.saw={player:false,ai:false};game.notes={player:{},ai:{}};
+      game.effects={fuse:{player:null,ai:null},forceNextLighting:null,filmPending:{player:false,ai:false}};
+      if(table3d)await table3d.setRandomDeathMode(true);
+      showNotice('插电板已拔掉：双方重置为 2 条命，原弹仓停用；此后每一枪独立进行 50% 实弹、50% 空弹判定。','进入随机死亡模式');
+    }
+  }catch(error){console.warn(error);addLog('补偿道具预览中断')}
+  finally{busy=false;render()}
 }
 
 async function drawGun(){
@@ -110,6 +175,7 @@ function usePlayerItem(id,slot){
 }
 
 function banner(s){
+  if(debugShowcase&&!s.over)return '调试陈列 · 点击桌面上的任意道具查看动画';
   if(s.over)return s.winner==='player'?'对局结束 · 你获胜':'对局结束 · 庄家获胜';
   if(s.turn!=='player')return '庄家正在判断';
   if(s.cuffed.player)return '你被手铐束缚 · 本回合跳过';
@@ -156,17 +222,19 @@ function render(){
   $('turnBanner').textContent=banner(s);
   $('round').textContent=`第 ${s.round} 轮`;
   $('aiHp').textContent=charge(s.hp.ai,s.maxHp);$('youHp').textContent=charge(s.hp.player,s.maxHp);
-  const names=list=>list.map(id=>ITEM_DEFS[id].name).join('、')||'无';
+  const def=id=>ITEM_DEFS[id]||COMPENSATION_DEFS[id]||{name:id,help:'调试道具'};
+  const names=list=>list.map(id=>def(id).name).join('、')||'无';
   $('aiInfo').textContent=`手铐：${s.cuffed.ai?'束缚中':'无'} · 道具 ${s.items.ai.length}/${s.capacity}：${names(s.items.ai)}`;
   $('youInfo').textContent=`手铐：${s.cuffed.player?'束缚中':'无'}${s.saw.player?' · 锯子已装上':''} · 道具 ${s.items.player.length}/${s.capacity}`;
-  $('ammoCount').textContent=`${s.ammoCount} 发`;
-  $('ammoMix').textContent=`实弹 ${s.liveCount} · 空弹 ${s.ammoCount-s.liveCount}`;
+  $('ammoCount').textContent=s.ammoCount==null?'':`${s.ammoCount} 发`;
+  $('ammoMix').textContent=s.ammoCount==null?'':`实弹 ${s.liveCount} · 空弹 ${s.ammoCount-s.liveCount}`;
   const notes=phoneNotes(s);
   $('phoneNotes').textContent=notes;
   $('phoneNotes').classList.toggle('on',!!notes);
   $('itemHint').textContent=hint(s);
   $('game').classList.toggle('has-clues',!!(notes||hint(s)));
   $('game').classList.toggle('stealing',stealing);
+  $('game').classList.toggle('random-death-mode',!!s.randomDeath);
   $('shootEnemy').disabled=!active||stealing;$('shootSelf').disabled=!active||stealing;
   const slots=stealing?stealSlots():usableSlots();
   const owner=stealing?'ai':'player';
@@ -180,6 +248,7 @@ function render(){
     items:{side:stealing?'ai':'player',slots:active?(stealing?stealSlots():usableSlots()):[],
       pick:active?(stealing?allAiSlots():ownSlots()):[]},
     targets:active&&armed&&!stealing,
+    debugItems:debugShowcase&&active&&!stealing,
   });
 }
 
@@ -239,15 +308,16 @@ async function advance(){
     if(game.turn==='player'){await playSkip('player');render();continue;}
     await wait(thinkMs(aiDifficulty));
     const hold=snapshotHold();
-    const r=chooseAi(game,aiDifficulty);
+    let r=chooseAi(game,aiDifficulty);
     if(r?.skip){if(table3d)await table3d.releaseCuffs('ai')}
     else if(r?.item){
       await animateItem({...itemPayload({...r,actor:'ai'}),from:r.stolen?'player':'ai'});
       await presentRefill(r);
     }
     else if(r?.live!==undefined){await playShotResult(r,hold)}
-    else if(game.ammo.length){/* 决策异常时强制射击，行动权不能停在庄家。 */await playShotResult(shoot(game,'ai','player'),hold)}
+    else if(game.ammo.length){/* 决策异常时强制射击，行动权不能停在庄家。 */r=shoot(game,'ai','player');await playShotResult(r,hold)}
     await settle();
+    await showAchievements(r?.achievements,{player:'你',ai:'庄家'});
   }
   if(game.over)end();
 }
@@ -263,7 +333,9 @@ async function confirmSteal(steal,slot=null){
     await animateItem({...itemPayload({...r,actor:'player'}),from:'ai'});
     render();
     await presentRefill(r);
-    await settle();await advance();
+    await settle();
+    await showAchievements(r.achievements,{player:'你',ai:'庄家'});
+    await advance();
   }catch(error){console.warn(error);addLog('动作中断')}
   finally{busy=false;render()}
 }
@@ -289,7 +361,9 @@ async function playerAction(fn){
     if(r.live!==undefined&&!r.item)await playShotResult(r,hold);
     else render();
     await presentRefill(r);
-    await settle();await advance();
+    await settle();
+    await showAchievements(r.achievements,{player:'你',ai:'庄家'});
+    await advance();
   }catch(error){console.warn(error);addLog('动作中断')}
   finally{busy=false;render()}
 }
@@ -335,36 +409,48 @@ function syncBgmBtn(){
   $('bgmBtn').setAttribute('aria-pressed',on?'true':'false');
   $('bgmBtn').textContent=on?'背景音乐':'背景音乐 · 关';
 }
-function end(){$('result').classList.remove('hidden');$('result').innerHTML=`<div class="result-box"><h2>${game.winner==='player'?'你赢了':'你输了'}</h2><p>你完成了 ${game.round} 轮，剩余生命 ${game.hp.player} · 庄家 ${game.hp.ai}。${game.winner==='player'?'你的判断和道具管理更胜一筹。':'庄家在关键回合抓住了机会。'}</p><button id="again" class="primary">再来一局</button> <a href="/" class="button">回到大厅</a></div>`;$('again').onclick=start}
-async function start(){
+function end(){$('result').classList.remove('hidden');$('result').innerHTML=`<div class="result-box"><h2>${game.winner==='player'?'你赢了':'你输了'}</h2><p>你完成了 ${game.round} 轮，剩余生命 ${game.hp.player} · 庄家 ${game.hp.ai}。${game.winner==='player'?'你的判断和道具管理更胜一筹。':'庄家在关键回合抓住了机会。'}</p><button id="again" class="primary">再来一局</button> <a href="/" class="button">回到大厅</a></div>`;$('again').onclick=()=>start(debugShowcase)}
+async function start(debug=false){
   const mode=MODES[gameMode]||MODES.practice;
   if(!mode.ready){
-    showNotice(`${mode.name}尚未开放，先用练习模式。`,'模式未开放');
+    showNotice(`${mode.name}尚未开放，先用常规模式。`,'模式未开放');
     return;
   }
   $('result').classList.add('hidden');$('lobbyView').classList.add('hidden');$('game').classList.remove('hidden');
   game=createGame({
     mode:mode.id,
+    aiDifficulty,
     bannedItems:mode.id==='night'?['adrenaline']:[],
   });
+  debugShowcase=!!debug;
+  if(debugShowcase){
+    /* 调试陈列固定使用白天，避免黑夜规则把庄家侧的补偿模型隐藏。 */
+    game.lighting='day';
+    game.maxHp=6;game.maxHpBySide={player:6,ai:6};game.hp={player:5,ai:4};game.turn='player';
+    game.randomDeath=false;
+    game.effects={fuse:{player:null,ai:null},forceNextLighting:null,filmPending:{player:false,ai:false}};
+    game.items.player=[...ITEM_IDS];
+    game.items.ai=[...Object.keys(COMPENSATION_DEFS),'cigarette'];
+  }
   /* ?kit=1 把当前模式能用的道具一次摆满，方便对照参考图检查模型，不影响正常开局。 */
-  if(new URLSearchParams(location.search).has('kit')){
+  if(!debugShowcase&&new URLSearchParams(location.search).has('kit')){
     const kit=game.itemPool?.length?game.itemPool:ITEM_IDS;
     game.items.player=[...kit];
     game.items.ai=[...kit];
   }
   shownLighting=game.lighting||(mode.id==='night'?'night':'day');
   $('game').classList.toggle('night-mode',shownLighting==='night');
-  shownRound=game.round;busy=true;armed=false;arming=false;stealing=false;displayHold=null;hideNotice();addLog('装填完成。实弹与空弹的顺序未知。');
+  shownRound=game.round;busy=true;armed=false;arming=false;stealing=false;displayHold=null;hideNotice();
+  addLog(debugShowcase?'调试陈列已展开。点击桌上的任意道具查看交互。':'装填完成。实弹与空弹的顺序未知。');
   table3d?.setNightMode(shownLighting==='night');
   void playModeBgm(sceneBgm(shownLighting));
   table3d?.resetLayout();render();
   if(table3d)await table3d.playReload(publicState(game));
   busy=false;render()}
-window.__buckshot={get game(){return game},get table3d(){return table3d},get mode(){return gameMode}};
+window.__buckshot={get game(){return game},get table3d(){return table3d},get mode(){return gameMode},get debug(){return debugShowcase}};
 
 bindTutorial();
-$('start').onclick=start;$('restart').onclick=start;
+$('start').onclick=()=>start(false);$('restart').onclick=()=>start(debugShowcase);$('debugShowcase').onclick=()=>start(true);
 $('bgmBtn').onclick=()=>{setBgmEnabled(!isBgmEnabled());syncBgmBtn()};
 $('modeBtn').onclick=e=>{e.stopPropagation();setModeMenu($('modeMenu').classList.contains('hidden'))};
 $('modeMenu').onclick=e=>{
@@ -389,7 +475,8 @@ $('items').onclick=e=>{
   const slot=Number(button.dataset.slot);
   if(stealing){
     const steal=game.items.ai[slot];
-    if(!stealTargets(game,'player').includes(steal)){blockedNotice(steal,'这件道具现在偷不了');return}
+    const legal=debugShowcase?debugStealTargets():stealTargets(game,'player');
+    if(!legal.includes(steal)){blockedNotice(steal,'这件道具现在偷不了');return}
     confirmSteal(steal,slot);
     return;
   }

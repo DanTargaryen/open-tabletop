@@ -45,6 +45,10 @@ The background track `tower-ambient-loop.ogg` is *Ambient Relaxing Loop* by isai
 
 The remaining interaction, dice, impact, and chime sounds are selected from Kenney's [RPG Audio](https://kenney.nl/assets/rpg-audio), [Casino Audio](https://kenney.nl/assets/casino-audio), [Impact Sounds](https://kenney.nl/assets/impact-sounds), and [Music Jingles](https://kenney.nl/assets/music-jingles) packages. They are dedicated under [CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/). Exact source file mappings are recorded in the [audio source record](games/abracada-what/web/assets/audio/SOURCES.md).
 
+## Steel Expedition Audio
+
+Steel Expedition reuses the previously downloaded *Ambient Relaxing Loop* by isaiah658 (CC0 1.0), *Impact Sounds* by Kenney (CC0 1.0), *Fantasy Sound Effects Library* by Little Robot Sound Factory (CC BY 3.0, https://www.littlerobotsoundfactory.com/), and *8 Magic Attacks* by leohpaz (CC BY 4.0). Exact sources, original filenames and runtime playback changes are recorded in [Steel Expedition audio sources](games/steel-arc/web/assets/audio/SOURCES.md). These audio assets retain their respective licenses rather than the code MIT license.
+
 ## Aeroplane Chess / 飞行棋
 
 The game logic, SVG board, airplane controls, and synthesized Web Audio effects are original Open Tabletop implementation code under the repository MIT license. `games/aeroplane-chess/web/assets/airplane-club.jpg` is an AI-generated illustration created for this project; it is not scanned or extracted from any published board. Traditional game names and rule references do not imply publisher endorsement. See [rule and asset sources](games/aeroplane-chess/SOURCES.md).

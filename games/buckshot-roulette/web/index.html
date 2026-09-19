@@ -27,6 +27,10 @@
    <li><b>道具</b>不结束回合，可以连续使用后再开枪。</li>
   </ul>
   <div class="intro-actions">
+   <button type="button" id="debugShowcase" class="mode-btn debug-btn">
+    <small>交互检查</small>
+    <span>调试陈列</span>
+   </button>
    <div class="mode-wrap">
     <button type="button" id="diffBtn" class="mode-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="diffMenu">
      <small>AI 难度</small>
@@ -43,10 +47,10 @@
    <div class="mode-wrap">
     <button type="button" id="modeBtn" class="mode-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="modeMenu">
      <small>模式选择</small>
-     <span id="modeLabel">练习模式</span>
+     <span id="modeLabel">常规模式</span>
     </button>
     <ul id="modeMenu" class="mode-menu hidden" role="listbox" aria-label="对局模式">
-     <li><button type="button" role="option" data-mode="practice" aria-selected="true"><b>练习模式</b><span>灯亮着的完整牌桌</span></button></li>
+     <li><button type="button" role="option" data-mode="practice" aria-selected="true"><b>常规模式</b><span>灯亮着的完整牌桌</span></button></li>
      <li><button type="button" role="option" data-mode="night" aria-selected="false"><b>黑夜模式</b><span>只看得见自己这一侧</span></button></li>
      <li><button type="button" role="option" data-mode="challenge" aria-selected="false"><b>挑战模式</b><span>短弹仓，换弹后可能天黑</span></button></li>
     </ul>
@@ -58,6 +62,7 @@
 <!-- 对局视图铺满整个视口：没有边框，HUD 直接压在牌桌上。 -->
 <section id="game" class="hidden">
  <canvas id="tableCanvas" class="table-canvas" aria-label="3D 牌桌"></canvas>
+ <div id="compensationTooltip" class="compensation-tooltip hidden" role="tooltip"></div>
  <div class="fallback-table" aria-hidden="true"><div class="fallback-gun"><span></span><span></span></div></div>
  <div class="stage-grain" aria-hidden="true"></div>
  <div class="stage-vignette" aria-hidden="true"></div>
@@ -117,6 +122,9 @@
   <p id="noticeText"></p>
   <button type="button" class="primary" id="noticeOk">知道了</button>
  </div>
+</div>
+<div id="achievementPopup" class="achievement-popup hidden" role="status" aria-live="assertive">
+ <div id="achievementPanel" class="achievement-panel"></div>
 </div>
 <section id="result" class="result hidden"></section>
 <script type="module" src="ui.js"></script>

@@ -1,6 +1,7 @@
-import {ITEM_DEFS,MAX_HP} from './engine.js';
+import {ITEM_DEFS,COMPENSATION_DEFS,MAX_HP} from './engine.js';
 import {playModeBgm,stopModeBgm,isBgmEnabled,setBgmEnabled} from './audio.js';
 import {bindTutorial} from './tutorial.js';
+import {showAchievements} from './achievements.js';
 
 const $=id=>document.getElementById(id);
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
@@ -16,20 +17,22 @@ const save=(store,key,value)=>store.setItem(key,JSON.stringify(value));
 let table3d=null,session=null,room=null,state=null,pending=null;
 let busy=false,sending=false,polling=false,armed=false,arming=false;
 let pollTimer=null,clockTimer=null,shownRound=0,lastPlayedSeq=0,syncedAt=0,error='';
-let displayHold=null,enteredTable=false,queuedPoll=null,itemHtml='';
+let displayHold=null,enteredTable=false,queuedPoll=null,itemHtml='',shownLighting='day';
 
 import('./three-table.js').then(({createTable3D})=>{
   table3d=createTable3D($('tableCanvas'));
   if(!table3d)return;
   table3d.onPick=onPick;
   table3d.revealHp=revealHp;
+  table3d.onCompensationHover=showCompensationTooltip;
   if(state){
     render();
     table3d.playReload(state).catch(err=>console.warn(err));
   }
 }).catch(err=>console.warn('3D 牌桌无法启动',err));
 
-const charge=(n,max=state?.maxHp??MAX_HP)=>'⚡'.repeat(n)+'·'.repeat(Math.max(0,max-n));
+const maxFor=(s,side)=>typeof s?.maxHp==='object'?(s.maxHp[side]??MAX_HP):(s?.maxHp??MAX_HP);
+const charge=(n,max=MAX_HP)=>n==null?'— 电源中断 —':'⚡'.repeat(n)+'·'.repeat(Math.max(0,max-n));
 const animateShot=r=>table3d?table3d.playShoot(r):wait(260);
 const animateItem=r=>table3d?table3d.playItem(r):wait(160);
 const names=()=>({player:state?.names?.player||'你',ai:state?.names?.ai||'对手'});
@@ -46,6 +49,18 @@ function blockedNotice(id,reason){
   const name=ITEM_DEFS[id]?.name;
   showNotice(reason,name?`无法使用「${name}」`:'无法使用');
 }
+function showCompensationTooltip(info){
+  const tooltip=$('compensationTooltip');
+  const def=info&&COMPENSATION_DEFS[info.id];
+  if(!tooltip||!def){tooltip?.classList.add('hidden');return;}
+  tooltip.replaceChildren();
+  const title=document.createElement('b'),help=document.createElement('small');
+  title.textContent=def.name;help.textContent=def.help;tooltip.append(title,help);
+  tooltip.classList.remove('hidden');
+  const box=tooltip.getBoundingClientRect();
+  tooltip.style.left=`${Math.max(8,Math.min(info.x+14,innerWidth-box.width-8))}px`;
+  tooltip.style.top=`${Math.max(8,Math.min(info.y+14,innerHeight-box.height-8))}px`;
+}
 function setNetError(text){error=text||'';if($('netError'))$('netError').textContent=error;}
 
 function itemPayload(r,hp){
@@ -58,7 +73,8 @@ function itemPayload(r,hp){
 }
 
 const stealing=()=>!!state?.stealing;
-const myTurn=()=>state&&!state.over&&state.turn==='player'&&!state.cuffed.player;
+const choosingCompensation=()=>state?.phase==='compensation'&&state?.compensation?.chooser==='player';
+const myTurn=()=>state&&!state.over&&state.phase!=='compensation'&&state.turn==='player'&&!state.cuffed.player;
 const usableSlots=()=>state?(state.itemReasons||[]).map((reason,slot)=>reason?null:slot).filter(slot=>slot!==null):[];
 const ownSlots=()=>state?state.items.player.map((_,slot)=>slot):[];
 const stealSlots=()=>{
@@ -68,7 +84,12 @@ const stealSlots=()=>{
 const allAiSlots=()=>state?state.items.ai.map((_,slot)=>slot):[];
 
 function onPick(pick){
-  if(busy||!myTurn())return;
+  if(busy)return;
+  if(pick.type==='compensation'&&choosingCompensation()){
+    showCompensationTooltip(null);
+    mutate('action',{action:{type:'compensation',slot:pick.slot}});return;
+  }
+  if(!myTurn())return;
   if(stealing()){
     if(pick.type!=='item'||pick.side!=='ai')return;
     const steal=state.items.ai[pick.slot];
@@ -112,6 +133,8 @@ function usePlayerItem(id,slot){
 
 function banner(s){
   if(s.over)return s.winner==='player'?'对局结束 · 你获胜':'对局结束 · 对手获胜';
+  if(s.phase==='compensation')return s.compensation?.chooser==='player'?'补偿启动 · 从左侧选择一件并立即使用':`补偿启动 · 等待 ${s.names?.ai||'对手'} 选择`;
+  if(s.randomDeath)return '随机死亡模式 · 每一枪独立进行 50% 实弹判定';
   if(s.turn!=='player')return `等待 ${s.names?.ai||'对手'} 行动`;
   if(s.cuffed.player)return '你被手铐束缚 · 本回合跳过';
   if(s.stealing)return '肾上腺素 · 点击对手桌上要偷的道具';
@@ -128,7 +151,7 @@ function snapshotHold(s){return {hp:{player:s.hp.player,ai:s.hp.ai},turn:s.turn}
 function revealHp(side,charges){
   if(displayHold)displayHold={...displayHold,hp:{...displayHold.hp,[side]:charges}};
   const el=side==='ai'?$('aiHp'):$('youHp');
-  el.textContent=charge(charges,state?.maxHp??MAX_HP);
+  el.textContent=charge(charges,maxFor(state,side));
   el.classList.remove('hp-drop');
   void el.offsetWidth;
   el.classList.add('hp-drop');
@@ -154,23 +177,31 @@ function render(){
   if(!state)return;
   const raw=state;
   const s=displayHold?{...raw,hp:{...displayHold.hp},over:false,winner:null,turn:displayHold.turn}:raw;
-  const active=!busy&&!s.over&&s.turn==='player'&&!s.cuffed.player;
+  const active=!busy&&!s.over&&s.phase!=='compensation'&&s.turn==='player'&&!s.cuffed.player;
+  const compensationActive=!busy&&s.phase==='compensation'&&s.compensation?.chooser==='player';
   $('dealerName').textContent=s.names?.ai||'对手';
   $('playerName').textContent=s.names?.player||'你';
   $('turnBanner').textContent=banner(s);
   $('round').textContent=`第 ${s.round} 轮`;
-  $('aiHp').textContent=charge(s.hp.ai,s.maxHp);
-  $('youHp').textContent=charge(s.hp.player,s.maxHp);
+  $('aiHp').textContent=charge(s.hp.ai,maxFor(s,'ai'));
+  $('youHp').textContent=charge(s.hp.player,maxFor(s,'player'));
   const list=ids=>ids.map(id=>ITEM_DEFS[id].name).join('、')||'无';
   $('aiInfo').textContent=`手铐：${s.cuffed.ai?'束缚中':'无'} · 道具 ${s.items.ai.length}/${s.capacity}：${list(s.items.ai)}`;
   $('youInfo').textContent=`手铐：${s.cuffed.player?'束缚中':'无'}${s.saw.player?' · 锯子已装上':''} · 道具 ${s.items.player.length}/${s.capacity}`;
-  $('ammoCount').textContent=`${s.ammoCount} 发`;
-  $('ammoMix').textContent=`实弹 ${s.liveCount} · 空弹 ${s.ammoCount-s.liveCount}`;
+  $('ammoCount').textContent=s.ammoCount==null?'—':`${s.ammoCount} 发`;
+  $('ammoMix').textContent=s.ammoCount==null?'弹仓信号已切断':`实弹 ${s.liveCount} · 空弹 ${s.ammoCount-s.liveCount}`;
   const notes=phoneNotes(s);
   $('phoneNotes').textContent=notes;
   $('phoneNotes').classList.toggle('on',!!notes);
   $('itemHint').textContent='';
+  $('game').classList.toggle('has-clues',!!notes);
   $('game').classList.toggle('stealing',!!s.stealing);
+  $('game').classList.toggle('random-death-mode',!!s.randomDeath);
+  const compensationText=s.phase==='compensation'?(s.compensation?.chooser==='player'
+    ?`补偿可选：${(s.compensation.offers||[]).map(id=>COMPENSATION_DEFS[id]?.name||id).join(' / ')}`
+    :`${s.names?.ai||'对手'}正在选择补偿道具`):'';
+  $('compensationStatus').textContent=compensationText;
+  $('compensationStatus').classList.toggle('on',!!compensationText);
   $('shootEnemy').disabled=!active||s.stealing;
   $('shootSelf').disabled=!active||s.stealing;
   const owner=s.stealing?'ai':'player';
@@ -185,6 +216,7 @@ function render(){
     items:{side:s.stealing?'ai':'player',slots:active?(s.stealing?stealSlots():usableSlots()):[],
       pick:active?(s.stealing?allAiSlots():ownSlots()):[]},
     targets:active&&armed&&!s.stealing,
+    compensation:compensationActive,
   });
   updateCountdown();
 }
@@ -198,8 +230,30 @@ async function presentRefill(event,next){
 async function settle(next){
   if(next.round!==shownRound){
     shownRound=next.round;
-    if(!next.over&&table3d)await table3d.playReload(next);
+    if(!next.over){
+      await presentLighting(next);
+      if(table3d)await table3d.playReload(next);
+    }
   }
+}
+
+async function presentLighting(next){
+  if(next.randomDeath){
+    shownLighting=next.lighting||shownLighting;
+    $('game').classList.remove('night-mode');
+    if(table3d)await table3d.setRandomDeathMode(true);
+    return;
+  }
+  const lighting=next.lighting||'day';
+  const changed=lighting!==shownLighting;
+  shownLighting=lighting;
+  $('game').classList.toggle('night-mode',lighting==='night');
+  if(!changed){table3d?.setNightMode(lighting==='night');return;}
+  addLog(lighting==='night'?'灯光熄灭。':'天亮了。');
+  /* 服务端入夜时已从双方库存删除肾上腺素；这里同步翻下旧模型，避免联机桌面留下不可用的针筒。 */
+  if(lighting==='night'&&table3d)await table3d.dumpItems(['adrenaline']);
+  void playModeBgm(lighting==='night'?'night':'practice',{fade:true});
+  if(table3d)await table3d.transitionLighting(lighting==='night');
 }
 
 function eventSeq(event){return event?.followUp?eventSeq(event.followUp):event?.seq||0;}
@@ -220,7 +274,19 @@ async function playRemoteEvent(event,before,after){
     armed=false;
     try{if(table3d)await table3d.holsterGun('player');}catch{/* 对手行动时收枪失败不阻断结算 */}
   }
-  if(event.skip||event.kind==='skip'){
+  if(event.expiredFuses?.length&&table3d)await table3d.expireFuses(event.expiredFuses);
+  if(event.kind==='compensation_open'){
+    addLog(event.chooser==='player'?'你获得补偿：从桌面左侧二选一。':`${names().ai}获得补偿。`);
+    if(table3d)await table3d.showCompensation(event.offers||after.compensation?.offers||[]);
+  }else if(event.kind==='compensation'){
+    addLog(`${names()[event.actor]}使用了「${COMPENSATION_DEFS[event.item]?.name||event.item}」。`);
+    const reloadFilm=event.item==='boreFilm'&&after.round!==shownRound;
+    if(reloadFilm){await presentLighting(after);shownRound=after.round;}
+    if(table3d)await table3d.playCompensation({...event,state:after,reloadFilm});
+    if(event.randomDeath)showNotice('插电板切断了牌桌供电。双方重置为 2 条命，原弹仓停用；此后每一枪独立进行 50% 实弹、50% 空弹判定。','进入随机死亡模式');
+  }else if(event.kind==='reload'){
+    /* 纯粹的换弹边界由 settle 根据轮数统一播放。 */
+  }else if(event.skip||event.kind==='skip'){
     if(table3d)await table3d.releaseCuffs(event.actor||'player');
   }  else if(event.item){
     if(event.stolen&&table3d)await table3d.clearStealFocus();
@@ -230,6 +296,8 @@ async function playRemoteEvent(event,before,after){
     await playShotResult(event,snapshotHold(before),after);
     await presentRefill(event,after);
   }
+  await settle(after);
+  await showAchievements(event.achievements,names());
   if(event.followUp)await playRemoteEvent(event.followUp,after,after);
 }
 
@@ -254,6 +322,7 @@ function renderWaiting(){
   $('roomWaiting').classList.remove('hidden');
   document.title=`好友房 ${room.code} · 暗膛协议`;
   $('waitingCode').textContent=room.code;
+  $('waitingMode').textContent=room.mode==='challenge'?'挑战模式 · 短弹仓 · 昼夜交替':'常规模式 · 完整牌桌';
   const seats=[0,1].map(seat=>room.members.find(m=>m.seat===seat)||null);
   $('waitingDescription').textContent=seats.every(Boolean)?'两位玩家都在桌上。准备后由房主开局。':'把房间码或邀请链接发给朋友，凑齐两人才能开始。';
   $('roomRoster').innerHTML=[0,1].map(seat=>{
@@ -289,10 +358,11 @@ async function enterTable(s){
   $('result').classList.add('hidden');
   $('game').classList.remove('hidden');
   shownRound=s.round;
+  shownLighting=s.lighting||'day';
   enteredTable=true;
-  $('game').classList.toggle('night-mode',false);
-  table3d?.setNightMode(false);
-  void playModeBgm('practice');
+  $('game').classList.toggle('night-mode',shownLighting==='night');
+  table3d?.setNightMode(shownLighting==='night');
+  void playModeBgm(shownLighting==='night'?'night':'practice');
   table3d?.resetLayout();
   table3d?.sync(s);
   addLog(s.turn==='player'?`由你先手。`:`由${s.names?.ai||'对手'}先手。`);
@@ -351,6 +421,11 @@ async function accept(data,{silent=false}={}){
         table3d?.resetLayout();
         table3d?.sync(next);
         if(table3d)await table3d.playReload(next);
+        shownLighting=next.lighting||'day';
+        $('game').classList.toggle('night-mode',shownLighting==='night');
+        table3d?.setNightMode(shownLighting==='night');
+        const achievements=events.flatMap(event=>event.achievements||[]);
+        await showAchievements(achievements,names());
       }else{
         for(const event of events){
           await playRemoteEvent(event,before,next);
@@ -484,7 +559,8 @@ async function enterRoom(joining){
   const keyName='open-tabletop.buckshot.entry.'+(joining?code:'create');
   const key=read(sessionStorage,keyName)||newKey();save(sessionStorage,keyName,key);
   try{
-    const data=await api(joining?'/rooms/'+code+'/join':'/rooms',{body:{name,seatKey:key},token:null});
+    const mode=joining?undefined:$('roomMode').value;
+    const data=await api(joining?'/rooms/'+code+'/join':'/rooms',{body:{name,seatKey:key,...(mode?{mode}:{})},token:null});
     session={code:data.room.code,token:data.token};
     save(sessionStorage,SESSION,session);
     save(localStorage,'open-tabletop.buckshot.identity.'+session.code,session);

@@ -59,6 +59,12 @@ const fallbackArt = (index, category) => `
 const aeroplaneArt = (index, category) => `
   <div class="game-art aeroplane-art" aria-hidden="true"><img src="/games/aeroplane-chess/assets/airplane-club.jpg" alt="" loading="lazy"><span class="art-index">${String(index + 1).padStart(2, '0')} / ${escape(category)}</span></div>`;
 
+const steelArcArt = (index, category) => `
+  <div class="game-art steel-arc-art" aria-hidden="true">
+    <img src="/games/steel-arc/assets/steel-expedition-cover-v1.png" alt="" width="1672" height="941" loading="lazy">
+    <span class="art-index">${String(index + 1).padStart(2, '0')} / ${escape(category)}</span>
+  </div>`;
+
 const presentations = {
   'aeroplane-chess': {
     className: 'game-card--aeroplane',
@@ -100,6 +106,13 @@ const presentations = {
     onlineLabel: '好友房',
     note: '好友房只允许双人对决，没有 AI 补位。',
   },
+  'steel-arc': {
+    className: 'game-card--steel-arc',
+    art: steelArcArt,
+    extraTag: '四档火力 / 可破坏地形',
+    soloLabel: '开始对战',
+    note: 'A/D 移动；拖动左下弹弓盘自由瞄准，点击弹药卡与开火按钮完成攻击。',
+  },
 };
 
 try {
@@ -128,7 +141,7 @@ try {
         <p class="game-description">${escape(presentation.description ?? game.description)}</p>
         <div class="game-tags"><span>${escape(game.players)}</span><span>${escape(presentation.extraTag)}</span></div>
         <div class="game-actions">
-          ${solo ? `<a class="button primary" href="${solo}" aria-label="${escape(game.title)}单人模式">${escape(game.id === "aeroplane-chess" ? presentation.soloLabel : "单人模式")} <span aria-hidden="true">→</span></a>` : ''}
+          ${solo ? `<a class="button primary" href="${solo}" aria-label="${escape(game.title)}单人模式">${escape(presentation.soloLabel ?? "单人模式")} <span aria-hidden="true">→</span></a>` : ''}
           ${online ? `<a class="button secondary" href="${online}" aria-label="${escape(game.title)}好友房">好友房 <span aria-hidden="true">↗</span></a>` : ''}
         </div>
         <p class="game-note">${escape(presentation.note)}</p>
@@ -136,5 +149,5 @@ try {
     </article>`;
   }).join('');
 } catch {
-  grid.innerHTML = '<p class="loading">暂时无法读取游戏列表，你仍可直接进入：<br><a href="/games/texas-holdem/index.html">丝绒牌局 · 单人</a> / <a href="/games/texas-holdem/online.html">丝绒牌局 · 好友房</a> / <a href="/games/splendor/index.html">璀璨宝石 · 宝可梦特别款 · 单人</a> / <a href="/games/splendor/online.html">璀璨宝石 · 宝可梦特别款 · 好友房</a> / <a href="/games/abracada-what/index.html">出包魔法师 · 单人</a> / <a href="/games/abracada-what/online.html">出包魔法师 · 好友房</a> / <a href="/games/aeroplane-chess/index.html">飞行棋 · 单人 / 同屏</a> / <a href="/games/aeroplane-chess/online.html">飞行棋 · 好友房</a> / <a href="/games/buckshot-roulette/index.html">暗膛协议 · 单人</a> / <a href="/games/buckshot-roulette/online.html">暗膛协议 · 好友房</a></p>';
+  grid.innerHTML = '<p class="loading">暂时无法读取游戏列表，你仍可直接进入：<br><a href="/games/texas-holdem/index.html">丝绒牌局 · 单人</a> / <a href="/games/splendor/index.html">宝可梦 · 单人</a> / <a href="/games/abracada-what/index.html">出包魔法师 · 单人</a> / <a href="/games/aeroplane-chess/index.html">飞行棋 · 单人 / 同屏</a> / <a href="/games/buckshot-roulette/index.html">暗膛协议 · 单人</a> / <a href="/games/steel-arc/index.html">钢铁远征 · 单人</a></p>';
 }

@@ -1,7 +1,7 @@
 import {createGame,applyOnlineAction,viewState,eventForViewer,freezeGame,thawGame,
-  skipIfCuffed,timeoutAct,sideOfSeat,opponent} from '../web/engine.js';
+  skipIfCuffed,timeoutAct,settleOnlineBoundary,chooseCompensation,sideOfSeat,opponent} from '../web/engine.js';
 
-export const ROOM_TTL=86400000,TURN_MS=90000;
+export const ROOM_TTL=86400000,TURN_MS=90000,COMPENSATION_MS=30000;
 export class BuckshotError extends Error { constructor(status,message){ super(message); this.status=status; } }
 const requireThat=(ok,status,message)=>{ if(!ok) throw new BuckshotError(status,message); };
 const clone=value=>structuredClone(value);
@@ -34,9 +34,14 @@ function nameOf(value){
 function keyOf(value){ requireThat(typeof value==='string'&&/^[a-f0-9]{48}$/.test(value),403,'身份已失效，请重新进入房间。'); return value; }
 const active=room=>room.members.filter(m=>!m.left);
 const secureRandom=()=>{ const buf=new Uint32Array(1); crypto.getRandomValues(buf); return buf[0]/2**32; };
+function modeOf(value){
+  const mode=value??'practice';
+  requireThat(mode==='practice'||mode==='challenge',400,'好友房模式无效。');
+  return mode;
+}
 
 function setDeadline(room,now){
-  room.deadline=!room.game||room.game.over?null:now+TURN_MS;
+  room.deadline=!room.game||room.game.over?null:now+(room.game.phase==='compensation'?COMPENSATION_MS:TURN_MS);
 }
 
 function packEvent(room,result,{chain=false}={}){
@@ -55,9 +60,13 @@ function applyDue(room,now){
   if(room.status!=='playing'||!room.game||room.game.over)return false;
   const g=thawGame(room.game,secureRandom);
   let changed=false;
-  while(!g.over&&g.cuffed[g.turn]){
+  while(!g.over&&g.phase!=='compensation'&&g.cuffed[g.turn]){
     packEvent(room,{kind:'skip',...skipIfCuffed(g)});
     changed=true;
+  }
+  if(!g.over&&g.pendingReload&&g.phase!=='compensation'){
+    const boundary=settleOnlineBoundary(g);
+    if(boundary){packEvent(room,boundary);changed=true;}
   }
   if(changed){
     room.game=freezeGame(g);
@@ -67,7 +76,15 @@ function applyDue(room,now){
     return true;
   }
   if(room.deadline!=null&&now>=room.deadline){
-    packEvent(room,timeoutAct(g));
+    if(g.phase==='compensation'){
+      const choice=g.compensation?.offers?.indexOf(g.compensation.timeoutChoice);
+      packEvent(room,chooseCompensation(g,g.compensation.chooser,choice));
+    }else{
+      packEvent(room,timeoutAct(g));
+      while(!g.over&&g.cuffed[g.turn])packEvent(room,{kind:'skip',...skipIfCuffed(g)});
+      const boundary=settleOnlineBoundary(g);
+      if(boundary)packEvent(room,boundary);
+    }
     room.game=freezeGame(g);
     room.status=g.over?'finished':'playing';
     setDeadline(room,now);
@@ -80,6 +97,7 @@ function applyDue(room,now){
 export function projectRoom(room,member,now){
   const side=sideOfSeat(member.seat);
   return {room:{code:room.code,version:room.version,status:room.status,capacity:2,
+    mode:room.mode||'practice',
     selfId:member.id,selfSeat:member.seat,isOwner:member.id===room.ownerId,
     members:active(room).map(m=>({id:m.id,name:m.name,seat:m.seat,ready:m.ready,owner:m.id===room.ownerId,connected:now-seenAt(room,m,now)<20000})),
     deadline:room.deadline,serverNow:now,expiresAt:room.expiresAt},
@@ -91,7 +109,7 @@ export class BuckshotRooms{
   constructor(store,clock=()=>Date.now()){ this.store=store; this.clock=clock; }
 
   async create(input){
-    const name=nameOf(input.name),token=keyOf(input.seatKey),tokenHash=await hashToken(token);
+    const name=nameOf(input.name),token=keyOf(input.seatKey),tokenHash=await hashToken(token),mode=modeOf(input.mode);
     const now=this.clock(),alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     for(let attempt=0;attempt<8;attempt++){
       const code=Array.from({length:6},(_,i)=>alphabet[parseInt(tokenHash.slice((attempt*6+i)%32*2,(attempt*6+i)%32*2+2),16)%32]).join('');
@@ -102,7 +120,7 @@ export class BuckshotRooms{
         continue;
       }
       const owner={id:crypto.randomUUID(),name,tokenHash,seat:0,ready:true,lastSeen:now,left:false,processed:[]};
-      const room={schema:1,code,version:0,capacity:2,status:'waiting',ownerId:owner.id,members:[owner],game:null,deadline:null,eventSeq:0,lastEvent:null,events:[],expiresAt:now+ROOM_TTL};
+      const room={schema:1,code,version:0,capacity:2,status:'waiting',mode,ownerId:owner.id,members:[owner],game:null,deadline:null,eventSeq:0,lastEvent:null,events:[],expiresAt:now+ROOM_TTL};
       if(await this.store.create(code,room,room.expiresAt))return {...projectRoom(room,owner,now),token};
       const raced=await this.store.get(code,now);
       const creator=raced&&active(raced.room).find(m=>m.tokenHash===tokenHash);
@@ -156,7 +174,7 @@ export class BuckshotRooms{
           requireThat(active(room).length===2,409,'好友房需要两位玩家才能开始。');
           requireThat(active(room).every(m=>m.ready),409,'请等待双方准备。');
           const host=active(room).find(m=>m.seat===0),guest=active(room).find(m=>m.seat===1);
-          const g=createGame({rng:secureRandom,mode:'practice',first:secureRandom()<.5?'ai':'player'});
+          const g=createGame({rng:secureRandom,mode:room.mode||'practice',first:secureRandom()<.5?'ai':'player',compensationEnabled:true});
           g.names={player:host.name,ai:guest.name};
           room.game=freezeGame(g);
           room.status='playing';
@@ -171,7 +189,9 @@ export class BuckshotRooms{
           try{result=applyOnlineAction(g,sideOfSeat(member.seat),input.action);}
           catch(error){throw new BuckshotError(400,error.message);}
           packEvent(room,result);
-          if(g.cuffed[g.turn]&&!g.over)packEvent(room,{kind:'skip',...skipIfCuffed(g)},{chain:true});
+          while(g.phase!=='compensation'&&g.cuffed[g.turn]&&!g.over)packEvent(room,{kind:'skip',...skipIfCuffed(g)});
+          const boundary=settleOnlineBoundary(g);
+          if(boundary)packEvent(room,boundary);
           room.game=freezeGame(g);
           room.status=g.over?'finished':'playing';
           setDeadline(room,now);

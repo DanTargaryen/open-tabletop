@@ -73,3 +73,10 @@
 .game-card--chamber .game-tags span{border-color:#8f3a3348;color:#d4cbb8}
 .game-card--chamber .secondary{border-color:#8f3a3360}
 .game-card--chamber .game-note{color:#8d8676}
+
+/* Steel Expedition: the sixth game's catalog card. */
+.game-card--steel-arc{background:#153748;border-color:#e5874f66}.game-card--steel-arc .game-art{background:#192c3b}
+.game-card--steel-arc .eyebrow{color:#69dbd3}.game-card--steel-arc .game-description{color:#c4d8d6}.game-card--steel-arc .game-note{color:#91b6b9}.game-card--steel-arc .game-tags span{color:#f5d8a4;border-color:#e88d555e}.game-card--steel-arc .primary{background:#ef8b3d;color:#172b35}.game-card--steel-arc .primary:hover{background:#ffac55}
+.steel-arc-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 54%;transform:scale(1.012)}
+.steel-arc-art:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 48%,rgba(7,18,27,.16) 72%,rgba(7,18,27,.72));pointer-events:none}
+.steel-arc-art .art-index{z-index:1;color:#fff5df;text-shadow:0 2px 8px #07121be0}

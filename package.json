@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Open-source browser games: Texas Holdem, unofficial Splendor Pokemon, Abracada What, Aeroplane Chess and Chamber Pact, with local AI and multiplayer rooms.",
+  "description": "Open-source browser games including poker, collection, deduction, racing, survival and 2D artillery games, with local AI and multiplayer rooms.",
   "license": "MIT",
   "engines": {
     "node": ">=22.13.0"
@@ -13,6 +13,8 @@
     "lan": "node server/index.mjs --host 0.0.0.0",
     "test": "node --test",
     "test:browser": "node scripts/check-browser-playability.mjs",
+    "test:e2e:steel": "node scripts/check-steel-friend-room.mjs",
+    "test:audio:steel": "node scripts/check-steel-audio.mjs",
     "build:static": "node scripts/build-static.mjs",
     "measure:poker-sync": "node games/texas-holdem/scripts/measure-sync.mjs"
   },

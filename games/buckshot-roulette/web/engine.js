@@ -10,6 +10,24 @@ export const ITEM_DEFS={
   burnerPhone:{name:'一次性手机',help:'私下得知一颗后续弹药'},
 };
 export const ITEM_IDS=Object.keys(ITEM_DEFS);
+export const COMPENSATION_DEFS={
+  lightRemote:{name:'电灯遥控器',help:'下一轮强制进入黑夜'},
+  fruitKnife:{name:'折叠水果小刀',help:'把优势方生命上限切到当前生命'},
+  spareFuse:{name:'备用保险丝',help:'下一轮第一次受到枪械伤害时减 1 点；未触发会在回合结束时熔断'},
+  boreFilm:{name:'透膛底片',help:'新弹仓装填后，只有你能看见前两发的准确顺序'},
+  reverseCoin:{name:'反面硬币',help:'把下一轮首个正常行动权改为弱势方，不增加额外行动次数'},
+  powerStrip:{name:'插电板',help:'双方重置为 2 条命；停用弹仓，每一枪独立以 50% 概率判定实弹或空弹'},
+};
+export const COMPENSATION_IDS=['lightRemote','fruitKnife','spareFuse','boreFilm','reverseCoin'];
+export const ACHIEVEMENT_DEFS={
+  geniusThreshold:{name:'天才只是见我的门槛',condition:'以满血状态击败对手'},
+  lightsOut:{name:'人点烛，鬼吹灯',condition:'在黑夜中击败对手'},
+  tooEasy:{name:'有点容易了哈哈',condition:'击败对手时仍剩至少 3 点生命'},
+  limit:{name:'极限！',condition:'仅剩 1 点生命时击败对手'},
+  backFromHell:{name:'我从地狱回来了',condition:'曾落后至少 2 点生命，随后追平或反超'},
+  darkHunter:{name:'暗猎者',condition:'在一个黑夜中对对手造成至少 2 点伤害'},
+  godBleeds:{name:'神也会流血',condition:'击败职业 AI'},
+};
 export const DIFFICULTIES={
   /* 全部本地算法，不接模型、不需要 API Key。 */
   casual:{label:'休闲',noise:.55,think:[450,850],itemBias:.32,info:'coarse',optimal:false,omniscient:false},
@@ -18,7 +36,7 @@ export const DIFFICULTIES={
   pro:{label:'职业',noise:0,think:[520,900],itemBias:1,info:'ratio',optimal:true,omniscient:true},
 };
 export const MIN_HP=2,MAX_HP=6,CHALLENGE_MIN_HP=6,CHALLENGE_MAX_HP=10,ITEM_CAP=8,START_ITEMS=2;
-const cap=g=>g.maxHp??MAX_HP;
+const cap=(g,side)=>g.maxHpBySide?.[side]??g.maxHp??MAX_HP;
 const hpRange=g=>g.mode==='challenge'?[CHALLENGE_MIN_HP,CHALLENGE_MAX_HP]:[MIN_HP,MAX_HP];
 const rollHp=g=>{const [lo,hi]=hpRange(g);return lo+Math.floor(g.rng()*(hi-lo+1));};
 const SIDES=['player','ai'];
@@ -42,7 +60,7 @@ const noteAt=(g,side,index)=>{
 /* 手机只挑“第 2 发及以后、且自己还不知道”的弹药。 */
 const phoneTargets=(g,side)=>g.ammo.map((shell,index)=>index).filter(index=>index>=1&&noteAt(g,side,index)===null);
 
-export function createGame({rng=Math.random,bannedItems=[],mode='practice',first='player'}={}){
+export function createGame({rng=Math.random,bannedItems=[],mode='practice',first='player',aiDifficulty=null,compensationEnabled=false}={}){
   const lighting=mode==='night'?'night':'day';
   const g={round:1,turn:first==='ai'?'ai':'player',hp:{player:0,ai:0},maxHp:MAX_HP,
     cuffed:{player:false,ai:false},
@@ -51,7 +69,8 @@ export function createGame({rng=Math.random,bannedItems=[],mode='practice',first
     saw:{player:false,ai:false},notes:{player:{},ai:{}},
     adrenalineArmed:{player:false,ai:false},
     items:{player:[],ai:[]},ammo:[],spent:[],over:false,winner:null,nextAmmoId:1,rng,
-    mode,lighting,bannedItems:[...bannedItems],itemPool:ITEM_IDS.slice()};
+    mode,lighting,aiDifficulty,bannedItems:[...bannedItems],itemPool:ITEM_IDS.slice(),compensationEnabled:!!compensationEnabled,
+    achievementState:{comebackReady:{player:false,ai:false},comebackAwarded:{player:false,ai:false},nightDamage:{player:0,ai:0}}};
   syncItemPool(g);
   for(const side of SIDES)g.items[side]=drawItems(g,START_ITEMS);
   loadRound(g);
@@ -59,6 +78,11 @@ export function createGame({rng=Math.random,bannedItems=[],mode='practice',first
   const maxHp=rollHp(g);
   g.maxHp=maxHp;
   g.hp={player:maxHp,ai:maxHp};
+  if(g.compensationEnabled){
+    g.maxHpBySide={player:maxHp,ai:maxHp};
+    g.phase='playing';g.pendingReload=null;g.compensation=null;g.randomDeath=false;
+    g.effects={fuse:{player:null,ai:null},forceNextLighting:null,filmPending:{player:false,ai:false}};
+  }
   return g;
 }
 
@@ -88,16 +112,22 @@ function refillItems(g){
   }
 }
 function refillIfEmpty(g){
-  if(g.over||g.items.player.length||g.items.ai.length)return false;
+  if(g.over||g.randomDeath||g.items.player.length||g.items.ai.length)return false;
   refillItems(g);
   return true;
 }
 
 export function loadRound(g){
-  if(g.round>1&&g.mode==='challenge'){
+  if(g.round>1&&g.effects?.forceNextLighting){
+    g.lighting=g.effects.forceNextLighting;g.effects.forceNextLighting=null;
+    syncItemPool(g);if(g.lighting==='night')discardAdrenaline(g);
+  }else if(g.round>1&&g.mode==='challenge'){
     g.lighting=g.rng()<.6?'day':'night';
     syncItemPool(g);
     if(g.lighting==='night')discardAdrenaline(g);
+  }else if(g.round>1&&g.compensationEnabled&&g.mode==='practice'&&g.lighting!=='day'){
+    /* 常规房的遥控器只覆盖一轮；下一次换弹恢复白天。 */
+    g.lighting='day';syncItemPool(g);
   }
   const n=g.mode==='challenge'?2+Math.floor(g.rng()*3):2+Math.floor(g.rng()*7);
   const live=1+Math.floor(g.rng()*(n-1));
@@ -105,7 +135,11 @@ export function loadRound(g){
   /* 换弹仓：旧的弹药记录和锯短状态一律作废，手铐束缚保留。 */
   g.notes={player:{},ai:{}};
   g.saw={player:false,ai:false};
-  if(g.round>1)refillItems(g);
+  if(g.round>1&&!g.randomDeath)refillItems(g);
+  if(g.effects?.filmPending)for(const side of SIDES)if(g.effects.filmPending[side]){
+    for(const shell of g.ammo.slice(0,2))g.notes[side][shell.id]=shell.live;
+    g.effects.filmPending[side]=false;
+  }
   return g;
 }
 
@@ -122,8 +156,10 @@ export function publicState(g){
     records:{player:records(g,'player'),ai:records(g,'ai')},
     /* 道具是公开信息：双方摆在桌上，谁都看得见。只有弹药顺序和私有记录是暗的。 */
     items:{player:[...g.items.player],ai:[...g.items.ai],aiCount:g.items.ai.length},
-    maxHp:g.maxHp,capacity:ITEM_CAP,ammoCount:g.ammo.length,liveCount:g.ammo.filter(shell=>shell.live).length,
-    spent:[...g.spent],over:g.over,winner:g.winner,mode:g.mode,lighting:g.lighting};
+    maxHp:g.maxHpBySide?clone(g.maxHpBySide):g.maxHp,capacity:ITEM_CAP,
+    ammoCount:g.randomDeath?null:g.ammo.length,liveCount:g.randomDeath?null:g.ammo.filter(shell=>shell.live).length,
+    spent:[...g.spent],over:g.over,winner:g.winner,mode:g.mode,lighting:g.lighting,
+    randomDeath:!!g.randomDeath};
 }
 
 /* 交出行动权。对手真正拿到一个能操作的回合后，自己的上铐限制才解除。 */
@@ -132,30 +168,86 @@ function handTurn(g,next){
   if(!g.cuffed[next])g.cuffLock[opponent(next)]=false;
 }
 
-function finish(g){
-  if(g.hp.player<=0||g.hp.ai<=0){g.over=true;g.winner=g.hp.player>0?'player':'ai';}
-  if(!g.over&&!g.ammo.length){g.round++;loadRound(g);}
+function achievementState(g){
+  if(!g.achievementState)g.achievementState={};
+  const a=g.achievementState;
+  a.comebackReady={player:false,ai:false,...a.comebackReady};
+  a.comebackAwarded={player:false,ai:false,...a.comebackAwarded};
+  a.nightDamage={player:0,ai:0,...a.nightDamage};
+  return a;
+}
+
+function award(list,id,actor){
+  if(!list.some(entry=>entry.id===id&&entry.actor===actor))list.push({id,actor});
+}
+
+function evaluateComeback(g,list){
+  const a=achievementState(g);
+  for(const side of SIDES){
+    const other=opponent(side);
+    if(g.hp[other]-g.hp[side]>=2)a.comebackReady[side]=true;
+    if(a.comebackReady[side]&&!a.comebackAwarded[side]&&g.hp[side]>=g.hp[other]){
+      a.comebackAwarded[side]=true;
+      award(list,'backFromHell',side);
+    }
+  }
+}
+
+function awardVictory(g,list){
+  const side=g.winner;
+  if(!side)return;
+  if(g.hp[side]===cap(g,side))award(list,'geniusThreshold',side);
+  if((g.mode==='night'||g.mode==='challenge')&&g.lighting==='night')award(list,'lightsOut',side);
+  if(g.hp[side]>=3)award(list,'tooEasy',side);
+  if(g.hp[side]===1)award(list,'limit',side);
+  if(side==='player'&&g.aiDifficulty==='pro')award(list,'godBleeds',side);
+}
+
+function finish(g,list=[]){
+  evaluateComeback(g,list);
+  if(g.hp.player<=0||g.hp.ai<=0){
+    g.over=true;g.winner=g.hp.player>0?'player':'ai';
+    awardVictory(g,list);
+  }
+  if(!g.over&&!g.randomDeath&&!g.ammo.length&&g.compensationEnabled){
+    if(!g.pendingReload)g.pendingReload={beforeLighting:g.lighting,pendingTurn:g.turn};
+  }else if(!g.over&&!g.randomDeath&&!g.ammo.length){
+    const before=g.lighting;
+    g.round++;loadRound(g);
+    const a=achievementState(g);
+    if(g.mode==='challenge'&&before==='night'&&g.lighting==='day'){
+      for(const side of SIDES)if(a.nightDamage[side]>=2)award(list,'darkHunter',side);
+      a.nightDamage={player:0,ai:0};
+    }else if(before!=='night'&&g.lighting==='night')a.nightDamage={player:0,ai:0};
+  }
+  return list;
 }
 
 export function shoot(g,actor,target){
-  if(g.over||g.turn!==actor||!g.ammo.length)return {error:'当前不能射击'};
-  const shell=g.ammo.shift();
-  forget(g,shell.id);
-  const damage=shell.live?(g.saw[actor]?2:1):0;
+  if(g.over||g.phase==='compensation'||g.turn!==actor||(!g.randomDeath&&!g.ammo.length))return {error:'当前不能射击'};
+  /* 随机死亡模式没有弹仓：每次扣扳机都由权威 RNG 独立判定，正好 50% 实弹、50% 空弹。 */
+  const shell=g.randomDeath?{id:null,live:g.rng()<.5}:g.ammo.shift();
+  if(!g.randomDeath)forget(g,shell.id);
+  let damage=shell.live?(g.saw[actor]?2:1):0;
+  const rawDamage=damage;
   g.saw[actor]=false;
+  const fuseBlocked=!!(damage&&g.effects?.fuse?.[target]===g.round);
+  if(fuseBlocked){damage=Math.max(0,damage-1);g.effects.fuse[target]=null;}
+  const beforeHp=g.hp[target];
   if(damage)g.hp[target]=Math.max(0,g.hp[target]-damage);
+  if(g.lighting==='night'&&target===opponent(actor))achievementState(g).nightDamage[actor]+=beforeHp-g.hp[target];
   g.spent.push(shell.live?'实弹':'空弹');
   /* 只有对自己打空弹才能留住行动权。 */
   if(shell.live||target!==actor)handTurn(g,opponent(actor));
-  finish(g);
-  return {live:shell.live,damage,target,actor};
+  const achievements=finish(g);
+  return {live:shell.live,damage,rawDamage,fuseBlocked,target,actor,fatal:g.over,achievements};
 }
 
 /* 能不能用这件道具。返回 null 表示可用，否则是给玩家看的原因。界面、引擎和 AI 共用这一份判断。 */
 export function itemBlockReason(g,actor,item){
-  if(g.over||g.turn!==actor)return '现在不能使用道具';
+  if(g.over||g.phase==='compensation'||g.turn!==actor)return '现在不能使用道具';
   const other=opponent(actor);
-  if(item==='cigarette'||item==='expiredMedicine')return g.hp[actor]>=cap(g)?'生命值已满':null;
+  if(item==='cigarette'||item==='expiredMedicine')return g.hp[actor]>=cap(g,actor)?'生命值已满':null;
   if(item==='beer')return g.ammo.length?null:'弹仓为空';
   if(item==='magnifier'){
     if(!g.ammo.length)return '弹仓为空';
@@ -187,7 +279,7 @@ export function stealTargets(g,actor){
 function applyItem(g,actor,item){
   const other=opponent(actor);
   if(item==='magnifier'){const shell=g.ammo[0];g.notes[actor][shell.id]=shell.live;return {revealed:shell.live};}
-  if(item==='cigarette'){const before=g.hp[actor];g.hp[actor]=Math.min(cap(g),before+1);return {healed:g.hp[actor]-before};}
+  if(item==='cigarette'){const before=g.hp[actor];g.hp[actor]=Math.min(cap(g,actor),before+1);return {healed:g.hp[actor]-before};}
   if(item==='beer'){
     const shell=g.ammo.shift();
     forget(g,shell.id);
@@ -199,7 +291,7 @@ function applyItem(g,actor,item){
   if(item==='expiredMedicine'){
     const good=g.rng()<.5;
     const before=g.hp[actor];
-    g.hp[actor]=good?Math.min(cap(g),before+2):Math.max(0,before-1);
+    g.hp[actor]=good?Math.min(cap(g,actor),before+2):Math.max(0,before-1);
     return {good,delta:g.hp[actor]-before};
   }
   if(item==='burnerPhone'){
@@ -215,8 +307,8 @@ function applyItem(g,actor,item){
 function primeAdrenaline(g,actor,index){
   g.items[actor].splice(index,1);
   g.adrenalineArmed[actor]=true;
-  finish(g);
-  return {item:'adrenaline',slot:index,primed:true};
+  const achievements=finish(g);
+  return {item:'adrenaline',slot:index,primed:true,achievements};
 }
 
 function stealSlotOf(g,victim,steal,slot){
@@ -235,8 +327,8 @@ export function resolveSteal(g,actor,steal,{slot=null}={}){
   g.items[victim].splice(stealSlot,1);
   g.adrenalineArmed[actor]=false;
   const effect=applyItem(g,actor,steal);
-  finish(g);
-  return {item:'adrenaline',stolen:steal,stealSlot,...effect,itemRefill:refillIfEmpty(g)};
+  const achievements=finish(g);
+  return {item:'adrenaline',stolen:steal,stealSlot,...effect,itemRefill:refillIfEmpty(g),achievements};
 }
 
 export function useItem(g,actor,item,{steal=null,slot=null,stealSlot=null}={}){
@@ -255,8 +347,8 @@ export function useItem(g,actor,item,{steal=null,slot=null,stealSlot=null}={}){
   g.items[actor].splice(index,1);
   const effect=applyItem(g,actor,item);
   /* 道具不结束回合；当前玩家可以继续使用道具或射击。 */
-  finish(g);
-  return {item,slot:index,...effect,itemRefill:refillIfEmpty(g)};
+  const achievements=finish(g);
+  return {item,slot:index,...effect,itemRefill:refillIfEmpty(g),achievements};
 }
 
 export function skipIfCuffed(g){
@@ -265,6 +357,85 @@ export function skipIfCuffed(g){
   g.cuffed[actor]=false;
   handTurn(g,opponent(actor));
   return {skip:true,actor};
+}
+
+function completePendingReload(g,list=[]){
+  const pending=g.pendingReload;
+  if(!pending)return list;
+  const before=pending.beforeLighting;
+  g.pendingReload=null;g.compensation=null;g.phase='playing';
+  g.round++;
+  if(g.randomDeath){g.ammo=[];g.notes={player:{},ai:{}};return list;}
+  loadRound(g);
+  const a=achievementState(g);
+  if(before==='night'&&g.lighting==='day'){
+    for(const side of SIDES)if(a.nightDamage[side]>=2)award(list,'darkHunter',side);
+    a.nightDamage={player:0,ai:0};
+  }else if(before!=='night'&&g.lighting==='night')a.nightDamage={player:0,ai:0};
+  return list;
+}
+
+function compensationCandidates(g,weak,strong){
+  return COMPENSATION_IDS.filter(id=>{
+    if(id==='lightRemote')return g.mode!=='night';
+    if(id==='fruitKnife')return g.hp[strong]<cap(g,strong);
+    if(id==='spareFuse')return !g.effects?.fuse?.[weak];
+    return true;
+  });
+}
+
+function makeCompensation(g,weak,strong){
+  const pool=compensationCandidates(g,weak,strong);
+  const shuffled=rngShuffle(pool,g.rng);
+  const rare=g.rng()<.07;
+  let offers=shuffled.slice(0,2);
+  if(rare){
+    const slot=g.rng()<.5?0:1;
+    offers=[shuffled[0],shuffled[1]||shuffled[0]];
+    offers[slot]='powerStrip';
+  }
+  return {chooser:weak,advantaged:strong,pendingTurn:g.turn,offers,rare,timeoutChoice:offers.find(id=>id!=='powerStrip')};
+}
+
+/* 联机房间在每次动作及手铐跳过之后调用。单人局从不进入这里。 */
+export function settleOnlineBoundary(g){
+  if(!g.compensationEnabled||g.over||!g.pendingReload)return null;
+  if(g.randomDeath){completePendingReload(g);return {kind:'reload',randomDeath:true};}
+  const expiredFuses=[];
+  for(const side of SIDES)if(g.effects?.fuse?.[side]&&g.effects.fuse[side]<=g.round){g.effects.fuse[side]=null;expiredFuses.push(side);}
+  const weak=g.hp.player<g.hp.ai?'player':g.hp.ai<g.hp.player?'ai':null;
+  const strong=weak&&opponent(weak);
+  if(weak&&g.hp[strong]-g.hp[weak]>=2&&g.turn===strong){
+    g.phase='compensation';
+    g.compensation=makeCompensation(g,weak,strong);
+    return {kind:'compensation_open',chooser:weak,advantaged:strong,offers:[...g.compensation.offers],rare:g.compensation.rare,expiredFuses};
+  }
+  const achievements=completePendingReload(g,[]);
+  return {kind:'reload',achievements,expiredFuses};
+}
+
+export function chooseCompensation(g,actor,slot){
+  const pending=g.compensation;
+  if(!g.compensationEnabled||g.phase!=='compensation'||!pending)throw Error('当前没有可选择的补偿');
+  if(actor!==pending.chooser)throw Error('只有弱势方可以选择补偿');
+  if(!Number.isInteger(slot)||slot<0||slot>=pending.offers.length)throw Error('补偿道具无效');
+  const item=pending.offers[slot],strong=pending.advantaged;
+  if(!item)throw Error('补偿道具无效');
+  if(item==='lightRemote')g.effects.forceNextLighting='night';
+  else if(item==='fruitKnife')g.maxHpBySide[strong]=g.hp[strong];
+  else if(item==='spareFuse')g.effects.fuse[actor]=g.round+1;
+  else if(item==='boreFilm')g.effects.filmPending[actor]=true;
+  else if(item==='reverseCoin')g.turn=actor;
+  else if(item==='powerStrip'){
+    g.randomDeath=true;
+    g.hp={player:2,ai:2};g.maxHpBySide={player:2,ai:2};g.maxHp=2;
+    g.items={player:[],ai:[]};g.cuffed={player:false,ai:false};g.cuffLock={player:false,ai:false};
+    g.saw={player:false,ai:false};g.notes={player:{},ai:{}};g.adrenalineArmed={player:false,ai:false};
+    g.effects={fuse:{player:null,ai:null},forceNextLighting:null,filmPending:{player:false,ai:false}};
+    g.ammo=[];
+  }
+  const achievements=completePendingReload(g,[]);
+  return {kind:'compensation',actor,item,slot,randomDeath:g.randomDeath,achievements};
 }
 
 export const sideOfSeat=seat=>seat===0?'player':'ai';
@@ -285,9 +456,12 @@ export function thawGame(data,rng=Math.random){
 export function viewState(g,side='player'){
   const mine=side,theirs=opponent(side);
   const map=value=>value===mine?'player':value===theirs?'ai':value;
+  const mineCap=cap(g,mine),theirCap=cap(g,theirs);
+  const hiddenHp=!!g.randomDeath&&!g.over;
+  const hiddenAmmo=!!g.randomDeath;
   return {
     round:g.round,turn:map(g.turn),
-    hp:{player:g.hp[mine],ai:g.hp[theirs]},
+    hp:{player:hiddenHp?null:g.hp[mine],ai:hiddenHp?null:g.hp[theirs]},
     cuffed:{player:g.cuffed[mine],ai:g.cuffed[theirs]},
     cuffLock:{player:g.cuffLock[mine],ai:g.cuffLock[theirs]},
     saw:{player:g.saw[mine],ai:g.saw[theirs]},
@@ -295,13 +469,16 @@ export function viewState(g,side='player'){
     records:{player:records(g,mine),ai:[]},
     items:{player:[...g.items[mine]],ai:[...g.items[theirs]],aiCount:g.items[theirs].length},
     itemReasons:g.items[mine].map(id=>itemBlockReason(g,mine,id)),
-    maxHp:g.maxHp,capacity:ITEM_CAP,ammoCount:g.ammo.length,
-    liveCount:g.ammo.filter(shell=>shell.live).length,
+    maxHp:g.maxHpBySide&&mineCap!==theirCap?{player:mineCap,ai:theirCap}:mineCap,capacity:ITEM_CAP,
+    ammoCount:hiddenAmmo?null:g.ammo.length,
+    liveCount:hiddenAmmo?null:g.ammo.filter(shell=>shell.live).length,
     spent:[...g.spent],over:g.over,winner:map(g.winner),
     mode:g.mode||'practice',lighting:g.lighting||'day',
     names:{player:g.names?.[mine]||'你',ai:g.names?.[theirs]||'对手'},
     stealing:!!g.adrenalineArmed[mine],
     stealOptions:stealTargets(g,mine),
+    phase:g.phase||'playing',randomDeath:!!g.randomDeath,
+    compensation:g.compensation?{chooser:map(g.compensation.chooser),advantaged:map(g.compensation.advantaged),offers:[...g.compensation.offers],rare:!!g.compensation.rare}:null,
   };
 }
 
@@ -309,7 +486,11 @@ export function eventForViewer(event,side){
   if(!event)return null;
   const map=value=>value===side?'player':value===opponent(side)?'ai':value;
   const out={...event,actor:map(event.actor),target:event.target!==undefined?map(event.target):event.target,
-    from:event.from!==undefined?map(event.from):event.from};
+    from:event.from!==undefined?map(event.from):event.from,
+    chooser:event.chooser!==undefined?map(event.chooser):event.chooser,
+    advantaged:event.advantaged!==undefined?map(event.advantaged):event.advantaged};
+  if(event.expiredFuses)out.expiredFuses=event.expiredFuses.map(map);
+  if(event.achievements)out.achievements=event.achievements.map(entry=>({...entry,actor:map(entry.actor)}));
   const effectItem=event.item==='adrenaline'?event.stolen:event.item;
   if(event.actor!==side&&(effectItem==='magnifier'||effectItem==='burnerPhone')){
     delete out.revealed;delete out.position;delete out.live;
@@ -321,6 +502,8 @@ export function eventForViewer(event,side){
 export function applyOnlineAction(g,actor,action){
   if(!action||typeof action!=='object')throw Error('行动无效');
   if(g.over)throw Error('对局已经结束');
+  if(action.type==='compensation')return chooseCompensation(g,actor,action.slot);
+  if(g.phase==='compensation')throw Error('请先完成补偿选择');
   if(g.turn!==actor)throw Error('还没轮到你。');
   if(g.cuffed[actor])throw Error('你被手铐束缚，本回合跳过');
   if(g.adrenalineArmed[actor]&&action.type!=='steal')throw Error('先选择要偷的道具');
@@ -350,7 +533,7 @@ export function timeoutAct(g){
   if(g.over)return {kind:'timeout',actor};
   if(g.cuffed[actor])return {kind:'skip',...skipIfCuffed(g)};
   if(g.adrenalineArmed[actor])g.adrenalineArmed[actor]=false;
-  if(!g.ammo.length){finish(g);return {kind:'timeout',actor};}
+  if(!g.randomDeath&&!g.ammo.length){finish(g);return {kind:'timeout',actor};}
   return {kind:'timeout',...shoot(g,actor,opponent(actor))};
 }
 
@@ -358,6 +541,7 @@ export function timeoutAct(g){
 function remainingLive(g){return g.ammo.filter(shell=>shell.live).length}
 
 function nextKnown(g,omniscient){
+  if(g.randomDeath)return null;
   if(!g.ammo.length)return null;
   if(omniscient)return g.ammo[0].live;
   const noted=noteAt(g,'ai',0);
@@ -369,6 +553,7 @@ function nextKnown(g,omniscient){
 }
 
 function nextProb(g,{omniscient=false,coarse=false}={}){
+  if(g.randomDeath)return .5;
   const known=nextKnown(g,omniscient);
   if(known!==null)return known?1:0;
   const n=g.ammo.length||1;
@@ -459,6 +644,7 @@ export function chooseAi(g,difficulty='standard'){
   if(g.over||g.turn!=='ai')return null;
   const skip=skipIfCuffed(g);
   if(skip)return skip;
+  if(g.randomDeath)return shoot(g,'ai','player');
   const diff=DIFFICULTIES[difficulty]||DIFFICULTIES.standard;
   const choice=diff.optimal
     ? optimalPlan(g,!!diff.omniscient)

@@ -19,4 +19,5 @@ deploy/cloudflare/wrangler.jsonc
 *.tmp
 artifacts/
 .playwright-cli/
+_qa/
 output/playwright/

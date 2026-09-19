@@ -1,4 +1,4 @@
-练习模式会从这三首里随机抽一首循环播放：
+常规模式会从这三首里随机抽一首循环播放：
 
   Before Every Load.mp3
   General Release.mp3
