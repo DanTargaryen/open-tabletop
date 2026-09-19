@@ -28,7 +28,7 @@ export class CampusRoomService{
   for(let attempt=0;attempt<12;attempt++){
    const now=this.clock(),row=await this.store.get(code,now);check(row,404,'房间不存在或已过期。');const r=clone(row.room);let m=active(r).find(x=>x.tokenHash===hash),changed=false;
    if(joining){
-    if(!m){check(r.status==='waiting',409,'本局已开始，请等待下一局。');check(active(r).length<r.playerCount,409,'房间已满。');check(!active(r).some(m=>m.name.toLowerCase()===name.toLowerCase()),409,'昵称已有人使用。');
+    if(!m){check(!r.members.some(x=>x.tokenHash===hash&&x.left),403,'旧座位身份已撤销，请重新加入。');check(['waiting','finished'].includes(r.status),409,'本局已开始，请等待下一局。');check(active(r).length<r.playerCount,409,'房间已满。');check(!active(r).some(m=>m.name.toLowerCase()===name.toLowerCase()),409,'昵称已有人使用。');
      const seat=Array.from({length:r.playerCount},(_,i)=>i).find(i=>!active(r).some(m=>m.seat===i));m={id:crypto.randomUUID(),seat,name,character:character(input.character??'april',active(r).map(m=>m.character)),tokenHash:hash,ready:false,left:false,lastSeen:now,processed:[]};r.members.push(m);if(!r.ownerId){r.ownerId=m.id;m.ready=true;}r.version++;
     }m.lastSeen=now;changed=true;
    }else{
@@ -48,7 +48,8 @@ export class CampusRoomService{
      const players=Array.from({length:r.playerCount},(_,seat)=>{const q=active(r).find(m=>m.seat===seat);return q?{character:q.character,name:q.name,isBot:false}:{character:remaining.shift(),isBot:true};});
      r.engine=createGame({players,mode:'online'});r.members.forEach(q=>q.ready=false);settled(r,now);changed=true;
     }else if(operation==='leave'){
-     m.left=true;m.ready=false;if(r.ownerId===m.id)r.ownerId=active(r)[0]?.id??null;sync(r);r.version++;deadline(r,now);changed=true;
+     const wasActor=r.status==='playing'&&actorId(r.engine)===m.seat;
+     m.left=true;m.ready=false;if(r.ownerId===m.id)r.ownerId=active(r)[0]?.id??null;sync(r);r.version++;if(wasActor)deadline(r,now);changed=true;
     }else check(operation==='state',404,'操作不存在。');
    }
    if(changed){r.expiresAt=now+ROOM_TTL;if(!await this.store.cas(code,row.revision,r,r.expiresAt))continue;}

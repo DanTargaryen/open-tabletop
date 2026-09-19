@@ -1,10 +1,11 @@
+import {loadIdentity,rememberIdentity,forgetIdentity,reconcilePending} from './room-sync.js';
 import {animateRoute} from './animation.js';
 import {drawCharacterTokens,tokenPosition,SEAT_COLORS} from './tokens.js';
 import {DATA} from './data.js';
 import {CHARACTERS,ITEMS,SKILLS,createGame,step,actorId,steps,legalActions,botAction,projectGame,validSavedGame} from './engine.js';
 
 const $=id=>document.getElementById(id),escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const online=location.pathname.endsWith('/online.html'),API='/api/anime-campus',SAVE='anime-campus.local.v1',IDENTITY='anime-campus.room.v1';
+const online=location.pathname.endsWith('/online.html'),API='/api/anime-campus',SAVE='anime-campus.local.v1';
 let game=null,room=null,identity=null,selected='railgun',busy=false,paused=false,botTimer,pollTimer,networkBusy=false,generation=0,pendingRequest=null,lastActor=null,memoryAnswer=[],lastPending='',zoom=1,follow=true,sound=false,audioContext=null,loaded=false,drag=null;
 const chars=new Map(CHARACTERS.map(c=>[c.id,c])),avatar=id=>`assets/official/${id}.svg`,fallback='assets/avatar.svg';
 function read(storage,key){try{return JSON.parse(storage.getItem(key));}catch{return null;}}
@@ -61,14 +62,16 @@ function render(){
  paintDie(view.die);
  const actions=legalActions(view,active);
  $('actions').innerHTML=!view.pending?actions.map((a,i)=>`<button data-action-index="${i}" ${!mine?'disabled':''}>${escape(a.label)}</button>`).join(''):'';
- $('bag').innerHTML=p.bag.length?p.bag.map(x=>`<span title="${escape(ITEMS[x].description)}">${ITEMS[x].name}</span>`).join(''):'<span>背包空空，去活动摊看看</span>';
- $('skill-status').textContent=SKILLS[p.character]+(p.skillUsed?'（本局已使用）':'（本局可用）')+(p.letter?` · 委托信目标：${p.letter} 格`:'');
+ const openItems=$('bag').dataset.owner===String(active)?new Set([...$('bag').querySelectorAll('details[open]')].map(el=>el.dataset.item)):new Set();$('bag').dataset.owner=String(active);
+ $('bag').innerHTML=p.bag.length?p.bag.map(x=>`<details data-item="${x}" ${openItems.has(x)?'open':''}><summary>${ITEMS[x].name}</summary><p>${escape(ITEMS[x].description)}</p></details>`).join(''):'<span>背包空空，去活动摊看看</span>';
+ $('skill-status').textContent=SKILLS[p.character]+(p.skillUsed?'（本局已使用）':'（本局可用）');
+ $('letter-status').textContent=p.letter?`✉ 任务信：正常前进经过第 ${p.letter} 格即可送达，奖励 3 零花钱；不占背包。`:'✉ 暂无任务信，可在邮局或部分事件领取。';
  $('event-panel').hidden=!view.event||view.phase==='finished';
  if(view.event){$('event-title').textContent=view.event.name;$('event-zone').textContent=`${view.event.id} · ${DATA.map[view.players[view.turn].pos-1]?.zone??'校园祭'}`;$('event-scene').textContent=view.event.scene??'';$('event-rule').textContent=view.event.rule??'';}
  renderPending(view,mine);
  $('players').innerHTML=view.players.map(q=>{const ch=chars.get(q.character);return `<article style="--seat:${SEAT_COLORS[q.id]}" class="player-card ${view.turn===q.id?'current':''}">${iconImage(q.character,ch.name)}<div><strong>${q.id+1} · ${escape(q.name)}</strong><small>第 ${q.pos} 格 · ♥ ${q.hp} · ¥ ${q.coins}</small><br><small>${q.isBot?'AI':online?q.id===room.selfSeat?'你':'好友':'真人'}${q.slow?` · 减速 ${q.slow}`:''}${q.boost?` · 加速 ${q.boost}`:''}${q.letter?' · 携信':''}</small></div></article>`;}).join('');
  $('log').innerHTML=[...view.log].reverse().slice(0,18).map(e=>`<li>${escape(e.text)}</li>`).join('');
- if(view.phase==='finished'){$('winner').textContent=`${view.winners.map(id=>view.players[id].name).join('、')} ${view.winners.length>1?'并列获胜':'赢得校园祭'}`;$('result-text').textContent=`共 ${Math.min(30,view.round)} 轮 · ${view.actionNumber} 次操作。今天的旅途，收进手账。`;$('again').textContent=online?'回到房间准备下一局':'再来一局';}
+ if(view.phase==='finished'){$('winner').textContent=`${view.winners.map(id=>view.players[id].name).join('、')} ${view.winners.length>1?'并列获胜':'赢得校园祭'}`;$('result-text').textContent=`共 ${Math.min(30,view.round)} 轮 · ${view.actionNumber} 次操作。今天的旅途，收进手账。`;$('again').textContent=online?(room.selfReady?'已准备 · 等待房主开局':'准备下一局'):'再来一局';}
  if(!busy)drawTokens(view);renderRoom();scheduleBot();
 }
 function renderPending(view,mine){
@@ -90,7 +93,7 @@ async function dispatch(action,auto=false){
  if(busy||!game||paused||(!auto&&!myAction()))return;
  const before=game,actor=actorId(game);busy=true;clearTimeout(botTimer);message();unlock();
  try{
-  if(online){pendingRequest??={...action,requestId:Array.from(crypto.getRandomValues(new Uint8Array(16)),n=>n.toString(16).padStart(2,'0')).join(''),version:room.version};const result=await api(`/rooms/${identity.code}/action`,pendingRequest,identity.token);pendingRequest=null;room=result.room;game=result.game;}
+  if(online){pendingRequest??={...action,requestId:Array.from(crypto.getRandomValues(new Uint8Array(16)),n=>n.toString(16).padStart(2,'0')).join(''),version:room.version};const result=await api(`/rooms/${identity.code}/action`,pendingRequest,identity.token);pendingRequest=null;roomSnapshot(result);}
   else{game=step(game,actor,action);persist();}
   const rolled=['roll','fixed'].includes(action.type)||action.type==='item'&&action.item==='reroll'||action.type==='skill'&&game.die!==before.die;
   render();if(rolled){$('die').classList.add('rolling');await new Promise(r=>setTimeout(r,duration()));$('die').classList.remove('rolling');tone('roll');}
@@ -103,24 +106,26 @@ function scheduleBot(){
  botTimer=setTimeout(()=>dispatch(botAction(projectGame(game,actorId(game))),true),$('speed').value==='instant'?45:$('speed').value==='fast'?220:750);
 }
 function startLocal(){
- const count=Number($('count').value),mode=$('mode').value,ids=[selected,...CHARACTERS.map(c=>c.id).filter(id=>id!==selected)].slice(0,count);
+ const count=Number($('count').value),mode=$('mode').value,others=CHARACTERS.map(c=>c.id).filter(id=>id!==selected);
+ for(let i=others.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[others[i],others[j]]=[others[j],others[i]];}
+ const ids=[selected,...others].slice(0,count);
  game=createGame({mode,players:ids.map((id,i)=>({character:id,name:i===0?$('nickname').value.trim()||chars.get(id).name:chars.get(id).name,isBot:mode==='demo'||mode==='solo'&&i>0}))});paused=false;lastActor=null;persist();handoff();render();camera(game.turn);
 }
 async function api(path,body,token){
  let r;try{r=await fetch(API+path,{method:body===undefined?'GET':'POST',headers:{...(body===undefined?{}:{'Content-Type':'application/json'}),...(token?{Authorization:`Bearer ${token}`}:{})},body:body===undefined?undefined:JSON.stringify(body),signal:AbortSignal.timeout(10000)});}catch{throw Error('网络暂时中断，座位已保留。请重试。');}
- const data=await r.json();if(!r.ok){const e=Error(data.error||'请求失败');e.status=r.status;throw e;}return data;
+ let data;try{data=await r.json();}catch{throw Error('服务暂时没有响应，座位已保留，请稍后重试。');}if(!r.ok){const e=Error(data.error||'请求失败');e.status=r.status;throw e;}return data;
 }
-function roomSnapshot(data){if(room&&data.room.code===room.code&&data.room.version<room.version)return;room=data.room;game=data.game;save(sessionStorage,IDENTITY,identity);$('connection').textContent='已连接';render();}
+function roomSnapshot(data){if(room&&data.room.code===room.code&&data.room.version<room.version)return;pendingRequest=reconcilePending(pendingRequest,data.room.version);room=data.room;game=data.game;rememberIdentity(sessionStorage,identity);$('connection').textContent='已连接';render();}
 function schedulePoll(){clearTimeout(pollTimer);if(online&&identity)pollTimer=setTimeout(poll,document.hidden?4000:900);}
 async function poll(){
  if(!identity||networkBusy){schedulePoll();return;}networkBusy=true;const epoch=generation;
  try{const data=await api(`/rooms/${identity.code}`,undefined,identity.token);if(epoch===generation){roomSnapshot(data);$('connection').textContent='已连接';}}
- catch(e){if(epoch===generation){$('connection').textContent='重连中';if([403,404].includes(e.status)){identity=null;room=null;game=null;save(sessionStorage,IDENTITY,null);}message(e.message);render();}}
+ catch(e){if(epoch===generation){$('connection').textContent='重连中';if([403,404].includes(e.status)){forgetIdentity(sessionStorage,identity);identity=null;room=null;game=null;pendingRequest=null;}message(e.message);render();}}
  finally{networkBusy=false;schedulePoll();}
 }
 async function roomCommand(op,body={}){
  if(busy||!identity)return;busy=true;clearTimeout(pollTimer);render();
- try{const data=await api(`/rooms/${identity.code}/${op}`,body,identity.token);if(op==='leave'){generation++;identity=null;room=null;game=null;save(sessionStorage,IDENTITY,null);save(sessionStorage,'anime-campus.joinKey',null);message('已离开房间。你的座位由 AI 接管。');}else roomSnapshot(data);}
+ try{const data=await api(`/rooms/${identity.code}/${op}`,body,identity.token);if(op==='leave'){generation++;forgetIdentity(sessionStorage,identity);identity=null;room=null;game=null;pendingRequest=null;save(sessionStorage,'anime-campus.joinKey',null);message('已离开房间。你的座位由 AI 接管。');}else roomSnapshot(data);}
  catch(e){message(e.message);}finally{busy=false;render();schedulePoll();}
 }
 async function enter(joining){
@@ -129,7 +134,7 @@ async function enter(joining){
   let seatKey=read(sessionStorage,'anime-campus.joinKey');if(!seatKey){seatKey=Array.from(crypto.getRandomValues(new Uint8Array(24)),n=>n.toString(16).padStart(2,'0')).join('');save(sessionStorage,'anime-campus.joinKey',seatKey);}
   const data=await api(joining?`/rooms/${code}/join`:'/rooms',joining?{name,seatKey,character:selected}:{name,character:selected,playerCount:Number($('count').value)});
   identity={code:data.room.code,token:data.token};generation++;roomSnapshot(data);const u=new URL(location.href);u.searchParams.set('room',identity.code);history.replaceState(null,'',u);
- }catch(e){message(e.message);}finally{busy=false;render();schedulePoll();}
+ }catch(e){if(joining&&e.status===403)save(sessionStorage,'anime-campus.joinKey',null);message(e.message);}finally{busy=false;render();schedulePoll();}
 }
 function renderRoom(){
  if(!online||!room)return;
@@ -146,7 +151,7 @@ document.addEventListener('click',event=>{
 document.addEventListener('error',e=>{if(e.target instanceof HTMLImageElement&&!e.target.src.endsWith('/avatar.svg'))e.target.src=fallback;},true);
 $('start-local').onclick=startLocal;$('resume-local').onclick=()=>{const saved=read(localStorage,SAVE);if(validSavedGame(saved)){game=saved;paused=false;lastActor=null;handoff();render();}else message('存档无法读取，请开始新的旅程。');};
 $('new-game').onclick=()=>{if(online){if(identity)roomCommand('leave');return;}paused=true;game=null;$('resume-local').hidden=!validSavedGame(read(localStorage,SAVE));render();};
-$('again').onclick=()=>{if(online){game=null;render();}else{game=null;paused=false;render();}};
+$('again').onclick=()=>{if(online){roomCommand('ready',{ready:true});$('lobby').scrollIntoView({behavior:'smooth'});}else{game=null;paused=false;render();}};
 $('rules').onclick=()=>{$('rules-dialog').showModal();clearTimeout(botTimer);render();};$('close-rules').onclick=()=>{$('rules-dialog').close();render();};$('rules-dialog').addEventListener('close',()=>render());
 $('handoff-confirm').onclick=()=>{lastActor=actorId(game);$('handoff').close();render();};$('handoff').addEventListener('cancel',e=>e.preventDefault());
 $('speed').onchange=()=>{save(localStorage,'anime-campus.speed',$('speed').value);render();};$('pause').onclick=()=>{paused=!paused;render();};
@@ -163,5 +168,5 @@ try{
 }catch(e){message(e.message);}
 $('local-entry').hidden=online;$('online-entry').hidden=!online;$('resume-local').hidden=online||!validSavedGame(read(localStorage,SAVE));
 sound=read(localStorage,'anime-campus.sound')===true;$('sound').textContent=sound?'♫ 音效开':'♫ 静音';$('speed').value=read(localStorage,'anime-campus.speed')||'normal';
-if(online){$('join-code').value=new URL(location.href).searchParams.get('room')||'';identity=read(sessionStorage,IDENTITY);if(identity?.code&&identity?.token)poll();else identity=null;}
+if(online){$('join-code').value=new URL(location.href).searchParams.get('room')||'';identity=loadIdentity(sessionStorage,$('join-code').value);if(identity?.code&&identity?.token)poll();else identity=null;}
 renderSelection();render();

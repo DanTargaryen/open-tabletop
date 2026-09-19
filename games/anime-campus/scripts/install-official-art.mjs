@@ -1,4 +1,4 @@
-// Optional local preview assets. Original image bytes are embedded unchanged.
+// Optional separately installed artwork. Original image bytes are embedded unchanged.
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';

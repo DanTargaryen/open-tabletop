@@ -12,7 +12,7 @@ An open-source collection of browser games that you can run yourself and extend.
 
 [Open the game lobby](https://velvet-poker-friends.linming-dracarys.chatgpt.site)
 
-The public root URL is the six-game selection homepage. All six games provide friend rooms. Steel Expedition is a desktop 2D game with keyboard movement and mouse-or-keyboard aiming, weapon selection, firing and menus.
+The public root URL is the seven-game selection homepage. All seven games provide friend rooms. Steel Expedition is a desktop 2D game with keyboard movement and mouse-or-keyboard aiming, weapon selection, firing and menus.
 
 Texas Hold’em includes:
 
@@ -167,4 +167,4 @@ Original project code is licensed under the [MIT License](LICENSE). Third-party 
 
 ## Campus Festival (development version)
 
-`/games/anime-campus/index.html` adds a 60-space crossover adventure, 51 fixed-map events, six characters and six items. Play solo with rule-based AI, with 2–4 people sharing a screen, or in a Node friend room at `/games/anime-campus/online.html`. The new version is not yet published to the public demo above. Official portrait files are an optional Git-ignored local asset pack; see [game documentation](games/anime-campus/README.md).
+`/games/anime-campus/index.html` adds a 60-space crossover adventure, 51 fixed-map events, six characters and six items. Play solo with rule-based AI, with 2–4 people sharing a screen, or in a Node friend room at `/games/anime-campus/online.html`. Public releases are published separately from local development. Official portrait files are an optional Git-ignored asset pack; see [game documentation](games/anime-campus/README.md).

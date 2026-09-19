@@ -37,3 +37,22 @@ test('leaving revokes identity and AI takes over; expired turns progress by one 
  let row=await f.store.get(code,f.now());row.room.engine.turn=1;row.room.deadline=f.now()+AI_DELAY_MS;await f.store.cas(code,row.revision,row.room,row.expiresAt);const before=row.room.engine.actionNumber;f.tick(AI_DELAY_MS+1);
  const snapshot=await f.service.request(code,host.token,'state');assert.equal(snapshot.game.players[1].isBot,true);assert.equal(snapshot.game.actionNumber,before+1);
 });
+test('a departed credential stays revoked; a finished room admits a new player for rematch',async t=>{
+ const f=await fixture(t),host=await f.service.create({name:'Host',character:'railgun',playerCount:2}),code=host.room.code;
+ const peer=await f.service.request(code,'','join',{name:'Guest',character:'april',seatKey:'e'.repeat(48)});
+ await f.service.request(code,peer.token,'leave');
+ await assert.rejects(f.service.request(code,'','join',{name:'Guest',character:'april',seatKey:peer.token}),{status:403});
+ let row=await f.store.get(code,f.now());row.room.status='finished';row.room.engine=createGame({players:[{character:'railgun'},{character:'april'}]});row.room.engine.phase='finished';row.room.engine.winners=[0];await f.store.cas(code,row.revision,row.room,row.expiresAt);
+ const next=await f.service.request(code,'','join',{name:'New guest',character:'violet',seatKey:'f'.repeat(48)});
+ assert.equal(next.room.selfSeat,1);assert.notEqual(next.room.selfId,peer.room.selfId);
+ await f.service.request(code,next.token,'ready',{ready:true});await f.service.request(code,host.token,'ready',{ready:true});
+ const started=await f.service.request(code,host.token,'start');assert.equal(started.room.status,'playing');assert.equal(started.game.players[1].character,'violet');assert.equal(started.game.actionNumber,0);
+});
+test('leaving preserves another humans deadline but promptly hands the acting seat to AI',async t=>{
+ const f=await fixture(t),host=await f.service.create({name:'Host',character:'railgun',playerCount:3}),code=host.room.code;
+ const peer=await f.service.request(code,'','join',{name:'Guest',character:'april',seatKey:'1'.repeat(48)});
+ await f.service.request(code,peer.token,'ready',{ready:true});await f.service.request(code,host.token,'start');
+ const row=await f.store.get(code,f.now());row.room.engine.turn=0;row.room.deadline=f.now()+TURN_MS;await f.store.cas(code,row.revision,row.room,row.expiresAt);
+ f.tick(10000);const left=await f.service.request(code,peer.token,'leave');assert.equal(left.room.deadline,row.room.deadline);
+ const hostLeft=await f.service.request(code,host.token,'leave');assert.equal(hostLeft.room.deadline,f.now()+AI_DELAY_MS);assert.equal(hostLeft.game.players[0].isBot,true);
+});

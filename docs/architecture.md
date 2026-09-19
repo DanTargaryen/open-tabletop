@@ -1,6 +1,6 @@
 # 架构与运行边界
 
-Open Tabletop 将合集入口与具体游戏分开。当前六款游戏均提供联机入口，规则和服务使用原生浏览器代码与 Node.js 内置能力；出包魔法师与暗膛协议的 3D 界面依赖 Three.js，钢铁远征只使用 2D Canvas。
+Open Tabletop 将合集入口与具体游戏分开。当前七款游戏均提供联机入口，规则和服务使用原生浏览器代码与 Node.js 内置能力；出包魔法师与暗膛协议的 3D 界面依赖 Three.js，钢铁远征只使用 2D Canvas。
 
 ## 请求如何流动
 
@@ -52,7 +52,7 @@ Open Tabletop 将合集入口与具体游戏分开。当前六款游戏均提供
 
 | 方式 | 提供的能力 | 部署者需要处理的部分 |
 | --- | --- | --- |
-| `npm start` | Node 服务、合集页面、六款游戏 API | Node 运行环境与数据目录 |
+| `npm start` | Node 服务、合集页面、七款游戏 API | Node 运行环境与数据目录 |
 | `npm run lan` | 同上，监听 `0.0.0.0` | 局域网地址与防火墙 |
 | 静态构建 | `.dist/public` 中的公开页面与资源 | 静态托管；联机仍需 API |
 | Cloudflare 适配器 | 可选 Worker 入口与配置示例 | 创建并绑定自己的资源、部署与验证 |
@@ -73,7 +73,7 @@ README 中的试玩地址是游戏合集大厅。GitHub 源码更新和 Site 部
 
 增加游戏时，优先保持游戏目录独立，并复用必要的运行基础设施。具体接入步骤见 [添加一款游戏](adding-a-game.md)。
 
-Cloudflare 入口接入扑克、宝可梦、出包魔法师、飞行棋、暗膛协议与钢铁远征 API。六款游戏使用独立 D1 房间表和限流表，并发更新由 revision CAS 保护。配置示例使用 `deploy/cloudflare/migrations/`：依次应用 `0001_rooms.sql`、`0002_splendor.sql`、`0003_abracada_rooms.sql`、`0004_aeroplane_rooms.sql`、`0005_buckshot_rooms.sql` 与 `0006_steel_arc_rooms.sql`。旧扑克迁移目录中的出包魔法师迁移保留给已有部署；新的配置使用统一目录，不要在同一数据库重复执行两份出包魔法师建表迁移。迁移不转移 Node 本地房间数据。
+Cloudflare 入口接入扑克、宝可梦、出包魔法师、飞行棋、暗膛协议与钢铁远征 API。七款游戏使用独立 D1 房间表和限流表，并发更新由 revision CAS 保护。配置示例使用 `deploy/cloudflare/migrations/`：依次应用 `0001_rooms.sql`、`0002_splendor.sql`、`0003_abracada_rooms.sql`、`0004_aeroplane_rooms.sql`、`0005_buckshot_rooms.sql` 与 `0006_steel_arc_rooms.sql`。旧扑克迁移目录中的出包魔法师迁移保留给已有部署；新的配置使用统一目录，不要在同一数据库重复执行两份出包魔法师建表迁移。迁移不转移 Node 本地房间数据。
 
 ## 飞行棋接入
 

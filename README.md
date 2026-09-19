@@ -44,7 +44,7 @@
 
 新增《放学后，掷个六！》：60 格固定地图、51 种事件、六位角色技能和六种基础道具。支持单人 AI、2–4 人同屏及 Node 好友房，包含检查点、复活、同时选择、记忆挑战、存档恢复与回合超时。
 
-本地启动后进入 `/games/anime-campus/index.html` 或 `/games/anime-campus/online.html`。此版本尚未发布到上方公网大厅。真实角色头像是按来源安装的可选本地素材包，不包含在 MIT 代码许可内。参阅 [校园祭说明](games/anime-campus/README.md) 与 [素材来源](games/anime-campus/SOURCES.md)。
+本地启动后进入 `/games/anime-campus/index.html` 或 `/games/anime-campus/online.html`。公开版本由部署流程单独发布。真实角色头像是按来源安装的可选素材包，不包含在 MIT 代码许可内。参阅 [校园祭说明](games/anime-campus/README.md) 与 [素材来源](games/anime-campus/SOURCES.md)。
 
 ## 飞行棋
 
