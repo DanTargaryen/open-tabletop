@@ -8,6 +8,7 @@
   <title>钢铁远征 · Steel Expedition</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./tutorial.css">
 </head>
 <body>
   <main id="game-shell" aria-label="钢铁远征游戏区域">
@@ -25,7 +26,7 @@
         <div class="health-copy"><span>守垒者</span><b id="enemy-hp-text">100</b></div>
         <span class="crest crest-enemy" aria-hidden="true">B</span>
       </div>
-      <button id="pause-button" class="pause-button" type="button" aria-label="暂停游戏">Ⅱ</button>
+      <div class="solo-battle-tools"><button id="battle-tutorial" class="pause-button" type="button" aria-label="打开作战教程">教程</button><button id="pause-button" class="pause-button" type="button" aria-label="暂停游戏">Ⅱ</button></div>
     </section>
 
     <section id="aim-panel" class="aim-panel hidden" aria-label="瞄准参数">
@@ -73,19 +74,6 @@
       <div class="title-footer"><span>鼠标 / 键盘</span><span>可破坏地形</span><span>本地战术 AI</span></div>
     </section>
 
-    <section id="guide" class="guide hidden" aria-labelledby="guide-title">
-      <div class="guide-card">
-        <span class="serial">FIELD MANUAL / 06</span>
-        <h2 id="guide-title">用一条弧线，拆掉对面的阵地。</h2>
-        <div class="guide-grid">
-          <article><b>01</b><h3>调整阵位</h3><p><kbd>A</kbd><kbd>D</kbd> 移动坦克。每回合有 88 格燃料，靠近补给即可自动拾取。</p></article>
-          <article><b>02</b><h3>拉弓瞄准</h3><p>在左下圆盘中向后拉，炮弹向反方向发射；方向可绕中心自由选择，拉得越远力度越大。</p></article>
-          <article><b>03</b><h3>选择弹种</h3><p>点击底部弹药卡或按 <kbd>1</kbd>—<kbd>7</kbd> 选择炮弹；点击“开火”或按空格发射。</p></article>
-        </div>
-        <p class="guide-note">每 3 个行动回合天降一次补给：50% 恢复 30 生命，50% 获得一发随机四档弹。炮坑会永久改变本局地形。</p>
-        <div class="guide-return"><button id="guide-back" type="button">返回</button><button id="guide-start" type="button">开始对战</button><span><kbd>ESC</kbd> / <kbd>ENTER</kbd> 也可操作</span></div>
-      </div>
-    </section>
 
     <div id="announcer" class="sr-only" aria-live="assertive"></div>
   </main>

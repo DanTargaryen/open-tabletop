@@ -1,4 +1,5 @@
 import {BattleCamera} from './camera.js';
+import {createTutorial} from './tutorial.js';
 import {AI_LEVELS,normalizeDifficulty} from './engine.js';
 import {createBattleRenderer} from './renderer.js';
 import {stepTankControls} from './controls.js';
@@ -8,10 +9,10 @@ import {audio} from './audio.js';
 const VIEW_WIDTH=1280,VIEW_HEIGHT=720,WORLD_ZOOM=.88,WORLD_VIEW_WIDTH=VIEW_WIDTH/WORLD_ZOOM;
 const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d',{alpha:false,desynchronized:true});
 const $=selector=>document.querySelector(selector);
-const hud=$('#battle-hud'),aimPanel=$('#aim-panel'),deck=$('#command-deck'),overlay=$('#overlay'),guide=$('#guide'),menu=$('#menu');
+const hud=$('#battle-hud'),aimPanel=$('#aim-panel'),deck=$('#command-deck'),overlay=$('#overlay'),menu=$('#menu');
 const announcer=$('#announcer'),callout=$('#status-callout');
 const weaponRack=$('#weapon-rack'),fireButton=$('#fire-button'),pauseButton=$('#pause-button');
-const aimControl=$('#aim-control'),aimKnob=$('#aim-knob'),aimPullVector=$('#aim-pull-vector'),aimShotVector=$('#aim-shot-vector'),guideBack=$('#guide-back'),guideStart=$('#guide-start');
+const aimControl=$('#aim-control'),aimKnob=$('#aim-knob'),aimPullVector=$('#aim-pull-vector'),aimShotVector=$('#aim-shot-vector');
 const ui={playerHp:$('#player-hp'),enemyHp:$('#enemy-hp'),playerHpText:$('#player-hp-text'),enemyHpText:$('#enemy-hp-text'),round:$('#round-label'),turn:$('#turn-label'),angle:$('#angle-value'),power:$('#power-value'),fuel:$('#fuel-value'),fuelBar:$('#fuel-bar'),fireState:$('#fire-state')};
 const keys=new Set();
 let mode='title',menuIndex=0,returnMode='title',state=createMatch({seed:7126}),rng=seededRandom(7126);
@@ -24,6 +25,15 @@ const difficultySelect=document.createElement('select');difficultySelect.id='ai-
 for(const [value,level] of Object.entries(AI_LEVELS)){const option=new Option(level.label,value);difficultySelect.add(option);}difficultySelect.value=difficulty;
 difficultySelect.onchange=()=>{difficulty=difficultySelect.value;localStorage.setItem('steelArcDifficulty',difficulty);};difficultyLabel.append(difficultySelect);menu.before(difficultyLabel);
 const INTRO_DURATION=3600,INTRO_SCAN_END=.78;
+let tutorialOpenedAt=0;
+const tutorial=createTutorial({onOpen(){
+  returnMode=mode;tutorialOpenedAt=performance.now();setMode('guide');aimControl.classList.remove('dragging');
+},onClose(){
+  keys.clear();const elapsed=performance.now()-tutorialOpenedAt;
+  introAt+=elapsed;if(settleAt)settleAt+=elapsed;if(aiAimStart)aiAimStart+=elapsed;
+  if(mode==='guide')setMode(returnMode);
+}});
+$('#battle-tutorial').onclick=()=>tutorial.open();
 
 function resizeCanvas(){
   const rect=canvas.getBoundingClientRect(),pixelRatio=Math.min(3,Math.max(1,window.devicePixelRatio||1));
@@ -63,9 +73,9 @@ function drawMenu(type=mode){
 
 function setMode(next){
   audio.setBattle(next==='intro'||next==='playing');
-  mode=next;keys.clear();guide.classList.toggle('hidden',next!=='guide');
+  mode=next;keys.clear();
   const showOverlay=['title','paused','ended'].includes(next);overlay.classList.toggle('hidden',!showOverlay);
-  const fighting=['intro','playing','paused','ended'].includes(next);hud.classList.toggle('hidden',!fighting);aimPanel.classList.toggle('hidden',!fighting);deck.classList.toggle('hidden',!fighting);
+  const fighting=['intro','playing','paused','ended'].includes(next)||(next==='guide'&&returnMode!=='title');hud.classList.toggle('hidden',!fighting);aimPanel.classList.toggle('hidden',!fighting);deck.classList.toggle('hidden',!fighting);
   if(showOverlay){menuIndex=0;drawMenu(next);}
   if(next==='playing')announce(state.turn==='player'?'你的回合':'守垒者回合');
 }
@@ -80,7 +90,7 @@ function activate(action){
   audio.confirm();
   if(action==='start'||action==='restart'){startGame();return;}
   if(action==='resume'){setMode('playing');return;}
-  if(action==='guide'){returnMode=mode;setMode('guide');return;}
+  if(action==='guide'){tutorial.open();return;}
   if(action==='sound'){audio.toggle();drawMenu(mode);return;}
   if(action==='title'){setMode('title');return;}
   if(action==='exit')location.href='/';
@@ -104,10 +114,6 @@ function attemptSelectWeapon(weaponId){
     return false;
   }
   audio.navigate();updateUI();return true;
-}
-
-function leaveGuide(){
-  setMode(returnMode==='ended'?'ended':returnMode==='paused'?'paused':'title');
 }
 
 function markMenuSelection(index){
@@ -140,17 +146,11 @@ weaponRack.addEventListener('click',event=>{const card=event.target.closest('.we
 weaponRack.addEventListener('keydown',event=>{const card=event.target.closest('.weapon-card');if(card&&(event.code==='Enter'||event.code==='Space')){event.preventDefault();event.stopPropagation();attemptSelectWeapon(card.dataset.weapon);}});
 fireButton.addEventListener('click',fireCurrent);
 pauseButton.addEventListener('click',()=>{if(mode==='playing')setMode('paused');});
-guideBack.addEventListener('click',leaveGuide);
-guideStart.addEventListener('click',startGame);
 
 window.addEventListener('keydown',event=>{
   if(event.target.closest?.('select,input'))return;
   const code=event.code;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(code))event.preventDefault();
-  if(mode==='guide'){
-    if(code==='Escape'){leaveGuide();}
-    else if(code==='Enter'||code==='Space'){startGame();}
-    return;
-  }
+  if(mode==='guide')return;
   if(['title','paused','ended'].includes(mode)){
     const items=menus[mode];
     const focusedMenuItem=event.target.closest?.('.menu-item');

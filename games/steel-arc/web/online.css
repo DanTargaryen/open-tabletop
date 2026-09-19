@@ -15,7 +15,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid 
 .room-brief h1,.brand b,.entry-copy h1{letter-spacing:0}
 .turn-rail{gap:8px;flex-wrap:wrap}.turn-rail>span{letter-spacing:0}
 .fire{display:flex;flex-direction:column;justify-content:center;gap:5px}
-.battle-top{grid-template-columns:1fr 105px 1fr 82px}.battle-tools{display:flex;gap:6px}.battle-tools button{width:38px;height:38px;padding:0;display:grid;place-items:center}
+.battle-top{grid-template-columns:1fr 105px 1fr 82px}.battle-tools{display:grid;grid-template-columns:repeat(2,38px);gap:6px}.battle-tools button{width:38px;height:38px;padding:0;display:grid;place-items:center}.battle-tools #battle-tutorial{grid-column:1 / -1;width:82px;height:28px;font-size:12px}
 html:has(#battle:not([hidden])),html:has(#battle:not([hidden])) body{height:100%;overflow:hidden;background:#071722}
 body:has(#battle:not([hidden])){display:grid;place-items:center}
 body:has(#battle:not([hidden])) .shell{width:100%;margin:0;padding:0;display:grid;place-items:center}

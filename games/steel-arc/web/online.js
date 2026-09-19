@@ -1,4 +1,5 @@
 import {BattleCamera} from './camera.js';
+import {createTutorial} from './tutorial.js';
 import {AI_LEVELS,stepSupplyDrops,hasFallingSupply,moveTank} from './engine.js';
 import {stepProjectile,splitHiveProjectile,resolveExplosion,settleSupplies} from './engine.js';
 import {audio} from './audio.js';
@@ -16,6 +17,7 @@ let localHeading=45,localPower=68,selectedWeapon='calibration',shotQueue=[],shot
 const keys=new Set(),movement=new PredictedMovement();
 const remotePositions=new Map(),battleCamera=new BattleCamera();
 let moveRequest=null,lastMoveSent=0,moveSoundAt=0;
+const tutorial=createTutorial({online:true,onOpen(){keys.clear();$('#aim-control').classList.remove('dragging');},onClose(){keys.clear();}});
 
 function showError(value){errorBox.textContent=value?.message||String(value);clearTimeout(showError.timer);showError.timer=setTimeout(()=>errorBox.textContent='',3500);}
 async function api(path,method='GET',body){
@@ -137,7 +139,7 @@ document.addEventListener('change',event=>{const select=event.target.closest('[d
 document.addEventListener('click',async event=>{const ai=event.target.closest('[data-ai-slot]');if(ai)await roomCommand('ai',{slot:ai.dataset.aiSlot,enabled:ai.dataset.aiEnabled!=='false'});const slot=event.target.closest('[data-slot]');if(slot)await roomCommand('team',{slot:slot.dataset.slot});const weapon=event.target.closest('[data-weapon]');if(weapon&&!weapon.disabled){selectedWeapon=weapon.dataset.weapon;renderBattle(snapshot.room,snapshot.game);}});
 
 function isIntro(){return introStart&&performance.now()-introStart<3600;}
-function canAct(){return snapshot?.room.status==='playing'&&snapshot.game?.phase==='aim'&&snapshot.game.turn===snapshot.room.selfSlot&&!isIntro()&&!busy&&!shotAnimation&&!shotQueue.length;}
+function canAct(){return !tutorial.isOpen&&snapshot?.room.status==='playing'&&snapshot.game?.phase==='aim'&&snapshot.game.turn===snapshot.room.selfSlot&&!isIntro()&&!busy&&!shotAnimation&&!shotQueue.length;}
 function updateAim(event){
   if(!canAct())return;const rect=$('#aim-control').getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2,dx=event.clientX-cx,dy=event.clientY-cy,max=rect.width*.39,length=Math.min(max,Math.hypot(dx,dy)),scale=length/(Math.hypot(dx,dy)||1),px=dx*scale,py=dy*scale;
   localHeading=((Math.atan2(py,-px)*180/Math.PI)%360+360)%360;localPower=Math.round(20+length/max*80);updateAimUi(px/max,py/max);
@@ -226,6 +228,7 @@ function renderCanvas(now){
 const queryRoom=new URLSearchParams(location.search).get('room');if(queryRoom){$('#code').value=queryRoom.toUpperCase();}
 const soundButton=document.createElement('button');soundButton.type='button';soundButton.id='battle-sound';
 const battleTools=document.createElement('div');battleTools.className='battle-tools';$('#battle-leave').before(battleTools);battleTools.append(soundButton,$('#battle-leave'));
+const tutorialButton=document.createElement('button');tutorialButton.type='button';tutorialButton.id='battle-tutorial';tutorialButton.textContent='教程';tutorialButton.setAttribute('aria-label','打开作战教程');tutorialButton.onclick=()=>tutorial.open();battleTools.prepend(tutorialButton);
 function syncSound(){soundButton.textContent=audio.muted?'🔇':'🔊';soundButton.title=audio.muted?'开启声音':'关闭声音';soundButton.setAttribute('aria-label',soundButton.title);soundButton.setAttribute('aria-pressed',String(!audio.muted));}
 soundButton.onclick=()=>{audio.toggle();syncSound();};syncSound();
 const resumeButton=document.createElement('button');resumeButton.id='resume-room';resumeButton.type='button';resumeButton.textContent='重新连接原房间';resumeButton.hidden=true;$('#create').after(resumeButton);
