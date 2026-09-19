@@ -36,6 +36,8 @@
 规则与服务测试运行 `npm test`，静态资源检查运行 `npm run build:static`。
 浏览器回归需要本地安装 Playwright（`npm install --no-save --package-lock=false playwright`）和 Microsoft Edge，然后运行 `npm run test:e2e:steel` 与 `npm run test:audio:steel`。也可将 `PLAYWRIGHT_MODULE_PATH` 设为已有 Playwright 安装目录中的 `package.json` 绝对路径。测试截图与临时房间数据输出到已忽略的 `_qa/`，不应提交。
 
+已有 Google Chrome 时可设置 `PLAYWRIGHT_CHANNEL=chrome`，无需另装 Edge。好友房回归也会模拟创建和加入响应丢失，验证重试恢复同一房间和座位。
+
 ## 音频
 
 单人和多人共用 `web/audio.js`。背景音乐随战斗循环播放，七种炮弹分别使用本地录音素材，发射与命中调整播放音高和音量；声音开关同时控制音乐与音效。当前为复用项目已下载音频的临时选曲，来源、作者、许可和原文件名见 [音频来源](web/assets/audio/SOURCES.md)。本次联网筛选新素材因网络审批服务故障尚未完成。

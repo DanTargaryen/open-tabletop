@@ -133,7 +133,7 @@ function usePlayerItem(id,slot){
 
 function banner(s){
   if(s.over)return s.winner==='player'?'对局结束 · 你获胜':'对局结束 · 对手获胜';
-  if(s.phase==='compensation')return s.compensation?.chooser==='player'?'补偿启动 · 从左侧选择一件并立即使用':`补偿启动 · 等待 ${s.names?.ai||'对手'} 选择`;
+  if(s.phase==='compensation')return s.compensation?.chooser==='player'?'补偿启动 · 选择一件并立即使用':`补偿启动 · 等待 ${s.names?.ai||'对手'} 选择`;
   if(s.randomDeath)return '随机死亡模式 · 每一枪独立进行 50% 实弹判定';
   if(s.turn!=='player')return `等待 ${s.names?.ai||'对手'} 行动`;
   if(s.cuffed.player)return '你被手铐束缚 · 本回合跳过';
@@ -202,6 +202,14 @@ function render(){
     :`${s.names?.ai||'对手'}正在选择补偿道具`):'';
   $('compensationStatus').textContent=compensationText;
   $('compensationStatus').classList.toggle('on',!!compensationText);
+  const choices=$('compensationChoices'),offers=s.compensation?.offers||[];
+  choices.hidden=s.phase!=='compensation'||s.compensation?.chooser!=='player';
+  const offersKey=JSON.stringify(offers);
+  if(choices.dataset.offers!==offersKey){
+    choices.dataset.offers=offersKey;
+    choices.innerHTML=offers.map((id,slot)=>`<button type="button" data-compensation-slot="${slot}"><b>${escapeHtml(COMPENSATION_DEFS[id]?.name||id)}</b><small>${escapeHtml(COMPENSATION_DEFS[id]?.help||'')}</small></button>`).join('');
+  }
+  for(const button of choices.querySelectorAll('button'))button.disabled=!compensationActive;
   $('shootEnemy').disabled=!active||s.stealing;
   $('shootSelf').disabled=!active||s.stealing;
   const owner=s.stealing?'ai':'player';
@@ -276,7 +284,7 @@ async function playRemoteEvent(event,before,after){
   }
   if(event.expiredFuses?.length&&table3d)await table3d.expireFuses(event.expiredFuses);
   if(event.kind==='compensation_open'){
-    addLog(event.chooser==='player'?'你获得补偿：从桌面左侧二选一。':`${names().ai}获得补偿。`);
+    addLog(event.chooser==='player'?'你获得补偿：点击桌面道具或下方按钮二选一。':`${names().ai}获得补偿。`);
     if(table3d)await table3d.showCompensation(event.offers||after.compensation?.offers||[]);
   }else if(event.kind==='compensation'){
     addLog(`${names()[event.actor]}使用了「${COMPENSATION_DEFS[event.item]?.name||event.item}」。`);
@@ -590,6 +598,11 @@ function syncBgmBtn(){
 }
 
 $('createRoomBtn').onclick=()=>enterRoom(false);
+$('compensationChoices').onclick=event=>{
+  const button=event.target.closest('[data-compensation-slot]');
+  if(!button||button.disabled||busy||!choosingCompensation())return;
+  mutate('action',{action:{type:'compensation',slot:Number(button.dataset.compensationSlot)}});
+};
 $('joinRoomBtn').onclick=()=>enterRoom(true);
 $('resumeRoomBtn').onclick=()=>{if(session)poll();};
 $('copyInviteBtn').onclick=copyInvite;

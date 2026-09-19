@@ -15,7 +15,7 @@ export class SteelArcRoomError extends Error{constructor(status,message){super(m
 const check=(ok,status,message)=>{if(!ok)throw new SteelArcRoomError(status,message);};
 export async function hashToken(value){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value))),n=>n.toString(16).padStart(2,'0')).join('');}
 function nickname(value){check(typeof value==='string'&&[...value.trim()].length>=1&&[...value.trim()].length<=16&&!/[\u0000-\u001f\u007f<>]/.test(value),400,'昵称长度必须为 1-16 个字符。');return value.trim();}
-function roomCode(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:6},()=>chars[Math.floor(random()*chars.length)]).join('');}
+function roomCode(hash,attempt){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:6},(_,i)=>chars[parseInt(hash.slice(((attempt*6+i)%32)*2,((attempt*6+i)%32)*2+2),16)%32]).join('');}
 function syncAi(room){const occupied=new Set(active(room).map(member=>member.slot));room.aiSlots=(room.aiSlots||[]).filter(slot=>!occupied.has(slot));if(room.engine)for(const slot of room.engine.turnOrder){const member=active(room).find(item=>item.slot===slot),ai=room.aiSlots.includes(slot);room.engine.tanks[slot].ai=ai;room.engine.tanks[slot].name=member?.name||`AI-${slot}`;}}
 function deadline(room,now){room.deadline=room.status==='playing'?now+TURN_MS:null;}
 function seatView(room,slot){const member=active(room).find(item=>item.slot===slot);if(member)return{id:member.id,name:member.name,team:slot[0],slot,ready:member.ready,owner:member.id===room.ownerId,ai:false};const ai=(room.aiSlots||[]).includes(slot);return{id:ai?`ai-${slot}`:`empty-${slot}`,name:ai?`AI-${slot}`:'空位',team:slot[0],slot,ready:ai,owner:false,ai,difficulty:room.aiDifficulties?.[slot]||'normal'};}
@@ -50,10 +50,20 @@ export class SteelArcRoomService{
   constructor(store,clock=()=>Date.now()){this.store=store;this.clock=clock;}
   async create(input){
     const player=nickname(input.name),maxPlayers=4;
-    const key=token(),now=this.clock(),member={id:crypto.randomUUID(),name:player,slot:'A1',ready:true,left:false,lastSeen:now,tokenHash:await hashToken(key),processed:[]};
+    const key=input.seatKey??token();
+    check(typeof key==='string'&&/^[a-f0-9]{48}$/.test(key),400,'座位密钥无效，请重新进入。');
+    const now=this.clock(),member={id:crypto.randomUUID(),name:player,slot:'A1',ready:true,left:false,lastSeen:now,tokenHash:await hashToken(key),processed:[]};
     for(let i=0;i<12;i++){
-      const room={schema:2,code:roomCode(),maxPlayers,version:1,status:'waiting',ownerId:member.id,members:[member],aiSlots:[],deadline:null,engine:null,log:[],expiresAt:now+ROOM_TTL};
+      const room={schema:2,code:roomCode(member.tokenHash,i),maxPlayers,version:1,status:'waiting',ownerId:member.id,members:[member],aiSlots:[],deadline:null,engine:null,log:[],expiresAt:now+ROOM_TTL};
+      const existing=await this.store.get(room.code,now);
+      if(existing){
+        const owner=active(existing.room).find(item=>item.tokenHash===member.tokenHash);
+        if(owner)return {...view(existing.room,owner,now),token:key};
+        continue;
+      }
       if(await this.store.create(room.code,room,room.expiresAt))return{...view(room,member,now),token:key};
+      const raced=await this.store.get(room.code,now),owner=raced&&active(raced.room).find(item=>item.tokenHash===member.tokenHash);
+      if(owner)return {...view(raced.room,owner,now),token:key};
     }
     throw new SteelArcRoomError(503,'error');
   }
@@ -79,8 +89,15 @@ export class SteelArcRoomService{
         member.lastSeen=now;syncAi(room);changed=true;
       }else{
         check(member,403,'座位身份已失效，请重新加入。');
+        // A retry must describe persisted state, without simulating another timed-out shot.
+        if(operation==='action'&&member.processed.includes(input.requestId))return view(room,member,now);
         if(now-member.lastSeen>=8000){member.lastSeen=now;changed=true;}
-        changed=advanceExpiredTurn(room,now)||changed;
+        const expired=advanceExpiredTurn(room,now);changed=expired||changed;
+        if(operation==='action'&&expired){
+          room.expiresAt=now+ROOM_TTL;
+          if(!await this.store.cas(code,stored.revision,room,room.expiresAt))continue;
+          throw new SteelArcRoomError(409,'行动已超时，请查看最新战局后继续。');
+        }
         if(operation==='state'){if(room.status==='playing'&&room.aiSlots.includes(room.engine.turn)){nextAiTurn(room,now);room.version++;changed=true;}}
         else if(operation==='team'){
           check(room.status==='waiting',409,'error');

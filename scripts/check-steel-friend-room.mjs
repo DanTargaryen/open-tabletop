@@ -13,7 +13,7 @@ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const base=`http://127.0.0.1:${server.address().port}`;
 let browser;
 try{
-  browser=await chromium.launch({channel:'msedge',headless:true});
+  browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||'msedge',headless:true});
   const contextA=await browser.newContext({viewport:{width:1440,height:960}}),contextB=await browser.newContext();
   const a=await contextA.newPage(),b=await contextB.newPage(),errors=[];
   for(const page of [a,b]){page.on('pageerror',error=>errors.push(error.message));await page.addInitScript(()=>{const scale=CanvasRenderingContext2D.prototype.scale;CanvasRenderingContext2D.prototype.scale=function(x,y){if(x===y&&x>.2&&x<.99)window.__battleZoom=x;return scale.call(this,x,y);};});}
@@ -21,11 +21,26 @@ try{
   const path='/games/steel-arc/online.html';
   await a.goto(base+path);await a.locator('#create').waitFor({state:'visible'});
   assert.equal(await a.locator('#lobby').isVisible(),false);
+  let droppedCreate=false;
+  await a.route('**/api/steel-arc/rooms',async route=>{
+    if(!droppedCreate){droppedCreate=true;await route.fetch();await route.abort('failed');}
+    else await route.continue();
+  });
   await a.locator('#name').fill('Host');await a.locator('#create').click();
+  await a.waitForFunction(()=>document.querySelector('#error').textContent.length>0);
+  await a.locator('#create').click();
   await a.locator('#lobby').waitFor({state:'visible'});
+  assert.equal(app.stores.steelArc.rows.size,1,'lost create response must not create another room');
   const code=await a.locator('#room-code').textContent();
   assert.equal(await a.locator('[data-ai-slot]').count(),3);
+  let droppedJoin=false;
+  await b.route('**/api/steel-arc/rooms/*/join',async route=>{
+    if(!droppedJoin){droppedJoin=true;await route.fetch();await route.abort('failed');}
+    else await route.continue();
+  });
   await b.goto(base+path+'?room='+code);await b.locator('#name').fill('Guest');await b.locator('#join').click();
+  await b.waitForFunction(()=>document.querySelector('#error').textContent.length>0);
+  await b.locator('#join').click();
   await b.locator('#lobby').waitFor({state:'visible'});
   await b.locator('[data-slot="A2"]').click();
   await b.waitForFunction(()=>document.querySelector('.member.current .slot')?.textContent.startsWith('A2'));

@@ -53,6 +53,13 @@
 .turn-clock{margin-left:auto;font-family:ui-monospace,Consolas,monospace;letter-spacing:.12em;color:var(--volt)}
 .compensation-status{display:none;margin-top:7px;max-width:320px;color:#e1ad55;font-size:11px;line-height:1.45;letter-spacing:.08em;text-transform:uppercase;text-shadow:0 0 14px rgba(255,151,38,.35)}
 .compensation-status.on{display:block}
+.compensation-choices{position:absolute;z-index:12;bottom:24px;left:50%;transform:translateX(-50%);width:min(640px,calc(100% - 28px));display:grid;grid-template-columns:1fr 1fr;gap:10px;pointer-events:auto}
+.compensation-choices[hidden]{display:none}
+.compensation-choices button{min-height:82px;padding:14px;border:1px solid #b88a43;border-radius:6px;background:rgba(17,18,15,.96);text-align:left;box-shadow:0 8px 24px #0008}
+.compensation-choices b{display:block;color:#f1c67c;font-size:16px}
+.compensation-choices small{display:block;margin-top:6px;color:#ddd3c0;font-size:14px;line-height:1.4}
+.compensation-choices button:focus-visible{outline:3px solid #fff0c2;outline-offset:3px}
+@media(max-width:520px){.compensation-choices{bottom:14px;grid-template-columns:1fr;gap:6px}.compensation-choices button{min-height:60px;padding:10px}}
 .random-death-mode .charge{color:#6c5540;text-shadow:none;letter-spacing:.08em}
 .random-death-mode .hud-chamber{border-color:#5e3524;background:rgba(9,7,6,.86)}
 .random-death-mode .chamber-title{color:#bd6b34}

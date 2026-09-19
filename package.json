@@ -16,7 +16,8 @@
     "test:e2e:steel": "node scripts/check-steel-friend-room.mjs",
     "test:audio:steel": "node scripts/check-steel-audio.mjs",
     "build:static": "node scripts/build-static.mjs",
-    "measure:poker-sync": "node games/texas-holdem/scripts/measure-sync.mjs"
+    "measure:poker-sync": "node games/texas-holdem/scripts/measure-sync.mjs",
+    "test:e2e:chamber": "node scripts/check-chamber-compensation.mjs"
   },
   "repository": {
     "type": "git",
