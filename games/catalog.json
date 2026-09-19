@@ -44,6 +44,28 @@
     "online": "/games/aeroplane-chess/online.html"
   },
   {
+    "id": "buckshot-roulette",
+    "title": "暗膛协议",
+    "subtitle": "CHAMBER PACT",
+    "description": "实弹与空弹混装的高压桌面博弈。读懂风险，使用道具，击败本地 AI 对手。",
+    "players": "1 人对战 AI / 2 人好友房",
+    "category": "暗膛协议",
+    "version": "0.2.0",
+    "solo": "/games/buckshot-roulette/index.html",
+    "online": "/games/buckshot-roulette/online.html"
+  },
+  {
+    "id": "steel-arc",
+    "title": "钢铁远征",
+    "subtitle": "STEEL EXPEDITION",
+    "description": "驾驶坦克穿越辽阔战区，用弹弓式自由瞄准掌控角度与力度，并以四档七种炮弹重塑可破坏战场。",
+    "players": "1 人单机 / 2–4 人好友房",
+    "category": "2D 炮术对决",
+    "version": "1.0.0",
+    "solo": "/games/steel-arc/index.html",
+    "online": "/games/steel-arc/online.html"
+  },
+  {
     "id": "anime-campus",
     "title": "放学后，掷个六！",
     "subtitle": "AFTER SCHOOL / CAMPUS FESTIVAL",

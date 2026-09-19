@@ -4,7 +4,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
 import worker from '../../../deploy/cloudflare/worker.mjs';
 test('Worker route and D1 SQL persist and recover a campus room using its own tables',async()=>{
- const sqlite=new DatabaseSync(':memory:');sqlite.exec(readFileSync(new URL('../../../deploy/cloudflare/migrations/0005_anime_campus_rooms.sql',import.meta.url),'utf8'));
+ const sqlite=new DatabaseSync(':memory:');sqlite.exec(readFileSync(new URL('../../../deploy/cloudflare/migrations/0007_anime_campus_rooms.sql',import.meta.url),'utf8'));
  const db={
   prepare(sql){
    const prepared=sqlite.prepare(sql);

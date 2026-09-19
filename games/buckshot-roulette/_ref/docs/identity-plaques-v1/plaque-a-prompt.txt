@@ -1,0 +1,12 @@
+Use case: stylized-concept
+Asset type: 3D modeling reference for an interactive tabletop identity plaque
+Primary request: One old metal identity nameplate permanently bolted to a grim underground game table, featuring a raised skull emblem only. This is player identity emblem A and contains no writing.
+Scene/backdrop: isolated object on a dark charcoal seamless studio background
+Subject: a low rectangular gunmetal plaque with clipped corners, a narrow worn brass border, four round dark rivets near the corners, and one centered embossed skull. Skull A has a broad square forehead, heavy straight brow ridge, wide rectangular eye sockets, a short triangular nose opening, and a broad squared jaw with six simplified teeth. A thin recessed amber light channel runs inside the brass border, unlit.
+Style/medium: polished low-poly 3D game prop concept, hard-surface modeling reference, clear layered construction, production-ready silhouette
+Composition/framing: three-quarter view from slightly above, entire plaque centered, long horizontal format, all four rivets visible, no table and no other objects
+Lighting/mood: warm overhead workshop light with a subtle cool rim, readable shadows, ominous but not too dark
+Color palette: blackened gunmetal, muted aged brass, bone-gray skull, very small unlit amber glass channel
+Materials/textures: solid thick metal plate, beveled edges, shallow scratches, rubbed brass corners, cast-metal skull relief, no flat printed graphic
+Constraints: physically buildable design; skull, border, light channel, rivets, and backing plate must be separate readable layers; no letters, no numbers, no words, no gender symbol, no faction symbol, no logo, no watermark
+Avoid: UI button appearance, oval shape, floating hologram, neon glow, excessive decoration, extra skulls, bones, weapons, blood, people, hands, multiple panels

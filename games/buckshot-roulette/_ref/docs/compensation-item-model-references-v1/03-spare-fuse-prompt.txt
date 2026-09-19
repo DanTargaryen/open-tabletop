@@ -1,0 +1,7 @@
+Use case: stylized-concept.
+Asset type: game-ready 3D modeling concept reference for one tabletop prop.
+Input image 1 role: visual style reference only; do not copy any existing object from it.
+Match image 1 closely: clean low-poly hard-surface 3D render, clearly faceted geometry, chunky bevels, compact proportions, restrained hand-painted material variation, dark charcoal seamless studio background, three-quarter top-down view, near-orthographic product framing, soft cool key light from upper left, subtle warm rim light, soft contact shadow. The object must look practical to model in real-time 3D, with readable silhouette, believable thickness, visible seams and functional moving parts. One isolated object centered, fully inside frame, no cropping.
+Constraints: exactly one prop; no hands, no people, no scenery, no display stand, no unrelated accessories, no labels, no written words, no UI, no border, no watermark. Do not make it photorealistic, glossy, cute, toy-like, voxel, or excessively detailed. Square image.
+
+Subject: 备用保险丝 — one chunky replaceable industrial cartridge fuse seated in a compact dark Bakelite holder. Transparent cyan-tinted glass tube with a clearly visible intact zigzag metal filament, thick silver end caps, two short brass terminal tabs, small protective side ribs, orange inspection indicator. Readable as an electrical fuse at a glance, sturdy tabletop-game proportions.

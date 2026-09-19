@@ -117,12 +117,12 @@ try {
       }
     },
   );
-  await check("Lobby: four games and all eight links", async () => {
+  await check("Lobby: six games and all twelve links", async () => {
     await page.goto(base);
     await page
       .getByRole("link", { name: "出包魔法师好友房", exact: true })
       .waitFor();
-    assert.equal(await page.locator(".game-actions a").count(), 8);
+    assert.equal(await page.locator(".game-actions a").count(), 12);
     await snap("lobby-desktop");
   });
   await check(

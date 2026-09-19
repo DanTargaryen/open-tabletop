@@ -22,7 +22,7 @@ node games/anime-campus/scripts/install-official-art.mjs
 
 房间活动 TTL 为 24 小时。AI 与超时由有身份的轮询请求推动，每次最多一步；没有在线请求时不会自行推进。好友房身份保存在标签页 sessionStorage，刷新和同标签页返回可恢复，关闭标签页后不保证继续恢复原座位。
 
-可选 Cloudflare Worker 路由与 `0005_anime_campus_rooms.sql` 使用独立房间及限流表。迁移与适配器通过本地测试不等于已经部署上线。
+可选 Cloudflare Worker 路由与 `0007_anime_campus_rooms.sql` 使用独立房间及限流表。迁移与适配器通过本地测试不等于已经部署上线。
 
 ## 验证
 

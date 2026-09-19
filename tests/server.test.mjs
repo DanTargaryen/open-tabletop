@@ -23,8 +23,8 @@ test('collection serves catalog, both game entries and assets without exposing s
  const dataDir=await mkdtemp(join(tmpdir(),'open-tabletop-web-')),app=await start(dataDir);
  t.after(async()=>{await app.close();await rm(dataDir,{recursive:true,force:true});});
  const home=await fetch(app.url);assert.equal(home.status,200);assert.match(await home.text(),/<title>开桌 · Open Tabletop<\/title>/);
- const {data:catalog}=await call(app,'/games.json');assert.deepEqual(catalog.map(game=>game.id),['texas-holdem','splendor','abracada-what','aeroplane-chess','anime-campus']);
- for(const path of [...catalog.flatMap(game=>[game.solo,game.online]),'/vendor/three.module.js','/vendor/three.core.js','/vendor/loaders/GLTFLoader.js','/vendor/utils/BufferGeometryUtils.js','/vendor/utils/SkeletonUtils.js','/games/texas-holdem/online-ui.js','/games/texas-holdem/room-sync.js','/games/texas-holdem/style.css','/games/texas-holdem/assets/brands/doubao.png','/games/abracada-what/engine.js','/games/abracada-what/ui.js','/games/abracada-what/online-ui.js','/games/abracada-what/audio.js','/games/abracada-what/three-table.js','/games/abracada-what/tower-progress.js','/games/abracada-what/online.css','/games/abracada-what/style.css','/games/abracada-what/assets/audio/tower-ambient-loop.ogg','/games/abracada-what/assets/audio/dice-roll.ogg','/games/abracada-what/assets/audio/spell-thunder.ogg','/games/abracada-what/assets/audio/spell-fireball.ogg','/games/abracada-what/assets/3d/characters/mage.glb','/games/abracada-what/assets/3d/animations/general.glb','/games/abracada-what/assets/3d/dungeon/wall_shelves.gltf','/games/abracada-what/assets/3d/dungeon/wall_shelves.bin','/games/abracada-what/assets/3d/particles/spark_01.png',...Array.from({length:8},(_,index)=>`/games/abracada-what/assets/spells/spell-${index+1}.svg`),'/app.js','/style.css','/favicon.svg'])assert.equal((await fetch(app.url+path)).status,200,path);
+ const {data:catalog}=await call(app,'/games.json');assert.deepEqual(catalog.map(game=>game.id),['texas-holdem','splendor','abracada-what','aeroplane-chess','buckshot-roulette','steel-arc','anime-campus']);
+ for(const path of [...catalog.flatMap(game=>[game.solo,game.online].filter(Boolean)),'/vendor/three.module.js','/vendor/three.core.js','/vendor/loaders/GLTFLoader.js','/vendor/utils/BufferGeometryUtils.js','/vendor/utils/SkeletonUtils.js','/games/texas-holdem/online-ui.js','/games/texas-holdem/room-sync.js','/games/texas-holdem/style.css','/games/texas-holdem/assets/brands/doubao.png','/games/abracada-what/engine.js','/games/abracada-what/ui.js','/games/abracada-what/online-ui.js','/games/abracada-what/audio.js','/games/abracada-what/three-table.js','/games/abracada-what/tower-progress.js','/games/abracada-what/online.css','/games/abracada-what/style.css','/games/abracada-what/assets/audio/tower-ambient-loop.ogg','/games/abracada-what/assets/audio/dice-roll.ogg','/games/abracada-what/assets/audio/spell-thunder.ogg','/games/abracada-what/assets/audio/spell-fireball.ogg','/games/abracada-what/assets/3d/characters/mage.glb','/games/abracada-what/assets/3d/animations/general.glb','/games/abracada-what/assets/3d/dungeon/wall_shelves.gltf','/games/abracada-what/assets/3d/dungeon/wall_shelves.bin','/games/abracada-what/assets/3d/particles/spark_01.png',...Array.from({length:8},(_,index)=>`/games/abracada-what/assets/spells/spell-${index+1}.svg`),'/games/buckshot-roulette/assets/chamber-pact-home-card-v1.png','/games/buckshot-roulette/tutorial.js','/games/steel-arc/engine.js','/games/steel-arc/game.js','/games/steel-arc/audio.js','/games/steel-arc/style.css','/games/steel-arc/online.js','/games/steel-arc/online.css','/games/steel-arc/assets/steel-expedition-cover-v1.png','/app.js','/style.css','/favicon.svg'])assert.equal((await fetch(app.url+path)).status,200,path);
  for(const path of ['/server/index.mjs','/.data/poker-rooms.json','/.data/abracada-rooms.json','/.git/config','/games/texas-holdem/%2e%2e/server/rooms.mjs','/games/texas-holdem/%2f..%2fserver%2frooms.mjs','/games/texas-holdem/%5c..%5cserver%5crooms.mjs','/games/abracada-what/%2e%2e/tests/engine.test.mjs','/games/abracada-what/%2e%2e/server/rooms.mjs'])assert.equal((await fetch(app.url+path)).status,404,path);
  const head=await fetch(app.url+'/style.css',{method:'HEAD'});assert.equal(head.status,200);assert.equal(await head.text(),'');
  assert.equal((await fetch(app.url+'/games.json',{method:'POST'})).status,405);
@@ -65,6 +65,39 @@ test('real HTTP magic room fills AI seats, keeps private views, and survives res
  const {data:restored}=await call(app,path,{token:host.token});assert.equal(restored.room.code,host.room.code);assert.deepEqual(restored.game.players[0].rack,started.game.players[0].rack);
 });
 
+test('real HTTP buckshot room is two-player only, keeps private views, and survives restart',async t=>{
+ const dataDir=await mkdtemp(join(tmpdir(),'open-tabletop-buckshot-room-'));let app=await start(dataDir);
+ t.after(async()=>{await app.close();await rm(dataDir,{recursive:true,force:true});});
+ const {response:created,data:host}=await call(app,'/api/buckshot/rooms',{body:{name:'Host',seatKey:randomBytes(24).toString('hex')}});assert.equal(created.status,201);
+ const path='/api/buckshot/rooms/'+host.room.code;
+ const {data:guest}=await call(app,path+'/join',{body:{name:'Guest',seatKey:randomBytes(24).toString('hex')}});
+ await call(app,path+'/ready',{token:guest.token,body:{ready:true,version:guest.room.version,requestId:'ready-001'}});
+ const hostState=await call(app,path,{token:host.token});
+ const {data:started}=await call(app,path+'/start',{token:host.token,body:{version:hostState.data.room.version,requestId:'start-001'}});
+ assert.equal(started.room.status,'playing');assert.equal(started.game.names.player,'Host');
+ const {data:friend}=await call(app,path,{token:guest.token});
+ assert.equal(friend.game.names.player,'Guest');assert.equal(friend.game.turn,started.game.turn==='player'?'ai':'player');
+ const serialized=JSON.stringify(friend);for(const key of ['tokenHash','processed','rng','notes','"ammo":'])assert.ok(!serialized.includes(key),key);
+ const {response:denied}=await call(app,path);assert.equal(denied.status,403);
+ const persisted=JSON.parse(await readFile(join(dataDir,'buckshot-rooms.json'),'utf8'));assert.equal(persisted.length,1);
+ await app.close();app=await start(dataDir);
+ const {data:restored}=await call(app,path,{token:host.token});assert.equal(restored.room.code,host.room.code);assert.equal(restored.game.ammoCount,started.game.ammoCount);
+});
+
+test('real HTTP steel expedition room keeps four slots, AI fill and restart persistence',async t=>{
+ const dataDir=await mkdtemp(join(tmpdir(),'open-tabletop-steel-room-'));let app=await start(dataDir);
+ t.after(async()=>{await app.close();await rm(dataDir,{recursive:true,force:true});});
+ const {response:created,data:host}=await call(app,'/api/steel-arc/rooms',{body:{name:'A队长',maxPlayers:3}});assert.equal(created.status,201);
+ const path='/api/steel-arc/rooms/'+host.room.code,seatKey=randomBytes(24).toString('hex');
+ const {data:guest}=await call(app,path+'/join',{body:{name:'B队员',seatKey}});assert.equal(guest.room.selfSlot,'B1');
+ await call(app,path+'/ready',{token:guest.token,body:{ready:true}});
+ const {data:started}=await call(app,path+'/start',{token:host.token,body:{}});assert.deepEqual(started.game.turnOrder,['A1','B1']);assert.equal(started.room.aiCount,0);
+ const {data:fired}=await call(app,path+'/action',{token:host.token,body:{type:'fire',heading:45,power:62,version:started.room.version,requestId:'steel-fire-001'}});assert.equal(fired.game.turn,'B1');assert.ok(fired.game.shotHistory[0].points.length>3);
+ const persisted=JSON.parse(await readFile(join(dataDir,'steel-arc-rooms.json'),'utf8'));assert.equal(persisted.length,1);
+ await app.close();app=await start(dataDir);
+ const {data:restored}=await call(app,path,{token:host.token});assert.equal(restored.room.code,host.room.code);assert.equal(restored.game.turn,'B1');assert.equal(restored.game.shotHistory.length,1);
+});
+
 test('explicit public origin supports HTTPS reverse proxies and rejects unrelated origins',async t=>{
  const dataDir=await mkdtemp(join(tmpdir(),'open-tabletop-origin-')),app=await start(dataDir,{publicOrigin:'https://tabletop.example'});
  t.after(async()=>{await app.close();await rm(dataDir,{recursive:true,force:true});});
@@ -78,5 +111,6 @@ test('Cloudflare adapter delegates API calls to the D1-backed game and static re
  const env={DB:{prepare(){queries++;return {async first(){return null;}};}},ASSETS:{async fetch(){assets++;return new Response('static-page');}}};
  const api=await worker.fetch(new Request('https://example.com/api/poker/health'),env);assert.equal(api.status,200);assert.equal((await api.json()).ok,true);assert.equal(queries,1);
  const magic=await worker.fetch(new Request('https://example.com/api/abracada/health'),env);assert.equal(magic.status,200);assert.equal((await magic.json()).ok,true);assert.equal(queries,2);
+ const steel=await worker.fetch(new Request('https://example.com/api/steel-arc/health'),env);assert.equal(steel.status,200);assert.equal((await steel.json()).ok,true);assert.equal(queries,3);
  const page=await worker.fetch(new Request('https://example.com/'),env);assert.equal(await page.text(),'static-page');assert.equal(assets,1);
 });

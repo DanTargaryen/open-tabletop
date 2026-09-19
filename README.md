@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/DanTargaryen/open-tabletop/actions/workflows/ci.yml/badge.svg)](https://github.com/DanTargaryen/open-tabletop/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/Code-MIT-d2b77c)](LICENSE)
 
-一个可以自己运行、继续扩展的开源网页桌游合集。**当前源码包含德州扑克、璀璨宝石·宝可梦特别款、出包魔法师、飞行棋与校园祭冒险棋**：单人对战本地 AI，也可以创建房间与朋友联机，空位可由 AI 补齐。
+一个可以自己运行、继续扩展的开源网页游戏合集。**现已包含德州扑克、璀璨宝石·宝可梦特别款、出包魔法师、飞行棋、暗膛协议、钢铁远征与校园祭冒险棋**：支持单人本地 AI、同屏玩法或创建房间与朋友联机。
 
 [English](README.en.md) · [添加游戏](docs/adding-a-game.md) · [架构说明](docs/architecture.md) · [参与贡献](CONTRIBUTING.md)
 
@@ -10,11 +10,11 @@
 
 ## 先玩一局
 
-**[打开游戏大厅](https://velvet-poker-friends.linming-dracarys.chatgpt.site/)**，选择德州扑克、宝可梦、出包魔法师或飞行棋，再选择单人模式或好友房。
+**[打开游戏大厅](https://velvet-poker-friends.linming-dracarys.chatgpt.site/)**，从七款游戏中选择单人模式、同屏玩法或好友房。
 
 [宝可梦特别款 · 单人冒险](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/splendor/) · [宝可梦特别款 · 好友联机](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/splendor/online) · [德州扑克试玩](https://velvet-poker-friends.linming-dracarys.chatgpt.site)
 
-统一首页已部署到现有 Sites 域名；四款游戏均支持单人 AI 和远端好友房，飞行棋还支持 2–4 人同屏。原游戏直达路径及旧的扑克房间邀请链接继续可用。
+统一首页已部署到现有 Sites 域名；七款游戏均支持好友房，飞行棋还支持 2–4 人同屏。钢铁远征是 2D 电脑端游戏，移动使用键盘，瞄准、选弹、开火与菜单同时支持鼠标和键盘。原游戏直达路径及旧的扑克房间邀请链接继续可用。
 
 德州扑克包含：
 
@@ -52,6 +52,16 @@
 
 规则与界面分离；音效由本地 Web Audio 合成，音效开关持久化。好友房由服务端产生骰子、校验行动，45 秒超时后代执行一步操作，房间活动有效期 24 小时。详见 [飞行棋说明](games/aeroplane-chess/README.md) 与 [规则和素材来源](games/aeroplane-chess/SOURCES.md)。[单人 / 同屏试玩](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/aeroplane-chess/index.html) · [好友房](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/aeroplane-chess/online.html)。
 
+## 暗膛协议
+
+高压桌面对决：实弹与空弹混装，公开数量、隐藏顺序，用道具管理风险。支持单人对战本地规则 AI（休闲 / 标准 / 专家 / 职业），以及仅双人的好友房，没有 AI 补位。练习、黑夜与挑战三种灯光模式；黑夜隐藏对面信息，挑战换弹后可能转入黑夜。
+
+规则引擎先结算再播动画，肾上腺素先注射再按点击槽位偷取。好友房随机先手，90 秒超时后对对手强制开火。Node 存储隔离在 `buckshot-rooms.json`；Worker 需应用 `0005_buckshot_rooms.sql`。详见大厅入口 [单人](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/buckshot-roulette/index.html) · [好友房](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/buckshot-roulette/online.html)。
+
+## 钢铁远征
+
+原创 2D 横版回合制坦克炮战。使用 `A/D` 移动，在左下弹弓盘中向后拖动并朝反方向发射，也可用 `W/S` 与 `Q/E` 微调方向和力度。四档七种炮弹按回合解锁，补给会恢复生命或带来稀有四档弹；爆炸会造成范围伤害并永久改变本局地形。除单人规则 AI 外，好友房提供 A1、B1、A2、B2 四个位置，真人可自由更换空位，房主可手动添加 AI，默认不添加。支持 1 对 1、2 对 1、两名真人对两名 AI；单人和多人共用简单、普通、困难三档 AI、镜头、弹道与补给逻辑。服务端按 `A1 → B1 → A2 → B2` 权威结算移动、弹道、伤害和地形。详见 [游戏说明](games/steel-arc/README.md)。
+
 ## 本地运行
 
 需要 **Node.js 22.13 或更新版本**。首次运行时先安装本地依赖：
@@ -76,6 +86,10 @@ npm start
 | 出包魔法师联机模式 | `/games/abracada-what/online.html` |
 | 飞行棋单人 / 同屏 | `/games/aeroplane-chess/index.html` |
 | 飞行棋好友房 | `/games/aeroplane-chess/online.html` |
+| 暗膛协议单人 | `/games/buckshot-roulette/index.html` |
+| 暗膛协议好友房 | `/games/buckshot-roulette/online.html` |
+| 钢铁远征单人 AI | `/games/steel-arc/index.html` |
+| 钢铁远征好友房 | `/games/steel-arc/online.html` |
 
 与同一局域网内的朋友一起玩：
 
@@ -110,19 +124,19 @@ npm test
 npm run build:static
 ```
 
-测试覆盖当前五款游戏的规则引擎、房间逻辑、隐藏信息投影、同步和根服务器。静态构建会将资源复制到 `.dist/public`；联机功能还需要提供 `/api/poker`、`/api/splendor`、`/api/abracada` 、`/api/aeroplane` 与 `/api/anime-campus` 的 Node 或 Worker + D1 后端，单独托管静态文件不能提供房间服务。
+测试覆盖七款游戏的规则引擎，以及七款联机游戏的房间逻辑、隐藏信息投影、同步和根服务器。静态构建会将资源复制到 `.dist/public`；单人钢铁远征可直接静态运行，七款游戏的联机功能需要提供 `/api/poker`、`/api/splendor`、`/api/abracada`、`/api/aeroplane`、`/api/buckshot`、`/api/steel-arc` 与 `/api/anime-campus` 的 Node 或 Worker + D1 后端。
 
 默认入口是 `server/index.mjs`，适合在自己的 Node 环境中运行。仓库也提供可选的 Cloudflare 适配器：
 
 - `deploy/cloudflare/worker.mjs`
 - `deploy/cloudflare/wrangler.example.jsonc`
-- `deploy/cloudflare/migrations/`：五款游戏的顺序迁移；每款游戏使用独立房间与限流表，飞行棋需 `0004_aeroplane_rooms.sql`，校园祭需 `0005_anime_campus_rooms.sql`。
+- `deploy/cloudflare/migrations/`：七款游戏的顺序迁移；每款游戏使用独立房间与限流表，飞行棋需应用 `0004_aeroplane_rooms.sql`，暗膛协议需应用 `0005_buckshot_rooms.sql`，钢铁远征需 `0006_steel_arc_rooms.sql`，校园祭需 `0007_anime_campus_rooms.sql`。
 
 示例配置中的数据库信息是占位符。使用前需要自行创建并绑定资源；本仓库不附带任何可复用的托管账户或数据库 ID。具体边界见 [架构说明](docs/architecture.md)。
 
 ## 扩展合集
 
-每个游戏放在 `games/<game-id>/`，通过 `games/catalog.json` 出现在首页。当前目录包含 `texas-holdem`、`splendor`、`abracada-what`、`aeroplane-chess` 与 `anime-campus`；未来游戏由实际实现和贡献逐步加入。
+每个游戏放在 `games/<game-id>/`，通过 `games/catalog.json` 出现在首页。当前目录还包含支持单人与好友房的 2D 游戏 `steel-arc`；未来游戏由实际实现和贡献逐步加入。
 
 ```text
 games/
@@ -144,6 +158,14 @@ games/
     web/        单人、同屏、联机页面与共享规则引擎
     server/     飞行棋权威房间服务
     tests/      规则、房间与 HTTP 测试
+  buckshot-roulette/
+    web/        单人与好友房页面、3D 牌桌与模型
+    server/     暗膛协议权威房间服务
+    tests/      规则、房间与 HTTP 测试
+  steel-arc/
+    web/        2D Canvas 单人、好友房与共用规则引擎
+    server/     钢铁远征权威房间服务
+    tests/      弹道、镜头、补给、AI、房间与 HTTP 测试
 public/         合集首页
 server/         Node 服务入口
 deploy/         可选平台适配器

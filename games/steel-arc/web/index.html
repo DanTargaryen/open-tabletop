@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#102f45">
+  <meta name="description" content="钢铁远征：支持鼠标与键盘操作的 2D 回合制坦克炮战。">
+  <title>钢铁远征 · Steel Expedition</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./tutorial.css">
+</head>
+<body>
+  <main id="game-shell" aria-label="钢铁远征游戏区域">
+    <canvas id="game" width="1280" height="720" aria-label="2D 坦克炮战画面"></canvas>
+
+    <section id="battle-hud" class="battle-hud hidden" aria-label="战斗状态">
+      <div class="health-side player-health">
+        <span class="crest crest-player" aria-hidden="true">A</span>
+        <div class="health-copy"><span>先锋号</span><b id="player-hp-text">100</b></div>
+        <div class="health-track"><i id="player-hp"></i></div>
+      </div>
+      <div class="round-badge"><small id="round-label">回合 01</small><strong>VS</strong><em id="turn-label">你的回合</em></div>
+      <div class="health-side enemy-health">
+        <div class="health-track"><i id="enemy-hp"></i></div>
+        <div class="health-copy"><span>守垒者</span><b id="enemy-hp-text">100</b></div>
+        <span class="crest crest-enemy" aria-hidden="true">B</span>
+      </div>
+      <div class="solo-battle-tools"><button id="battle-tutorial" class="pause-button" type="button" aria-label="打开作战教程">教程</button><button id="pause-button" class="pause-button" type="button" aria-label="暂停游戏">Ⅱ</button></div>
+    </section>
+
+    <section id="aim-panel" class="aim-panel hidden" aria-label="瞄准参数">
+      <button id="aim-control" class="aim-control" type="button" aria-label="拖动调整炮管角度和发射力度">
+        <span class="aim-ring" aria-hidden="true"></span>
+        <span id="aim-shot-vector" class="aim-vector aim-shot-vector" aria-hidden="true"></span>
+        <span id="aim-pull-vector" class="aim-vector aim-pull-vector" aria-hidden="true"></span>
+        <span class="aim-anchor" aria-hidden="true"></span><i id="aim-knob" aria-hidden="true"></i>
+        <span class="aim-readout"><b id="angle-value">45°</b><i>·</i><b id="power-value">68</b></span>
+        <span class="aim-hint">向后拉 · 反向发射</span>
+      </button>
+    </section>
+
+    <section id="command-deck" class="command-deck hidden" aria-label="战斗操作面板">
+      <div class="fuel-module">
+        <div class="module-title"><span>履带燃料</span><b id="fuel-value">88</b></div>
+        <div class="fuel-track"><i id="fuel-bar"></i></div>
+        <div class="key-pair"><kbd>A</kbd><span>移动</span><kbd>D</kbd></div>
+      </div>
+      <div class="weapon-rack" id="weapon-rack">
+        <div class="weapon-card active" data-weapon="calibration" role="button" tabindex="0"><kbd>1</kbd><i>●</i><span>校准弹</span><small>∞</small><em>I</em></div>
+        <div class="weapon-card" data-weapon="armorPiercing" role="button" tabindex="0"><kbd>2</kbd><i>◆</i><span>穿甲弹</span><small data-ammo="armorPiercing">×0</small><em>II</em></div>
+        <div class="weapon-card" data-weapon="quake" role="button" tabindex="0"><kbd>3</kbd><i>◒</i><span>震地弹</span><small data-ammo="quake">×0</small><em>II</em></div>
+        <div class="weapon-card" data-weapon="drill" role="button" tabindex="0"><kbd>4</kbd><i>▶</i><span>钻弹</span><small data-ammo="drill">×0</small><em>III</em></div>
+        <div class="weapon-card" data-weapon="hive" role="button" tabindex="0"><kbd>5</kbd><i>✦</i><span>蜂巢弹</span><small data-ammo="hive">×0</small><em>III</em></div>
+        <div class="weapon-card rare" data-weapon="meteor" role="button" tabindex="0"><kbd>6</kbd><i>☢</i><span>核爆弹</span><small data-ammo="meteor">×0</small><em>IV</em></div>
+        <div class="weapon-card rare" data-weapon="pulse" role="button" tabindex="0"><kbd>7</kbd><i>◎</i><span>追踪弹</span><small data-ammo="pulse">×0</small><em>IV</em></div>
+      </div>
+      <button id="fire-button" class="fire-module" type="button"><kbd>SPACE</kbd><strong>开火</strong><small id="fire-state">准备就绪</small></button>
+    </section>
+
+    <div id="status-callout" class="status-callout hidden" aria-live="polite"></div>
+
+    <section id="overlay" class="overlay" aria-labelledby="overlay-title">
+      <div class="title-lockup">
+        <span class="serial">OPEN TABLETOP / GAME 06</span>
+        <h1 id="overlay-title"><span>钢铁</span>远征</h1>
+        <p>STEEL EXPEDITION</p>
+      </div>
+      <div class="menu-panel">
+        <p id="overlay-kicker" class="overlay-kicker">2D 回合制炮术对决</p>
+        <div id="menu" class="menu" role="menu" aria-label="主菜单"></div>
+        <p id="menu-help" class="menu-help">鼠标点击，或 <kbd>W</kbd><kbd>S</kbd> 选择　<kbd>ENTER</kbd> 确认</p>
+      </div>
+      <div class="title-footer"><span>鼠标 / 键盘</span><span>可破坏地形</span><span>本地战术 AI</span></div>
+    </section>
+
+
+    <div id="announcer" class="sr-only" aria-live="assertive"></div>
+  </main>
+  <script type="module" src="./game.js"></script>
+</body>
+</html>

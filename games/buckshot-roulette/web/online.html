@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>暗膛协议 · 好友房</title>
+<link rel="icon" href="/favicon.svg">
+<script type="importmap">{"imports":{"three":"/vendor/three.module.js"}}</script>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="online.css">
+</head>
+<body class="online-page">
+
+<main id="lobbyView">
+ <header>
+  <a class="back" href="/">← 回到大厅</a>
+  <div class="brand"><small>OPEN TABLETOP</small><h1>暗膛协议</h1></div>
+  <div class="head-actions">
+   <span class="head-note">双人好友房</span>
+   <a class="back" href="index.html">单人模式</a>
+  </div>
+ </header>
+ <section class="intro" id="onlineSetup">
+  <p class="intro-lead">建一间只有两把椅子的房间。把邀请发给朋友，面对面扣动扳机。</p>
+  <ul class="intro-rules">
+   <li><b>双人对决</b>没有 AI 补位，必须两位真人到齐才能开局。</li>
+   <li><b>两种模式</b>常规对决，或在短弹仓与昼夜交替中完成挑战。</li>
+   <li><b>每次行动 90 秒</b>超时会强制向对手开枪。</li>
+  </ul>
+  <label class="field-label" for="onlineName">你的桌边昵称</label>
+  <input id="onlineName" class="online-input" maxlength="16" placeholder="朋友会在牌桌上看到这个名字" autocomplete="nickname">
+  <div class="room-entry-grid">
+   <section class="room-entry-card">
+	    <h2>开一间新房间</h2>
+	    <p class="field-hint">房间码六位，只分享给要对坐的那个人。</p>
+	    <label class="field-label" for="roomMode">对局模式</label>
+	    <select id="roomMode" class="online-input mode-select">
+	     <option value="practice">常规模式</option>
+	     <option value="challenge">挑战模式</option>
+	    </select>
+	    <button type="button" id="createRoomBtn" class="primary">创建好友房</button>
+   </section>
+   <section class="room-entry-card">
+    <h2>加入朋友的房间</h2>
+    <label class="field-label" for="joinCode">六位房间码</label>
+    <input id="joinCode" class="online-input room-code-input" maxlength="6" placeholder="例如 ABC234" autocomplete="off" autocapitalize="characters">
+    <button type="button" id="joinRoomBtn" class="primary">加入房间</button>
+    <button type="button" id="resumeRoomBtn" class="quiet hidden">恢复上次座位</button>
+   </section>
+  </div>
+  <p id="netError" class="online-error" role="status"></p>
+ </section>
+</main>
+
+<section id="roomWaiting" class="room-waiting hidden">
+ <div class="eyebrow">YOUR PRIVATE TABLE</div>
+ <h1>两把椅子，一把手枪。</h1>
+ <div class="invite-row">
+  <div><span class="field-label">房间码</span><strong id="waitingCode" class="room-code">------</strong></div>
+  <button type="button" id="copyInviteBtn" class="quiet">复制邀请链接</button>
+ </div>
+	 <p id="waitingDescription" class="online-intro">等待另一位玩家入座。</p>
+	 <p id="waitingMode" class="room-mode"></p>
+ <div id="roomRoster" class="room-roster"></div>
+ <p id="waitingHint" class="field-hint" aria-live="polite"></p>
+ <div class="waiting-actions">
+  <button type="button" id="readyRoomBtn" class="quiet">准备好了</button>
+  <button type="button" id="startRoomBtn" class="primary">开始对局</button>
+ </div>
+ <button type="button" id="leaveWaitingBtn" class="text-btn">离开房间</button>
+</section>
+
+<section id="game" class="hidden">
+ <canvas id="tableCanvas" class="table-canvas" aria-label="3D 牌桌"></canvas>
+ <section id="compensationChoices" class="compensation-choices" aria-label="补偿选择" hidden></section>
+ <div id="compensationTooltip" class="compensation-tooltip hidden" role="tooltip"></div>
+ <div class="fallback-table" aria-hidden="true"><div class="fallback-gun"><span></span><span></span></div></div>
+ <div class="stage-grain" aria-hidden="true"></div>
+ <div class="stage-vignette" aria-hidden="true"></div>
+ <div class="fx-hit" id="fxHit" aria-hidden="true"></div>
+ <div class="fx-death" id="fxDeath" aria-hidden="true"></div>
+
+ <div class="hud">
+  <div class="hud-bar">
+   <a class="back" href="/" id="tabletopHome">← 大厅</a>
+   <span class="round-label" id="round"></span>
+   <span class="turn-banner" id="turnBanner"></span>
+   <span id="turnCountdown" class="turn-clock">90</span>
+   <button type="button" class="quiet" data-tutorial aria-label="打开教程">教程</button>
+   <button type="button" id="bgmBtn" class="quiet bgm-btn" aria-pressed="true" aria-label="背景音乐">背景音乐</button>
+   <button type="button" id="copyGameInvite" class="quiet">邀请</button>
+   <button type="button" id="leaveGameBtn" class="quiet">离开</button>
+  </div>
+
+  <div class="hud-seat seat-dealer">
+   <span class="seat-name" id="dealerName">对手</span>
+   <span class="charge" id="aiHp"></span>
+   <span class="seat-note" id="aiInfo"></span>
+  </div>
+
+  <div class="hud-chamber">
+   <span class="chamber-title">弹仓</span>
+   <strong id="ammoCount"></strong>
+   <span id="ammoMix"></span>
+   <span class="chamber-phone" id="phoneNotes"></span>
+   <span class="chamber-known" id="itemHint"></span>
+   <span class="compensation-status" id="compensationStatus" aria-live="polite"></span>
+  </div>
+
+  <div class="hud-seat seat-player">
+   <span class="seat-name" id="playerName">你</span>
+   <span class="charge" id="youHp"></span>
+   <span class="seat-note" id="youInfo"></span>
+  </div>
+
+  <p class="sr-live" id="log" role="status" aria-live="polite"></p>
+
+  <div class="hud-bottom">
+   <div class="controls">
+    <button class="plate plate-enemy" id="shootEnemy"><b>射击对手</b><small>把这一发用在对面身上</small></button>
+    <button class="plate plate-self" id="shootSelf"><b>射击自己</b><small>空弹则继续行动</small></button>
+   </div>
+   <div class="inventory">
+    <div class="section-title"><h2>你的道具</h2><span class="hint">道具不结束回合</span></div>
+    <div id="items" class="items"></div>
+   </div>
+  </div>
+ </div>
+</section>
+
+<div id="notice" class="notice hidden" role="dialog" aria-modal="true" aria-labelledby="noticeTitle" aria-describedby="noticeText">
+ <div class="notice-box">
+  <h2 id="noticeTitle">无法使用</h2>
+  <p id="noticeText"></p>
+  <button type="button" class="primary" id="noticeOk">知道了</button>
+ </div>
+</div>
+<div id="achievementPopup" class="achievement-popup hidden" role="status" aria-live="assertive">
+ <div id="achievementPanel" class="achievement-panel"></div>
+</div>
+<section id="result" class="result hidden"></section>
+<script type="module" src="online-ui.js"></script>
+</body>
+</html>
