@@ -119,9 +119,12 @@ async function enterRoom(joining){
   if(joining&&!/^[A-Z2-9]{6}$/.test(code))return showError('请输入六位房间码。');
   busy=true;$('#create').disabled=true;$('#join').disabled=true;
   try{
-    const key=crypto.randomUUID().replaceAll('-','')+crypto.randomUUID().replaceAll('-','').slice(0,16);
-    const data=await api(joining?`/rooms/${code}/join`:'/rooms','POST',joining?{name,seatKey:key}:{name});
+    const keyName='steelArcEntry.'+(joining?code:'create');
+    const key=sessionStorage.getItem(keyName)||crypto.randomUUID().replaceAll('-','')+crypto.randomUUID().replaceAll('-','').slice(0,16);
+    sessionStorage.setItem(keyName,key);
+    const data=await api(joining?`/rooms/${code}/join`:'/rooms','POST',{name,seatKey:key});
     generation++;roomCode=data.room.code;token=data.token;snapshot=null;saveRoom();render(data);beginPolling();
+    sessionStorage.removeItem(keyName);
   }catch(error){showError(error);}finally{busy=false;$('#create').disabled=false;$('#join').disabled=false;}
 }
 async function roomCommand(operation,body={}){
