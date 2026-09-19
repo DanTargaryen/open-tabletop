@@ -14,6 +14,8 @@ import {handleAeroplane} from '../games/aeroplane-chess/server/api.mjs';
 import {AeroplaneRoomError} from '../games/aeroplane-chess/server/rooms.mjs';
 import {handleBuckshot} from '../games/buckshot-roulette/server/api.mjs';
 import {BuckshotError} from '../games/buckshot-roulette/server/rooms.mjs';
+import {handleSteelArc} from '../games/steel-arc/server/api.mjs';
+import {SteelArcRoomError} from '../games/steel-arc/server/rooms.mjs';
 import {FileRoomStore} from './room-store.mjs';
 
 const projectRoot=resolve(dirname(fileURLToPath(import.meta.url)),'..');
@@ -27,6 +29,7 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
  const abracadaStore=await new FileRoomStore(resolve(dataDir,'abracada-rooms.json')).init();
  const aeroplaneStore=await new FileRoomStore(resolve(dataDir,'aeroplane-rooms.json')).init();
  const buckshotStore=await new FileRoomStore(resolve(dataDir,'buckshot-rooms.json')).init();
+ const steelArcStore=await new FileRoomStore(resolve(dataDir,'steel-arc-rooms.json')).init();
  const catalog=JSON.parse(await readFile(resolve(projectRoot,'games/catalog.json'),'utf8'));
  const staticGames=new Map(catalog.map(game=>[`/games/${game.id}/`,resolve(projectRoot,'games',game.id,'web')]));
  const vendorFiles=new Map([
@@ -47,14 +50,15 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
   try{
    if(!req.url?.startsWith('/')||req.url.startsWith('//')){res.writeHead(400);res.end();return;}
    const url=new URL(req.url,publicOrigin||'http://'+req.headers.host);
-   if(url.pathname.startsWith('/api/aeroplane/')||url.pathname.startsWith('/api/poker/')||url.pathname.startsWith('/api/abracada/')||url.pathname.startsWith('/api/splendor/')||url.pathname.startsWith('/api/buckshot/')){
+   if(url.pathname.startsWith('/api/aeroplane/')||url.pathname.startsWith('/api/poker/')||url.pathname.startsWith('/api/abracada/')||url.pathname.startsWith('/api/splendor/')||url.pathname.startsWith('/api/buckshot/')||url.pathname.startsWith('/api/steel-arc/')){
     const aeroplane=url.pathname.startsWith('/api/aeroplane/');
     const splendor=url.pathname.startsWith('/api/splendor/');
     const abracada=url.pathname.startsWith('/api/abracada/');
     const buckshot=url.pathname.startsWith('/api/buckshot/');
-    const handler=aeroplane?handleAeroplane:abracada?handleAbracada:buckshot?handleBuckshot:handlePoker;
-    const roomStore=aeroplane?aeroplaneStore:abracada?abracadaStore:buckshot?buckshotStore:pokerStore;
-    const ErrorType=aeroplane?AeroplaneRoomError:splendor?SplendorError:abracada?AbracadaRoomError:buckshot?BuckshotError:RoomError;
+    const steelArc=url.pathname.startsWith('/api/steel-arc/');
+    const handler=aeroplane?handleAeroplane:abracada?handleAbracada:buckshot?handleBuckshot:steelArc?handleSteelArc:handlePoker;
+    const roomStore=aeroplane?aeroplaneStore:abracada?abracadaStore:buckshot?buckshotStore:steelArc?steelArcStore:pokerStore;
+    const ErrorType=aeroplane?AeroplaneRoomError:splendor?SplendorError:abracada?AbracadaRoomError:buckshot?BuckshotError:steelArc?SteelArcRoomError:RoomError;
     const headers=new Headers();for(const[k,v]of Object.entries(req.headers))if(v)headers.set(k,Array.isArray(v)?v.join(','):v);
     // Untrusted forwarded IPs cannot evade the local create/join limiter.
     headers.set('cf-connecting-ip',req.socket.remoteAddress||'local');
@@ -98,7 +102,7 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
   }
  });
  server.requestTimeout=15000;server.headersTimeout=10000;
- return {server,store:pokerStore,splendorStore,stores:{poker:pokerStore,splendor:splendorStore,abracada:abracadaStore,aeroplane:aeroplaneStore,buckshot:buckshotStore},catalog,async close(){await new Promise((done,fail)=>server.close(error=>error?fail(error):done()));await Promise.all([pokerStore.close(),splendorStore.close(),abracadaStore.close(),aeroplaneStore.close(),buckshotStore.close()]);}};
+ return {server,store:pokerStore,splendorStore,stores:{poker:pokerStore,splendor:splendorStore,abracada:abracadaStore,aeroplane:aeroplaneStore,buckshot:buckshotStore,steelArc:steelArcStore},catalog,async close(){await new Promise((done,fail)=>server.close(error=>error?fail(error):done()));await Promise.all([pokerStore.close(),splendorStore.close(),abracadaStore.close(),aeroplaneStore.close(),buckshotStore.close(),steelArcStore.close()]);}};
 }
 
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){

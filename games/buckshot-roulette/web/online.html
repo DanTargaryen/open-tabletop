@@ -24,16 +24,21 @@
   <p class="intro-lead">建一间只有两把椅子的房间。把邀请发给朋友，面对面扣动扳机。</p>
   <ul class="intro-rules">
    <li><b>双人对决</b>没有 AI 补位，必须两位真人到齐才能开局。</li>
-   <li><b>灯光开着</b>好友房使用完整牌桌，双方都能看见桌上的道具。</li>
+   <li><b>两种模式</b>常规对决，或在短弹仓与昼夜交替中完成挑战。</li>
    <li><b>每次行动 90 秒</b>超时会强制向对手开枪。</li>
   </ul>
   <label class="field-label" for="onlineName">你的桌边昵称</label>
   <input id="onlineName" class="online-input" maxlength="16" placeholder="朋友会在牌桌上看到这个名字" autocomplete="nickname">
   <div class="room-entry-grid">
    <section class="room-entry-card">
-    <h2>开一间新房间</h2>
-    <p class="field-hint">房间码六位，只分享给要对坐的那个人。</p>
-    <button type="button" id="createRoomBtn" class="primary">创建好友房</button>
+	    <h2>开一间新房间</h2>
+	    <p class="field-hint">房间码六位，只分享给要对坐的那个人。</p>
+	    <label class="field-label" for="roomMode">对局模式</label>
+	    <select id="roomMode" class="online-input mode-select">
+	     <option value="practice">常规模式</option>
+	     <option value="challenge">挑战模式</option>
+	    </select>
+	    <button type="button" id="createRoomBtn" class="primary">创建好友房</button>
    </section>
    <section class="room-entry-card">
     <h2>加入朋友的房间</h2>
@@ -54,7 +59,8 @@
   <div><span class="field-label">房间码</span><strong id="waitingCode" class="room-code">------</strong></div>
   <button type="button" id="copyInviteBtn" class="quiet">复制邀请链接</button>
  </div>
- <p id="waitingDescription" class="online-intro">等待另一位玩家入座。</p>
+	 <p id="waitingDescription" class="online-intro">等待另一位玩家入座。</p>
+	 <p id="waitingMode" class="room-mode"></p>
  <div id="roomRoster" class="room-roster"></div>
  <p id="waitingHint" class="field-hint" aria-live="polite"></p>
  <div class="waiting-actions">
@@ -66,6 +72,7 @@
 
 <section id="game" class="hidden">
  <canvas id="tableCanvas" class="table-canvas" aria-label="3D 牌桌"></canvas>
+ <div id="compensationTooltip" class="compensation-tooltip hidden" role="tooltip"></div>
  <div class="fallback-table" aria-hidden="true"><div class="fallback-gun"><span></span><span></span></div></div>
  <div class="stage-grain" aria-hidden="true"></div>
  <div class="stage-vignette" aria-hidden="true"></div>
@@ -96,6 +103,7 @@
    <span id="ammoMix"></span>
    <span class="chamber-phone" id="phoneNotes"></span>
    <span class="chamber-known" id="itemHint"></span>
+   <span class="compensation-status" id="compensationStatus" aria-live="polite"></span>
   </div>
 
   <div class="hud-seat seat-player">
@@ -125,6 +133,9 @@
   <p id="noticeText"></p>
   <button type="button" class="primary" id="noticeOk">知道了</button>
  </div>
+</div>
+<div id="achievementPopup" class="achievement-popup hidden" role="status" aria-live="assertive">
+ <div id="achievementPanel" class="achievement-panel"></div>
 </div>
 <section id="result" class="result hidden"></section>
 <script type="module" src="online-ui.js"></script>

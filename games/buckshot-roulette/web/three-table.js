@@ -10,6 +10,7 @@ const SLOT_CELL=.30;
 const SLOT_X=[-1.02,-.72,-.42,-.12];
 const slotRows=(near,far)=>[...SLOT_X.map(x=>[x,near]),...SLOT_X.map(x=>[x,far])];
 const SLOTS={player:slotRows(.88,.58),ai:slotRows(-.88,-.58)};
+const COMP_SLOTS=[[-1.08,.08],[-.78,.08]];
 const SHELL_CAP=8;
 const SHELL_CELL={w:.108,d:.168};
 const SHELL_ORIGIN={x:.42,z:-.06};
@@ -207,13 +208,15 @@ class BuckshotTable3D{
     this.tweens=new Set();
     this.shellGroup=new THREE.Group();
     this.itemGroup=new THREE.Group();
+    this.compensationGroup=new THREE.Group();
     this.shellSlots=Array.from({length:SHELL_CAP},()=>null);
     this.itemSlots={player:Array.from({length:8},()=>null),ai:Array.from({length:8},()=>null)};
     this.itemNodes={player:[],ai:[]};
     this.glow=glowTexture();
     /* 全部操作都在桌面上完成：onPick 把点到的枪/道具/目标牌交回 ui.js。 */
     this.onPick=null;
-    this.pickState={gun:false,items:[],targets:false};
+    this.onCompensationHover=null;
+    this.pickState={gun:false,items:[],targets:false,compensation:false};
     this.hoverTarget=null;
     this.plaqueTurn=null;
     this.gunDrawn=false;
@@ -247,7 +250,7 @@ class BuckshotTable3D{
     this.setupTargets();
     this.setupMachines();
     this.setupDealer();
-    this.scene.add(this.shellGroup,this.itemGroup);
+    this.scene.add(this.shellGroup,this.itemGroup,this.compensationGroup);
     this.setupPicking();
     this.resizeObserver=new ResizeObserver(()=>this.resize());
     this.resizeObserver.observe(this.host);
@@ -504,6 +507,13 @@ class BuckshotTable3D{
         return cell;
       });
     }
+    this.compensationSlots=COMP_SLOTS.map(([x,z],slot)=>{
+      const cell=this.makeLid(x,z,SLOT_CELL,SLOT_CELL);
+      cell.kind='compensation';cell.pivot=cell.hinge;cell.slot=slot;
+      cell.hinge.userData.pick={type:'compensation',slot};
+      this.compensationGroup.add(cell.hinge);
+      return cell;
+    });
   }
 
   setupGun(){
@@ -641,7 +651,7 @@ class BuckshotTable3D{
   }
 
   setupPicking(){
-    const locate=event=>{
+    const locate=(event,hover=false)=>{
       const rect=this.canvas.getBoundingClientRect();
       this.pointer.set((event.clientX-rect.left)/rect.width*2-1,-((event.clientY-rect.top)/rect.height)*2+1);
       this.raycaster.setFromCamera(this.pointer,this.camera);
@@ -653,10 +663,14 @@ class BuckshotTable3D{
         if(this.arms?.dealerRight)candidates.push(this.arms.dealerRight.group);
       }
       if(this.pickState.gun)candidates.push(this.gun);
+      if(this.pickState.compensation||hover)for(const cell of this.compensationSlots||[])
+        if(cell.faceUp&&cell.payload)candidates.push(cell.hinge);
       /* 偷道具时可点的是庄家那一排，平时是自己那一排，两者互斥。 */
       const {side='player',slots=[],pick=slots}=this.pickState.picking||{};
       for(const mesh of this.itemNodes?.[side]||[])
         if(mesh.visible&&pick.includes(mesh.userData.pick?.slot))candidates.push(mesh);
+      if(this.pickState.debugItems)for(const owner of ['player','ai'])
+        for(const mesh of this.itemNodes?.[owner]||[])if(mesh.visible)candidates.push(mesh);
       if(!candidates.length)return null;
       for(const hit of this.raycaster.intersectObjects(candidates,true)){
         for(let node=hit.object;node;node=node.parent)if(node.userData.pick)return node.userData.pick;
@@ -668,10 +682,13 @@ class BuckshotTable3D{
       if(pick)this.onPick?.(pick);
     });
     this.canvas.addEventListener('pointermove',event=>{
-      const pick=locate(event);
+      const pick=locate(event,true);
       this.hoverTarget=this.pickState.targets&&pick?.type==='target'?pick.side:null;
       this.canvas.style.cursor=pick?'pointer':'default';
+      const compensation=pick?.type==='compensation'||(this.pickState.debugItems&&pick?.type==='item'&&pick.side==='ai'&&['lightRemote','fruitKnife','spareFuse','boreFilm','reverseCoin','powerStrip'].includes(pick.id));
+      this.onCompensationHover?.(compensation?{id:pick.id,x:event.clientX,y:event.clientY}:null);
     });
+    this.canvas.addEventListener('pointerleave',()=>this.onCompensationHover?.(null));
   }
 
   setupMachines(){
@@ -804,6 +821,7 @@ class BuckshotTable3D{
       group.add(clone);
       return group;
     }
+    if(['lightRemote','fruitKnife','spareFuse','boreFilm','reverseCoin','powerStrip'].includes(id))return this.compensationItemMesh(id);
     const group=new THREE.Group();
     const metal=new THREE.MeshStandardMaterial({color:0x8b8b84,roughness:.3,metalness:.88,flatShading:true});
     const dark=new THREE.MeshStandardMaterial({color:0x272321,roughness:.58,metalness:.42,flatShading:true});
@@ -856,6 +874,68 @@ class BuckshotTable3D{
       for(let row=0;row<4;row++)for(let col=0;col<3;col++)add(new THREE.BoxGeometry(.018,.008,.018),metal,{x:(col-1)*.029,y:.035,z:.035+row*.03});
     }else{
       add(new THREE.BoxGeometry(.08,.05,.08),dark,{x:0,y:.025,z:0});
+    }
+    return group;
+  }
+
+  compensationItemMesh(id){
+    const group=new THREE.Group();
+    const mat=(color,roughness=.48,metalness=.5,extra={})=>new THREE.MeshStandardMaterial({color,roughness,metalness,flatShading:true,...extra});
+    const dark=mat(0x202426,.62,.72),black=mat(0x0c0f10,.75,.35),steel=mat(0x949b98,.28,.9);
+    const brass=mat(0xa97b32,.34,.82),red=mat(0xa52e28,.55,.35),cyan=mat(0x43d9df,.18,.2,{transparent:true,opacity:.72,emissive:0x12646a,emissiveIntensity:.7});
+    /* 保险丝改用琥珀橙玻璃，底片保留青色，牌桌上一眼就能分清。 */
+    const fuseGlass=mat(0xff8b24,.2,.15,{transparent:true,opacity:.86,emissive:0xb93600,emissiveIntensity:1.1});
+    const amber=mat(0xffa52c,.24,.1,{emissive:0xff6a00,emissiveIntensity:1.5});
+    const add=(geometry,material,[x,y,z],[rx=0,ry=0,rz=0]=[])=>{const mesh=new THREE.Mesh(geometry,material);mesh.position.set(x,y,z);mesh.rotation.set(rx,ry,rz);mesh.castShadow=true;mesh.receiveShadow=true;group.add(mesh);return mesh;};
+    if(id==='lightRemote'){
+      add(new THREE.BoxGeometry(.18,.045,.105),dark,[0,.032,0]);
+      add(new THREE.CylinderGeometry(.03,.03,.018,10),red,[-.045,.065,0],[0,0,0]);
+      add(new THREE.CylinderGeometry(.009,.009,.012,8),amber,[.055,.063,-.025]);
+      add(new THREE.BoxGeometry(.055,.012,.018),steel,[.035,.061,.022]);
+      for(const x of [-.072,.072])for(const z of [-.038,.038])add(new THREE.CylinderGeometry(.006,.006,.007,6),brass,[x,.058,z]);
+    }else if(id==='fruitKnife'){
+      add(new THREE.BoxGeometry(.15,.04,.06),red,[-.025,.035,0],[0,-.12,0]);
+      const bladePivot=new THREE.Group();bladePivot.name='KnifeBladePivot';bladePivot.position.set(.025,.055,0);bladePivot.rotation.y=Math.PI;
+      const blade=add(new THREE.BoxGeometry(.13,.012,.043),steel,[.075,0,-.008],[0,.27,0]);
+      blade.name='KnifeBlade';group.remove(blade);bladePivot.add(blade);group.add(bladePivot);
+      add(new THREE.CylinderGeometry(.014,.014,.05,10),brass,[.025,.058,0]);
+      add(new THREE.BoxGeometry(.045,.018,.045),black,[-.078,.058,0]);
+    }else if(id==='spareFuse'){
+      add(new THREE.BoxGeometry(.18,.028,.07),dark,[0,.024,0]);
+      const tube=add(new THREE.CylinderGeometry(.025,.025,.12,10),fuseGlass,[0,.065,0],[0,0,Math.PI/2]);tube.name='FuseGlass';
+      for(const x of [-.07,.07]){const cap=add(new THREE.CylinderGeometry(.029,.029,.03,10),steel,[x,.065,0],[0,0,Math.PI/2]);cap.name='FuseCap';}
+      for(const x of [-.075,.075])add(new THREE.BoxGeometry(.025,.03,.085),brass,[x,.025,0]);
+      for(let i=0;i<4;i++)add(new THREE.BoxGeometry(.035,.006,.006),brass,[-.052+i*.035,.067,(i%2?1:-1)*.009],[0,(i%2?1:-1)*.45,0]);
+    }else if(id==='boreFilm'){
+      add(new THREE.BoxGeometry(.18,.025,.12),dark,[0,.024,0]);
+      const film=add(new THREE.BoxGeometry(.145,.012,.085),cyan,[0,.043,0]);film.name='FilmScreen';
+      for(const x of [-.052,.052]){
+        add(new THREE.CylinderGeometry(.013,.013,.07,8),x<0?red:steel,[x,.056,0],[Math.PI/2,0,0]);
+        add(new THREE.CylinderGeometry(.016,.016,.018,8),brass,[x,.056,.035],[Math.PI/2,0,0]);
+      }
+      for(const x of [-.083,.083])add(new THREE.BoxGeometry(.014,.035,.12),black,[x,.045,0]);
+    }else if(id==='reverseCoin'){
+      add(new THREE.CylinderGeometry(.075,.075,.018,12),brass,[0,.035,0]);
+      add(new THREE.TorusGeometry(.054,.007,6,12),dark,[0,.046,0],[Math.PI/2,0,0]);
+      add(new THREE.BoxGeometry(.07,.01,.016),dark,[0,.049,0],[0,.4,0]);
+      add(new THREE.BoxGeometry(.035,.01,.012),dark,[.035,.049,-.022],[0,-.62,0]);
+      add(new THREE.BoxGeometry(.035,.01,.012),dark,[.048,.049,.002],[0,.62,0]);
+      /* 底面刻同一个反向箭头，抛起翻面时两面看起来都是“反面”。 */
+      add(new THREE.TorusGeometry(.054,.007,6,12),dark,[0,.024,0],[Math.PI/2,0,0]);
+      add(new THREE.BoxGeometry(.07,.01,.016),dark,[0,.021,0],[0,.4,0]);
+      add(new THREE.BoxGeometry(.035,.01,.012),dark,[.035,.021,-.022],[0,-.62,0]);
+      add(new THREE.BoxGeometry(.035,.01,.012),dark,[.048,.021,.002],[0,.62,0]);
+    }else if(id==='powerStrip'){
+      add(new THREE.BoxGeometry(.2,.045,.075),dark,[0,.035,0]);
+      for(const x of [-.055,0,.055]){
+        add(new THREE.CylinderGeometry(.022,.022,.009,10),black,[x,.062,0]);
+        for(const z of [-.008,.008])add(new THREE.BoxGeometry(.006,.008,.013),steel,[x,.068,z]);
+      }
+      add(new THREE.BoxGeometry(.025,.012,.03),red,[.082,.064,0]);
+      add(new THREE.CylinderGeometry(.007,.007,.08,6),black,[-.135,.035,0],[0,0,Math.PI/2]);
+      add(new THREE.BoxGeometry(.04,.03,.035),black,[-.19,.035,0]);
+      for(const z of [-.009,.009])add(new THREE.BoxGeometry(.022,.007,.006),steel,[-.22,.035,z]);
+      add(new THREE.CylinderGeometry(.006,.006,.008,6),amber,[.082,.066,-.025]);
     }
     return group;
   }
@@ -928,6 +1008,17 @@ class BuckshotTable3D{
       }
       this.itemNodes[side]=[];
     }
+    for(const cell of this.compensationSlots||[]){
+      this.detachPayload(cell);cell.hinge.rotation.x=LID_OPEN;cell.hinge.position.y=cell.homeY;
+      cell.faceUp=false;cell.hinge.visible=true;
+    }
+    this.compensationKey='';this.randomDeath=false;
+    this.shellGroup.visible=!this.night;this.itemGroup.visible=true;this.compensationGroup.visible=true;
+    this.host.classList.remove('random-death-mode');
+    for(const machine of Object.values(this.machines||{}))machine.group.visible=true;
+    for(const machine of Object.values(this.machines||{})){
+      const fuse=machine.group.getObjectByName('FuseIndicator');if(fuse)this.disposeNode(fuse,{dropGeometry:true});
+    }
     if(this.night)this.applyDealerNight();
   }
 
@@ -991,6 +1082,49 @@ class BuckshotTable3D{
     cell.kind='item';
     cell.hinge.userData.pick={type:'item',side,id,slot:cell.hinge.userData.visualSlot};
     cell.hinge.userData.itemId=id;
+  }
+
+  attachCompensation(cell,id){
+    this.detachPayload(cell);
+    const mesh=this.compensationItemMesh(id);
+    mesh.scale.setScalar(.92);mesh.position.y=LID_THICK/2+.018;
+    cell.lid.add(mesh);cell.payload=mesh;cell.mesh=mesh;cell.id=id;cell.procedural=true;
+    cell.kind='compensation';
+    cell.hinge.userData.pick={type:'compensation',slot:cell.slot,id};
+  }
+
+  async showCompensation(offers=[]){
+    const key=offers.join('|');
+    if(key===this.compensationKey)return;
+    this.compensationKey=key;
+    if(!offers.length){
+      await Promise.all((this.compensationSlots||[]).map(async cell=>{
+        if(cell.faceUp)await this.flipLid(cell,{up:false});
+        this.detachPayload(cell);
+      }));
+      return;
+    }
+    await Promise.all(this.compensationSlots.map(async(cell,index)=>{
+      this.attachCompensation(cell,offers[index]);
+      if(!cell.faceUp)await this.flipLid(cell,{up:true});
+    }));
+  }
+
+  async playCompensation({slot=0,item,actor='player',randomDeath=false,state=null,reloadFilm=false}={}){
+    const cell=this.compensationSlots?.[slot];
+    if(cell?.payload&&item){
+      const payload=cell.payload,left=this.itemArm(actor);
+      this.compensationGroup.attach(payload);
+      this.showArm(left);
+      if(actor==='player')payload.scale.setScalar(.48);
+      await this.carryTo(payload,this.useHold(actor,item),300,left);
+      await this.fxCompensationPreview(actor,item,payload,left,{state,publicUse:true,reloadFilm});
+      if(item==='boreFilm')payload.visible=false;
+      await this.retract(left,{hide:this.hidePlayer(actor)});
+      if(item==='boreFilm'&&actor==='player')await this.showBoreFilmInspection({state,actor});
+    }
+    await this.showCompensation([]);
+    if(randomDeath)await this.setRandomDeathMode(true);
   }
 
   mountPhoneScreen(mesh){
@@ -1102,6 +1236,7 @@ class BuckshotTable3D{
   /* 朝上红弹 = liveCount，朝上蓝弹 = 空弹数；新弹按左红右蓝占格，整格从凹槽里翻上来。 */
   async playReload(state=this.lastState,{shells=true}={}){
     if(!state)return;
+    if(state.randomDeath){await this.setRandomDeathMode(true);return;}
     const rising=[];
     if(shells){
       const live=state.liveCount,blank=state.ammoCount-live;
@@ -1145,9 +1280,12 @@ class BuckshotTable3D{
     if(!state)return;
     this.lastState=state;
     this.bindItemPicks(state);
+    void this.showCompensation(state.phase==='compensation'?(state.compensation?.offers||[]):[]);
+    if(!!state.randomDeath!==!!this.randomDeath)void this.setRandomDeathMode(!!state.randomDeath);
     for(const side of ['player','ai']){
       const machine=this.machines[side];
-      const max=state.maxHp??machine.max??6;
+      const max=typeof state.maxHp==='object'?state.maxHp[side]:(state.maxHp??machine.max??6);
+      if(state.hp[side]==null)continue;
       if(machine.charges===state.hp[side]&&machine.max===max)continue;
       machine.charges=state.hp[side];
       machine.max=max;
@@ -1162,17 +1300,36 @@ class BuckshotTable3D{
   }
 
   /* ui.js 每次渲染都告知当前能点什么：枪、哪几个道具、以及是否已经举枪待选目标。 */
-  setPickable({gun=false,items=[],targets=false}={}){
-    this.pickState={gun,targets,picking:items};
+  setPickable({gun=false,items=[],targets=false,compensation=false,debugItems=false}={}){
+    this.pickState={gun,targets,picking:items,compensation,debugItems};
     if(!targets)this.hoverTarget=null;
     if(!gun)this.gunHint.material.opacity=0;
     /* 可点的道具轻微抬高一点，告诉玩家这里能点；偷取时高亮的是庄家那一排。 */
     const {side='player',slots=[],pick=slots}=items||{};
     for(const owner of ['player','ai'])for(const cell of this.itemSlots[owner]){
       if(!cell.faceUp||!cell.id){cell.hinge.position.y=cell.homeY;continue;}
-      const lifted=owner===side&&slots.includes(cell.hinge.userData.pick?.slot);
+      const lifted=(owner===side&&slots.includes(cell.hinge.userData.pick?.slot))||(debugItems&&owner==='ai');
       cell.hinge.position.y=cell.homeY+(lifted?(side==='ai'?.028:.014):0);
     }
+    for(const cell of this.compensationSlots||[])cell.hinge.position.y=cell.homeY+(compensation&&cell.faceUp ? .025 : 0);
+  }
+
+  async setRandomDeathMode(on){
+    on=!!on;if(on===this.randomDeath)return;
+    this.randomDeath=on;
+    if(!on){this.applyNightVisibility(this.night);return;}
+    for(const machine of Object.values(this.machines||{})){
+      const fuse=machine.group.getObjectByName('FuseIndicator');if(fuse)this.disposeNode(fuse,{dropGeometry:true});
+    }
+    await Promise.all([
+      ...['player','ai'].flatMap(side=>this.itemSlots[side].filter(cell=>cell.faceUp).map(cell=>this.flipLid(cell,{up:false}))),
+      ...(this.compensationSlots||[]).filter(cell=>cell.faceUp).map(cell=>this.flipLid(cell,{up:false})),
+      ...this.shellSlots.filter(cell=>cell.faceUp).map(cell=>this.flipLid(cell,{up:false})),
+    ]);
+    this.shellGroup.visible=false;this.itemGroup.visible=false;this.compensationGroup.visible=false;
+    for(const machine of Object.values(this.machines||{}))machine.group.visible=false;
+    this.applyLightRecipe({...this.lightRecipe(true),key:0,fill:0,rim:.16,bounce:0,ambient:.012,env:.008,nightFill:.12,smallLamp:0,bg:0x020202,fog:0x020202},true);
+    this.host.classList.add('random-death-mode');
   }
 
   /* 黑夜：关掉顶灯和大补光，只留吊灯小火和身前一盏近灯。对面只剩眼火和铭牌。 */
@@ -1278,6 +1435,7 @@ class BuckshotTable3D{
   }
 
   setNightMode(on){
+    if(this.randomDeath)return;
     this.applyNightVisibility(on);
     this.applyLightRecipe(this.lightRecipe(this.night),this.night);
   }
@@ -1507,13 +1665,13 @@ class BuckshotTable3D{
   }
 
   /* 点枪先把枪举到待瞄准位置，再让玩家选铭牌。 */
-  async drawGun(actor='player'){
+  async drawGun(actor='player',poseOverride=null){
     if(this.gunDrawn)return;
     this.gunDrawn=true;
     const rig=this.gunArm(actor);
     this.showArm(rig);
     await this.reach(rig,this.gripWorld(),{duration:260,quaternion:this.gun.quaternion.clone()});
-    const pose=this.gunReadyPose(actor);
+    const pose=poseOverride||this.gunReadyPose(actor);
     const from=this.gun.position.clone(),fromYaw=this.gun.rotation.y,fromPitch=this.gun.rotation.z;
     await this.tween({duration:340,update:progress=>{
       const eased=easeOut(progress);
@@ -1531,7 +1689,7 @@ class BuckshotTable3D{
   }
 
   /* 一枪分几拍：抓枪 → 瞄准 → 开火闪光 → 受击扣血 / 死亡 → 放回桌面。血量等枪口亮完再揭。 */
-  async playShoot({actor,target,live,damage,hpAfter}){
+  async playShoot({actor,target,live,damage,rawDamage=damage,fuseBlocked=false,hpAfter,fatal:fatalEvent=false}){
     const rig=this.gunArm(actor);
     const drawn=actor==='player'&&this.gunDrawn;
     if(!drawn){
@@ -1582,9 +1740,21 @@ class BuckshotTable3D{
       followGrip();
     }});
     const nextHp=hpAfter?.[target];
-    const fatal=!!(live&&damage&&nextHp!==undefined&&nextHp<=0);
+    const fatal=!!(fatalEvent||(live&&damage&&nextHp!=null&&nextHp<=0));
+    if(live&&fuseBlocked){
+      const point=this.compensationPoint(target,.12);
+      const indicator=this.machines[target]?.group.getObjectByName('FuseIndicator');
+      if(indicator){indicator.material.color.setHex(0x171717);indicator.material.emissive.setHex(0x000000);}
+      const number=this.makeCompensationLabel(`-${rawDamage}`,0xff5c35);number.position.copy(point).add(new THREE.Vector3(0,.24,.08));
+      await this.compensationSpark(point,0xff8a22);
+      number.material.map.dispose();number.material.dispose();number.removeFromParent();
+      const reduced=this.makeCompensationLabel(`-${damage}`,0xffc34d);reduced.position.copy(point).add(new THREE.Vector3(0,.24,.08));
+      await this.tween({duration:380,update:p=>{reduced.position.y=point.y+.24+.08*p;reduced.material.opacity=1-p;}});
+      reduced.material.map.dispose();reduced.material.dispose();reduced.removeFromParent();
+      if(indicator)this.disposeNode(indicator,{dropGeometry:true});
+    }
     if(live&&damage){
-      if(nextHp!==undefined){
+      if(nextHp!=null){
         this.setHp(target,nextHp);
         this.revealHp?.(target,nextHp);
       }
@@ -1781,7 +1951,8 @@ class BuckshotTable3D{
 
   setHp(side,charges){
     const machine=this.machines[side];
-    const max=this.lastState?.maxHp??machine?.max??6;
+    const stateMax=this.lastState?.maxHp;
+    const max=typeof stateMax==='object'?stateMax[side]:(stateMax??machine?.max??6);
     if(!machine||(machine.charges===charges&&machine.max===max))return;
     machine.charges=charges;
     machine.max=max;
@@ -2206,7 +2377,7 @@ class BuckshotTable3D{
     await this.playUse(opts);
   }
 
-  async playUse({actor,item,from=actor,slot=null,revealed,ejected,healed,good,delta,position,live,hp}){
+  async playUse({actor,item,from=actor,slot=null,revealed,ejected,healed,good,delta,position,live,hp,compensationState=null}){
     const cell=this.findItemSlot(from,{slot,id:item});
     if(!cell)return;
     const left=this.itemArm(actor);
@@ -2218,7 +2389,7 @@ class BuckshotTable3D{
     this.showArm(left);
     if(actor==='player')payload.scale.setScalar(ITEM_SCALE*.48);
     await this.carryTo(payload,this.useHold(actor,item),320,left);
-    await this.playEffect(actor,item,payload,{revealed,ejected,healed,good,delta,position,live,hp},left,right);
+    await this.playEffect(actor,item,payload,{revealed,ejected,healed,good,delta,position,live,hp,state:compensationState},left,right);
     await this.seatPayload(cell,payload,240,left);
     await this.flipLid(cell,{up:false});
     this.detachPayload(cell);
@@ -2235,6 +2406,190 @@ class BuckshotTable3D{
     if(item==='magnifier')return this.fxMagnifier(actor,payload,extra,left,right);
     if(item==='adrenaline')return this.fxAdrenaline(actor,payload,left);
     if(item==='burnerPhone')return this.fxPhone(actor,payload,extra,left);
+    if(['lightRemote','fruitKnife','spareFuse','boreFilm','reverseCoin','powerStrip'].includes(item))
+      return this.fxCompensationPreview(actor,item,payload,left,extra);
+  }
+
+  compensationPoint(side,y=.2){
+    const machine=this.machines[side];
+    if(!machine)return new THREE.Vector3(side==='player'?.5:-.5,TABLE.top+y,side==='player'?.8:-.8);
+    machine.group.updateMatrixWorld();
+    return machine.group.localToWorld(new THREE.Vector3(0,y,.12));
+  }
+
+  makeCompensationLabel(text,color=0xffb13b){
+    const texture=canvasTexture(384,160,(context,width,height)=>{
+      context.clearRect(0,0,width,height);
+      context.fillStyle='rgba(8,10,9,.88)';context.fillRect(8,8,width-16,height-16);
+      context.strokeStyle='#a77a34';context.lineWidth=8;context.strokeRect(8,8,width-16,height-16);
+      context.fillStyle=`#${color.toString(16).padStart(6,'0')}`;
+      context.textAlign='center';context.textBaseline='middle';context.font='900 70px Arial';context.fillText(text,width/2,height/2+3);
+    });
+    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,transparent:true,depthWrite:false,toneMapped:false}));
+    sprite.scale.set(.34,.14,1);this.scene.add(sprite);return sprite;
+  }
+
+  async compensationSpark(point,color=0xff8b24){
+    const light=new THREE.PointLight(color,5.5,1.1,2);light.position.copy(point);this.scene.add(light);
+    const bits=[];
+    for(let i=0;i<7;i++){
+      const mesh=new THREE.Mesh(new THREE.BoxGeometry(.025,.006,.006),new THREE.MeshBasicMaterial({color,toneMapped:false}));
+      mesh.position.copy(point);mesh.userData.flight=new THREE.Vector3((Math.random()-.5)*.38,.08+Math.random()*.22,(Math.random()-.5)*.38);
+      this.scene.add(mesh);bits.push(mesh);
+    }
+    await this.tween({duration:260,update:p=>{
+      light.intensity=5.5*(1-p);
+      for(const bit of bits){bit.position.copy(point).addScaledVector(bit.userData.flight,p);bit.material.opacity=1-p;bit.material.transparent=true;}
+    }});
+    light.removeFromParent();for(const bit of bits)this.disposeNode(bit,{dropGeometry:true});
+  }
+
+  async expireFuses(sides=[]){
+    for(const side of sides){
+      const indicator=this.machines[side]?.group.getObjectByName('FuseIndicator');
+      if(!indicator)continue;
+      indicator.material.color.setHex(0x151515);indicator.material.emissive.setHex(0x000000);
+      const start=indicator.position.clone();
+      await this.tween({duration:360,update:p=>{indicator.position.y=start.y-.28*easeIn(p);indicator.rotation.x=p*Math.PI*1.5;indicator.material.opacity=1-p;indicator.material.transparent=true;}});
+      this.disposeNode(indicator,{dropGeometry:true});
+    }
+  }
+
+  showFilmResults(actor,state,position){
+    const holder=new THREE.Group();holder.name='FilmResults';holder.position.copy(position);
+    holder.quaternion.copy(this.camera.quaternion);
+    const known=actor==='player'?(state?.records?.player||[]).slice(0,2):[];
+    for(let i=0;i<2;i++){
+      const entry=known[i],front=actor==='player'&&entry;
+      const texture=canvasTexture(420,260,(context,width,height)=>{
+        context.fillStyle=front?(entry.live?'rgba(91,22,18,.94)':'rgba(13,48,68,.94)'):'rgba(12,31,30,.96)';context.fillRect(0,0,width,height);
+        context.strokeStyle=front?'#e7ddc5':'#426d68';context.lineWidth=12;context.strokeRect(8,8,width-16,height-16);
+        context.fillStyle=front?'#f7edd9':'#78948f';context.textAlign='center';context.textBaseline='middle';context.font='900 64px Arial';
+        context.fillText(front?`第 ${i+1} 发`:'加密背面',width/2,82);
+        context.font='900 84px Arial';context.fillText(front?(entry.live?'实弹':'空弹'):'???',width/2,176);
+      });
+      const plate=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,transparent:true,depthWrite:false,toneMapped:false}));
+      plate.scale.set(.29,.18,1);plate.position.set((i-.5)*.31,0,0);holder.add(plate);
+    }
+    this.scene.add(holder);return holder;
+  }
+
+  async showBoreFilmInspection({state,actor='player',duration=2600}={}){
+    if(actor!=='player'||!state)return;
+    /* 底片的私密读数不是桌面弹槽：把枪举到近景后，只在当前玩家本地显示透视层。 */
+    const inspectionPose={position:this.nearView(-.16,-.2,.68),yaw:.28};
+    if(!this.gunDrawn)await this.drawGun(actor,inspectionPose);
+    const sight=new THREE.Group();sight.name='BoreFilmSight';this.gun.add(sight);
+    const records=(state.records?.player||[]).slice(0,2);
+    const saved=[];
+    this.gun.traverse(object=>{
+      if(object===sight||object.parent===sight||!object.isMesh||!object.material)return;
+      const materials=Array.isArray(object.material)?object.material:[object.material];
+      for(const material of materials){saved.push({material,transparent:material.transparent,opacity:material.opacity,depthWrite:material.depthWrite});material.transparent=true;material.opacity=Math.min(material.opacity??1,.16);material.depthWrite=false;material.needsUpdate=true;}
+    });
+    try{
+    for(let i=0;i<2;i++){
+      const live=records[i]?.live===true;
+      const shell=this.shellMesh(live);shell.scale.setScalar(1.35);shell.position.set(.52-i*.22,.055,0);this.lightInfoShell(shell,live);sight.add(shell);
+      const label=canvasTexture(420,100,(context,width,height)=>{
+        context.fillStyle='rgba(8,13,14,.93)';context.fillRect(4,4,width-8,height-8);
+        context.strokeStyle=live?'#dc6d42':'#58b9df';context.lineWidth=6;context.strokeRect(4,4,width-8,height-8);
+        context.fillStyle='#f3ead8';context.textAlign='center';context.textBaseline='middle';context.font='900 46px Arial';context.fillText(`第 ${i+1} 发：${live?'实弹':'空弹'}`,width/2,height/2+2);
+      });
+      const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:label,transparent:true,depthWrite:false,toneMapped:false}));
+      sprite.scale.set(.25,.06,1);sprite.position.set(.52-i*.22,.18,0);sight.add(sprite);
+    }
+    const scan=new THREE.PointLight(0x55e8dc,3.8,1.2,2);scan.position.set(.36,.16,.12);sight.add(scan);
+    await this.tween({duration:280,update:p=>{scan.intensity=1.2+3*Math.sin(p*Math.PI);}});
+    await this.tween({duration,update:p=>{scan.intensity=1.8+.8*Math.sin(p*Math.PI*5);}});
+    }finally{
+      this.disposeNode(sight,{dropGeometry:true});
+      for(const entry of saved){entry.material.transparent=entry.transparent;entry.material.opacity=entry.opacity;entry.material.depthWrite=entry.depthWrite;entry.material.needsUpdate=true;}
+      this.setGunFade(1);
+      if(this.gunDrawn)await this.holsterGun(actor);
+      this.setGunFade(1);
+    }
+  }
+
+  async fxCompensationPreview(actor,item,payload,left,extra={}){
+    const hold=this.useHold(actor,item);
+    if(item==='lightRemote'){
+      await this.tween({duration:180,update:p=>{payload.rotation.z=-.12*Math.sin(p*Math.PI);this.followHand(left,payload.getWorldPosition(new THREE.Vector3()));}});
+      await this.transitionLighting(!this.night);
+    }else if(item==='fruitKnife'){
+      const blade=payload.getObjectByName('KnifeBladePivot');
+      if(blade){const start=blade.rotation.y;await this.tween({duration:230,update:p=>{blade.rotation.y=THREE.MathUtils.lerp(start,0,easeOut(p));this.followHand(left,payload.getWorldPosition(new THREE.Vector3()));}});}
+      const target=actor==='player'?'ai':'player',center=this.compensationPoint(target,.12);
+      const start=center.clone().add(new THREE.Vector3(-.28,.18,.08)),end=center.clone().add(new THREE.Vector3(.28,-.02,.08));
+      await this.carryTo(payload,start,260,left);
+      const from=payload.position.clone();
+      await this.tween({duration:300,update:p=>{payload.position.lerpVectors(from,end,easeInOut(p));payload.rotation.z=-.55+.95*p;this.followHand(left,payload.getWorldPosition(new THREE.Vector3()));}});
+      await this.compensationSpark(center,0xe5c27d);
+      const next=extra.state?.maxHp?.[target];
+      if(Number.isFinite(next)){
+        const machine=this.machines[target],removed=Math.max(1,machine.max-next),ticks=[];
+        for(let i=0;i<removed;i++){
+          const tick=new THREE.Mesh(new THREE.BoxGeometry(.025,.065,.012),new THREE.MeshStandardMaterial({color:0x7dffa8,emissive:0x2d9c50,emissiveIntensity:1.5,roughness:.35}));
+          tick.position.copy(center).add(new THREE.Vector3((i-(removed-1)/2)*.035,.02,.12));tick.userData.start=tick.position.clone();this.scene.add(tick);ticks.push(tick);
+        }
+        await this.tween({duration:380,update:p=>{for(const [i,tick] of ticks.entries()){tick.position.copy(tick.userData.start).add(new THREE.Vector3((i%2?.08:-.08)*p,-.36*easeIn(p),.05*p));tick.rotation.z=p*(i%2?2.2:-2.5);}}});
+        for(const tick of ticks)this.disposeNode(tick,{dropGeometry:true});
+        machine.max=next;machine.face.material.map.dispose();machine.face.material.map=machineTexture(extra.state.hp[target],next);machine.face.material.needsUpdate=true;
+      }
+    }else if(item==='spareFuse'){
+      /* 只从底座拔出保险管；底座仍留在使用者手中，不能整块塞进生命牌。 */
+      const source=payload.getObjectByName('FuseGlass'),socket=this.compensationPoint(actor,.06);
+      const cartridge=new THREE.Group();cartridge.name='FuseCartridgeAnimation';
+      const glass=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.1,10),new THREE.MeshStandardMaterial({color:0xff8b24,transparent:true,opacity:.88,emissive:0xb93600,emissiveIntensity:1.2,roughness:.2}));
+      glass.rotation.z=Math.PI/2;cartridge.add(glass);
+      for(const x of [-.06,.06]){const cap=new THREE.Mesh(new THREE.CylinderGeometry(.017,.017,.022,10),new THREE.MeshStandardMaterial({color:0x9a8e75,metalness:.82,roughness:.25}));cap.rotation.z=Math.PI/2;cap.position.x=x;cartridge.add(cap);}
+      cartridge.position.copy(source?.getWorldPosition(new THREE.Vector3())||payload.getWorldPosition(new THREE.Vector3()));this.scene.add(cartridge);
+      if(source)source.visible=false;
+      payload.traverse(object=>{if(object.name==='FuseCap')object.visible=false;});
+      const pull=cartridge.position.clone().add(new THREE.Vector3(actor==='player'?.1:-.1,.1,.02));
+      await this.tween({duration:220,update:p=>{cartridge.position.lerpVectors(source?.getWorldPosition(new THREE.Vector3())||pull,pull,easeOut(p));this.followHand(left,payload.getWorldPosition(new THREE.Vector3()));}});
+      const from=cartridge.position.clone(),above=socket.clone().add(new THREE.Vector3(0,.18,.06));
+      await this.tween({duration:300,update:p=>{cartridge.position.lerpVectors(from,above,easeInOut(p));cartridge.rotation.z=.25*Math.sin(p*Math.PI);this.followHand(left,payload.getWorldPosition(new THREE.Vector3()));}});
+      const insertFrom=cartridge.position.clone();
+      await this.tween({duration:260,update:p=>{cartridge.position.lerpVectors(insertFrom,socket,easeIn(p));cartridge.rotation.z=THREE.MathUtils.lerp(.25,Math.PI/2,p);this.followHand(left,payload.getWorldPosition(new THREE.Vector3()));}});
+      await this.compensationSpark(socket,0xff7a18);
+      this.disposeNode(cartridge,{dropGeometry:true});
+      const machine=this.machines[actor];
+      const old=machine.group.getObjectByName('FuseIndicator');if(old)this.disposeNode(old,{dropGeometry:true});
+      const indicator=new THREE.Mesh(new THREE.CylinderGeometry(.014,.014,.11,8),new THREE.MeshStandardMaterial({color:0xff8b24,emissive:0xb93600,emissiveIntensity:1.4,roughness:.22}));
+      indicator.name='FuseIndicator';indicator.rotation.z=Math.PI/2;indicator.position.set(.13,.1,.1);machine.group.add(indicator);
+    }else if(item==='boreFilm'){
+      const inspect=actor==='player'?this.nearView(.04,.02,.22):new THREE.Vector3(-.06,.61,DEALER_Z+.58);
+      await this.carryTo(payload,inspect,360,left);payload.rotation.set(-.18,0,actor==='player'?.04:-.04);
+      /* 正式补偿局在底片举起后先展示新弹仓装填，随后才显影。调试陈列用当前弹仓模拟。 */
+      if(extra.reloadFilm&&extra.state)await this.playReload(extra.state);
+      const glow=new THREE.PointLight(0x55e8dc,3.8,1.05,2);glow.position.copy(inspect).add(new THREE.Vector3(0,.06,.15));this.scene.add(glow);
+      await this.tween({duration:260,update:p=>{glow.intensity=.8+3*Math.sin(p*Math.PI);payload.rotation.y=.1*Math.sin(p*Math.PI);this.followHand(left,payload.getWorldPosition(new THREE.Vector3()));}});
+      const resultAt=inspect.clone().add(actor==='player'?new THREE.Vector3(0,.18,-.03):new THREE.Vector3(0,.17,.08));
+      const results=this.showFilmResults(actor,extra.state,resultAt);
+      await this.tween({duration:620,update:p=>{glow.intensity=1.1+.7*Math.sin(p*Math.PI*4);results.scale.setScalar(.88+.12*easeOut(Math.min(1,p*3)));this.followHand(left,payload.getWorldPosition(new THREE.Vector3()));}});
+      glow.removeFromParent();this.disposeNode(results,{dropGeometry:true});
+    }else if(item==='reverseCoin'){
+      const other=actor==='player'?'ai':'player';this.plaqueTurn=other;this.updatePlaqueLights();
+      const release=payload.position.clone().add(new THREE.Vector3(actor==='player'?.1:-.1,.13,0));
+      await this.carryTo(payload,release,180,left);
+      const gunPoint=this.gunRest.position.clone().add(new THREE.Vector3(actor==='player'?-.22:.22,.055,.03)),from=payload.position.clone();
+      /* 松手后硬币独立飞行，手停在释放点，不再追着硬币跑。 */
+      await this.tween({duration:720,update:p=>{payload.position.lerpVectors(from,gunPoint,easeInOut(p));payload.position.y+=Math.sin(p*Math.PI)*.48;payload.rotation.x=p*Math.PI*10;payload.rotation.z=p*Math.PI*2;}});
+      await this.tween({duration:260,update:p=>{payload.rotation.y+=.08*Math.sin(p*Math.PI);}});
+      this.plaqueTurn=actor;
+      await this.tween({duration:420,update:p=>this.updatePlaqueLights(Math.sin(p*Math.PI))});
+      const drop=payload.position.clone(),slit=drop.clone().add(new THREE.Vector3(actor==='player'?-.16:.16,-.5,.05));
+      await this.tween({duration:360,update:p=>{payload.position.lerpVectors(drop,slit,easeIn(p));payload.rotation.x+=p*.55;payload.scale.multiplyScalar(1-p*.035);}});
+      payload.visible=false;
+    }else if(item==='powerStrip'){
+      await this.tween({duration:280,update:p=>{payload.position.x=hold.x-.12*p;this.followHand(left,payload.getWorldPosition(new THREE.Vector3()));}});
+      await this.tween({duration:220,update(){}});
+      const from=this.captureLights(),to={...this.lightRecipe(true),key:0,fill:0,rim:.16,bounce:0,ambient:.012,env:.008,nightFill:.12,smallLamp:0,bg:0x020202,fog:0x020202};
+      await this.tween({duration:900,update:p=>this.lerpLights(from,to,easeIn(p),true)});
+      await this.tween({duration:360,update(){}});
+      this.setNightMode(false);
+    }
   }
 
   async fxCigarette(actor,payload,extra,left){
@@ -2427,11 +2782,13 @@ class BuckshotTable3D{
         this.frame=requestAnimationFrame(next=>this.animate(next));
         return;
       }
-      const delta=Math.min((time-(this.lastFrame||time))/1000,.05);
+      /* 渲染帧偶尔掉帧时，动画仍按真实经过时间推进；否则底片、香烟等动作会在低帧率下悬停数秒。 */
+      const rawDelta=Math.max(0,(time-(this.lastFrame||time))/1000);
+      const delta=Math.min(rawDelta,.05);
       this.lastFrame=time;
       for(const tween of [...this.tweens]){
         try{
-          tween.elapsed+=delta*1000;
+          tween.elapsed+=rawDelta*1000;
           const progress=clamp(tween.elapsed/Math.max(1,tween.duration),0,1);
           tween.update(progress);
           if(progress>=1){this.tweens.delete(tween);tween.resolve();}

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomBytes,randomUUID} from 'node:crypto';
 import {MemoryRoomStore} from '../../texas-holdem/server/rooms.mjs';
-import {BuckshotRooms,TURN_MS,ROOM_TTL} from '../server/rooms.mjs';
+import {BuckshotRooms,TURN_MS,COMPENSATION_MS,ROOM_TTL} from '../server/rooms.mjs';
 
 const key=()=>randomBytes(24).toString('hex');
 const id=()=>randomUUID();
@@ -54,6 +54,19 @@ test('host cannot start until both humans are seated and ready',async()=>{
   await assert.rejects(f.service.request(f.code,'','join',{name:'Late',seatKey:key()}),/已开始/);
 });
 
+test('host can create a challenge room and both seats receive the selected mode',async()=>{
+  const store=new MemoryRoomStore(),service=new BuckshotRooms(store),hostKey=key();
+  const host=await service.create({name:'Host',seatKey:hostKey,mode:'challenge'});
+  const guest=await service.request(host.room.code,'','join',{name:'Guest',seatKey:key()});
+  assert.equal(host.room.mode,'challenge');assert.equal(guest.room.mode,'challenge');
+  const f={store,service,players:[host,guest],code:host.room.code};
+  const started=await start(f);
+  assert.equal(started.game.mode,'challenge');
+  assert.ok(started.game.maxHp>=6&&started.game.maxHp<=10);
+  assert.ok(started.game.ammoCount>=2&&started.game.ammoCount<=4);
+  await assert.rejects(service.create({name:'Bad',seatKey:key(),mode:'night'}),/模式无效/);
+});
+
 test('each seat sees itself as the near side and cannot read the chamber order',async()=>{
   const f=await setup(),s=await start(f);
   const guest=await f.service.request(f.code,f.players[1].token,'state');
@@ -86,6 +99,38 @@ test('timeout forces a shot at the opponent and unauthenticated polls cannot adv
   const stuck=await f.store.get(f.code,f.now());
   await assert.rejects(f.service.request(f.code,key(),'state'));
   assert.equal((await f.store.get(f.code,f.now())).room.version,stuck.room.version);
+});
+
+test('compensation is server-authoritative, survives polling, and only the weak seat may choose',async()=>{
+  const f=await setup();await start(f);
+  const stored=f.store.rows.get(f.code);
+  stored.room.game.hp={player:2,ai:5};stored.room.game.turn='ai';stored.room.game.ammo=[];
+  stored.room.game.pendingReload={beforeLighting:stored.room.game.lighting,pendingTurn:'ai'};
+  stored.room.deadline=f.now()+TURN_MS;
+  const opened=await f.service.request(f.code,f.players[0].token,'state');
+  assert.equal(opened.game.phase,'compensation');assert.equal(opened.game.compensation.chooser,'player');
+  assert.equal(opened.room.deadline,f.now()+COMPENSATION_MS);
+  const other=await f.service.request(f.code,f.players[1].token,'state');
+  assert.deepEqual(other.game.compensation.offers,opened.game.compensation.offers);
+  await assert.rejects(request(f,1,'action',{action:{type:'compensation',slot:0}}),/弱势方/);
+  const chosen=await request(f,0,'action',{action:{type:'compensation',slot:0}});
+  assert.equal(chosen.game.phase,'playing');assert.equal(chosen.game.round,2);
+});
+
+test('compensation timeout never auto-selects the rare power strip',async()=>{
+  const f=await setup();await start(f);
+  const stored=f.store.rows.get(f.code);
+  stored.room.game.hp={player:2,ai:5};stored.room.game.turn='ai';stored.room.game.ammo=[];
+  stored.room.game.pendingReload={beforeLighting:stored.room.game.lighting,pendingTurn:'ai'};
+  await f.service.request(f.code,f.players[0].token,'state');
+  const opened=f.store.rows.get(f.code);
+  opened.room.game.compensation.offers=['powerStrip','reverseCoin'];
+  opened.room.game.compensation.rare=true;opened.room.game.compensation.timeoutChoice='reverseCoin';
+  opened.room.deadline=f.now()+COMPENSATION_MS;
+  f.advance(COMPENSATION_MS+1);
+  const after=await f.service.request(f.code,f.players[0].token,'state');
+  assert.equal(after.game.randomDeath,false);assert.equal(after.game.phase,'playing');
+  assert.equal(after.game.lastEvent.item,'reverseCoin');
 });
 
 test('leave during a match awards the win to the remaining player',async()=>{
