@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/DanTargaryen/open-tabletop/actions/workflows/ci.yml/badge.svg)](https://github.com/DanTargaryen/open-tabletop/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/Code-MIT-d2b77c)](LICENSE)
 
-一个可以自己运行、继续扩展的开源网页游戏合集。**现已包含德州扑克、璀璨宝石·宝可梦特别款、出包魔法师、飞行棋、暗膛协议与钢铁远征**：支持单人本地 AI、同屏玩法或创建房间与朋友联机。
+一个可以自己运行、继续扩展的开源网页游戏合集。**现已包含德州扑克、璀璨宝石·宝可梦特别款、出包魔法师、飞行棋、暗膛协议、钢铁远征与校园祭冒险棋**：支持单人本地 AI、同屏玩法或创建房间与朋友联机。
 
 [English](README.en.md) · [添加游戏](docs/adding-a-game.md) · [架构说明](docs/architecture.md) · [参与贡献](CONTRIBUTING.md)
 
@@ -10,11 +10,11 @@
 
 ## 先玩一局
 
-**[打开游戏大厅](https://velvet-poker-friends.linming-dracarys.chatgpt.site/)**，从六款游戏中选择单人模式、同屏玩法或好友房。
+**[打开游戏大厅](https://velvet-poker-friends.linming-dracarys.chatgpt.site/)**，从七款游戏中选择单人模式、同屏玩法或好友房。
 
 [宝可梦特别款 · 单人冒险](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/splendor/) · [宝可梦特别款 · 好友联机](https://velvet-poker-friends.linming-dracarys.chatgpt.site/games/splendor/online) · [德州扑克试玩](https://velvet-poker-friends.linming-dracarys.chatgpt.site)
 
-统一首页已部署到现有 Sites 域名；六款游戏均支持好友房，飞行棋还支持 2–4 人同屏。钢铁远征是 2D 电脑端游戏，移动使用键盘，瞄准、选弹、开火与菜单同时支持鼠标和键盘。原游戏直达路径及旧的扑克房间邀请链接继续可用。
+统一首页已部署到现有 Sites 域名；七款游戏均支持好友房，飞行棋还支持 2–4 人同屏。钢铁远征是 2D 电脑端游戏，移动使用键盘，瞄准、选弹、开火与菜单同时支持鼠标和键盘。原游戏直达路径及旧的扑克房间邀请链接继续可用。
 
 德州扑克包含：
 
@@ -39,6 +39,12 @@
 已发行宝可梦特别版规则的非官方实现：2–4 个座位、90 张卡、捕捉与进化、特殊卡和 18 分终局。支持单人本地 AI、好友准备开局、AI 补位、刷新恢复与独立房间存储。
 
 卡表来自社区转录，尚未逐张核对实体版；55 种宝可梦均有本地角色图片，采用 The Artificial 作者自绘、允许署名分享的统一图标，无数字替补。详见 [玩法与运行](games/splendor/README.md) 及 [规则与素材来源](games/splendor/SOURCES.md)。宝可梦联机支持 Node 服务或 Cloudflare Workers + D1；Worker 需要应用独立的宝可梦房间与限流表迁移。
+
+## 校园祭冒险棋（当前开发版本）
+
+新增《放学后，掷个六！》：60 格固定地图、51 种事件、六位角色技能和六种基础道具。支持单人 AI、2–4 人同屏及 Node 好友房，包含检查点、复活、同时选择、记忆挑战、存档恢复与回合超时。
+
+本地启动后进入 `/games/anime-campus/index.html` 或 `/games/anime-campus/online.html`。公开版本由部署流程单独发布。真实角色头像是按来源安装的可选素材包，不包含在 MIT 代码许可内。参阅 [校园祭说明](games/anime-campus/README.md) 与 [素材来源](games/anime-campus/SOURCES.md)。
 
 ## 飞行棋
 
@@ -118,13 +124,13 @@ npm test
 npm run build:static
 ```
 
-测试覆盖六款游戏的规则引擎，以及六款联机游戏的房间逻辑、隐藏信息投影、同步和根服务器。静态构建会将资源复制到 `.dist/public`；单人钢铁远征可直接静态运行，六款游戏的联机功能需要提供 `/api/poker`、`/api/splendor`、`/api/abracada`、`/api/aeroplane`、`/api/buckshot` 与 `/api/steel-arc` 的 Node 或 Worker + D1 后端。
+测试覆盖七款游戏的规则引擎，以及七款联机游戏的房间逻辑、隐藏信息投影、同步和根服务器。静态构建会将资源复制到 `.dist/public`；单人钢铁远征可直接静态运行，七款游戏的联机功能需要提供 `/api/poker`、`/api/splendor`、`/api/abracada`、`/api/aeroplane`、`/api/buckshot`、`/api/steel-arc` 与 `/api/anime-campus` 的 Node 或 Worker + D1 后端。
 
 默认入口是 `server/index.mjs`，适合在自己的 Node 环境中运行。仓库也提供可选的 Cloudflare 适配器：
 
 - `deploy/cloudflare/worker.mjs`
 - `deploy/cloudflare/wrangler.example.jsonc`
-- `deploy/cloudflare/migrations/`：五款游戏的顺序迁移；每款游戏使用独立房间与限流表，飞行棋需应用 `0004_aeroplane_rooms.sql`，暗膛协议需应用 `0005_buckshot_rooms.sql`。
+- `deploy/cloudflare/migrations/`：七款游戏的顺序迁移；每款游戏使用独立房间与限流表，飞行棋需应用 `0004_aeroplane_rooms.sql`，暗膛协议需应用 `0005_buckshot_rooms.sql`，钢铁远征需 `0006_steel_arc_rooms.sql`，校园祭需 `0007_anime_campus_rooms.sql`。
 
 示例配置中的数据库信息是占位符。使用前需要自行创建并绑定资源；本仓库不附带任何可复用的托管账户或数据库 ID。具体边界见 [架构说明](docs/architecture.md)。
 

@@ -1,3 +1,4 @@
+import {handleCampus} from '../../games/anime-campus/server/api.mjs';
 import {handlePoker} from '../../games/texas-holdem/server/api.mjs';
 import {handleAbracada} from '../../games/abracada-what/server/api.mjs';
 import {handleSplendorD1} from '../../games/splendor/server/d1-store.mjs';
@@ -7,6 +8,7 @@ import {handleSteelArc} from '../../games/steel-arc/server/api.mjs';
 export default {
  async fetch(request,env){
   const path=new URL(request.url).pathname;
+  if(path.startsWith('/api/anime-campus/'))return handleCampus(request,env.DB);
   if(path.startsWith('/api/aeroplane/'))return handleAeroplane(request,env.DB);
   if(path.startsWith('/api/splendor/'))return handleSplendorD1(request,env.DB);
   if(path.startsWith('/api/poker/'))return handlePoker(request,env.DB);

@@ -11,7 +11,7 @@
   "scripts": {
     "start": "node server/index.mjs",
     "lan": "node server/index.mjs --host 0.0.0.0",
-    "test": "node --test",
+    "test": "node scripts/test.mjs",
     "test:browser": "node scripts/check-browser-playability.mjs",
     "test:e2e:steel": "node scripts/check-steel-friend-room.mjs",
     "test:audio:steel": "node scripts/check-steel-audio.mjs",

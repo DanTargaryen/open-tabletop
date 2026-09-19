@@ -21,3 +21,4 @@ artifacts/
 .playwright-cli/
 _qa/
 output/playwright/
+games/anime-campus/web/assets/official/

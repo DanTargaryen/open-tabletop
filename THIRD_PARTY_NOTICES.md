@@ -52,3 +52,7 @@ Steel Expedition reuses the previously downloaded *Ambient Relaxing Loop* by isa
 ## Aeroplane Chess / 飞行棋
 
 The game logic, SVG board, airplane controls, and synthesized Web Audio effects are original Open Tabletop implementation code under the repository MIT license. `games/aeroplane-chess/web/assets/airplane-club.jpg` is an AI-generated illustration created for this project; it is not scanned or extracted from any published board. Traditional game names and rule references do not imply publisher endorsement. See [rule and asset sources](games/aeroplane-chess/SOURCES.md).
+
+## Campus Festival / 放学后，掷个六！
+
+The campus board layout, rules engine, UI, and synthesized sound are project code. Anime character names and inspired decorative motifs do not imply endorsement. Original official character pictures are an optional local installation in `games/anime-campus/web/assets/official/`, excluded from Git and from the project MIT license. Source URLs, hashes and display viewports are recorded in `games/anime-campus/assets-sources.json`; see [asset details](games/anime-campus/SOURCES.md).
