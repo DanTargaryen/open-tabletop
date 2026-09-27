@@ -1,7 +1,7 @@
 import {enterDuelFixture} from './room-fixture.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createTeamMatch,moveTank} from '../web/engine.js';
+import {createTeamMatch,moveTank,settleTank} from '../web/engine.js';
 import {stepTankControls,CONTROL_CONFIG} from '../web/controls.js';
 import {PredictedMovement} from '../web/movement.js';
 import {MemorySteelArcRoomStore,SteelArcRoomService} from '../server/rooms.mjs';
@@ -11,6 +11,13 @@ test('shared controls move at solo speed, independent of key repeat',()=>{
   const x=state.tanks.A1.x;
   for(let i=0;i<60;i++)stepTankControls(state,'A1',new Set(['KeyD']),1/60);
   assert.ok(Math.abs(state.tanks.A1.x-x-CONTROL_CONFIG.moveSpeed)<1e-8);
+});
+test('steep but passable terrain does not trap a tank',()=>{
+  const state=createTeamMatch({seed:1});state.terrain.themeId='classic';state.terrain.points.fill(500);state.phase='aim';
+  for(let i=125;i<state.terrain.points.length;i++)state.terrain.points[i]=220;
+  const tank=state.tanks.A1;tank.x=240;settleTank(tank,state.terrain);
+  assert.equal(moveTank(state,'A1',20),20);
+  assert.equal(tank.x,260);assert.equal(tank.y,205);
 });
 test('delayed movement acknowledgement preserves later inputs without a position snap',()=>{
   const server=createTeamMatch({seed:1});server.terrain.points.fill(500);server.phase='aim';
@@ -47,4 +54,15 @@ test('server replays frame steps exactly and rejects over-limit batches without 
   assert.deepEqual(result.game.tanks.A1,expected.tanks.A1);
   await assert.rejects(()=>service.request(code,owner.token,'action',{type:'move',steps:[20,20],version:result.room.version,requestId:'movement002'}),{status:400});
   const after=await service.request(code,owner.token,'state');assert.deepEqual(after.game.tanks.A1,result.game.tanks.A1);
+});
+test('fire accepts pending movement in the same authoritative action',async()=>{
+  const service=new SteelArcRoomService(new MemorySteelArcRoomStore());
+  const owner=await service.create({name:'Host'}),code=owner.room.code;
+  await service.request(code,owner.token,'ai',{slot:'B1',enabled:true});
+  await service.request(code,owner.token,'start');const started=await enterDuelFixture(service,code,owner.token);
+  const expected=structuredClone(started.game),steps=Array(40).fill(1.5);
+  for(const distance of steps)moveTank(expected,'A1',distance);
+  const fired=await service.request(code,owner.token,'action',{type:'fire',heading:45,power:70,steps,version:started.room.version,requestId:'move-fire-0001'});
+  const shot=fired.game.shotHistory.find(item=>item.owner==='A1');assert.ok(shot);
+  assert.ok(Math.abs(shot.replayState.tanks.A1.x-expected.tanks.A1.x)<1e-8);
 });

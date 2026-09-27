@@ -4,7 +4,8 @@
 } from '../web/engine.js';
 
 import {MAX_POWER} from '../web/aim-limits.js';
-import {BASE_MOVE_SPEED} from '../web/motion-config.js';
+import {BIOME_IDS} from '../web/biomes.js';
+import {BASE_MOVE_SPEED,MAX_FIRE_MOVE_STEPS,MAX_FIRE_MOVE_DISTANCE} from '../web/motion-config.js';
 export const ROOM_TTL=24*60*60*1000;
 export const TURN_MS=40000;
 export const DUEL_READY_MS=60000;
@@ -22,7 +23,7 @@ function roomCode(hash,attempt){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';r
 function syncAi(room){const occupied=new Set(active(room).map(member=>member.slot));room.aiSlots=(room.aiSlots||[]).filter(slot=>!occupied.has(slot));if(room.engine)for(const slot of room.engine.turnOrder){const member=active(room).find(item=>item.slot===slot),ai=room.aiSlots.includes(slot);room.engine.tanks[slot].ai=ai;room.engine.tanks[slot].name=member?.name||`AI-${slot}`;}}
 function deadline(room,now){room.deadline=room.status==='playing'&&!room.duelReadyUntil?now+TURN_MS:null;}
 function seatView(room,slot){const member=active(room).find(item=>item.slot===slot);if(member)return{id:member.id,name:member.name,team:slot[0],slot,ready:member.ready,owner:member.id===room.ownerId,ai:false};const ai=(room.aiSlots||[]).includes(slot);return{id:ai?`ai-${slot}`:`empty-${slot}`,name:ai?`AI-${slot}`:'空位',team:slot[0],slot,ready:ai,owner:false,ai,difficulty:room.aiDifficulties?.[slot]||'normal'};}
-function view(room,member,now){return{room:{schema:2,code:room.code,status:room.status,version:room.version,maxPlayers:room.maxPlayers,humanCount:active(room).length,aiCount:room.aiSlots.length,selfId:member.id,selfSlot:member.slot,isOwner:room.ownerId===member.id,selfReady:member.ready,selfSurrendered:Boolean(member.surrendered),duelWaiting:Boolean(room.duelReadyUntil),selfDuelReady:Boolean(member.duelReady),duelReadyUntil:room.duelReadyUntil||null,serverNow:now,deadline:room.deadline,turnOrder:room.engine?[...room.engine.turnOrder]:SLOTS.filter(slot=>active(room).some(item=>item.slot===slot)||room.aiSlots.includes(slot)),roster:active(room).map(item=>({id:item.id,name:item.name,team:item.slot[0],slot:item.slot,ready:item.ready,surrendered:Boolean(item.surrendered),owner:item.id===room.ownerId,ai:false})),seats:SLOTS.map(slot=>seatView(room,slot))},game:room.engine?clone(room.engine):null,log:[...room.log]};}
+function view(room,member,now){return{room:{schema:2,code:room.code,status:room.status,version:room.version,mapChoice:room.mapChoice||'random',maxPlayers:room.maxPlayers,humanCount:active(room).length,aiCount:room.aiSlots.length,selfId:member.id,selfSlot:member.slot,isOwner:room.ownerId===member.id,selfReady:member.ready,selfSurrendered:Boolean(member.surrendered),duelWaiting:Boolean(room.duelReadyUntil),selfDuelReady:Boolean(member.duelReady),duelReadyUntil:room.duelReadyUntil||null,serverNow:now,deadline:room.deadline,turnOrder:room.engine?[...room.engine.turnOrder]:SLOTS.filter(slot=>active(room).some(item=>item.slot===slot)||room.aiSlots.includes(slot)),roster:active(room).map(item=>({id:item.id,name:item.name,team:item.slot[0],slot:item.slot,ready:item.ready,surrendered:Boolean(item.surrendered),owner:item.id===room.ownerId,ai:false})),seats:SLOTS.map(slot=>seatView(room,slot))},game:room.engine?clone(room.engine):null,log:[...room.log]};}
 
 function nextAiTurn(room,now){
   if(room.duelReadyUntil)return;
@@ -92,7 +93,7 @@ export class SteelArcRoomService{
     check(typeof key==='string'&&/^[a-f0-9]{48}$/.test(key),400,'座位密钥无效，请重新进入。');
     const now=this.clock(),member={id:crypto.randomUUID(),name:player,slot:'A1',ready:true,left:false,lastSeen:now,tokenHash:await hashToken(key),processed:[]};
     for(let i=0;i<12;i++){
-      const room={schema:2,code:roomCode(member.tokenHash,i),maxPlayers,version:1,status:'waiting',ownerId:member.id,members:[member],aiSlots:[],deadline:null,engine:null,log:[],expiresAt:now+ROOM_TTL};
+      const room={schema:2,code:roomCode(member.tokenHash,i),maxPlayers,version:1,status:'waiting',mapChoice:'random',ownerId:member.id,members:[member],aiSlots:[],deadline:null,engine:null,log:[],expiresAt:now+ROOM_TTL};
       const existing=await this.store.get(room.code,now);
       if(existing){
         const owner=active(existing.room).find(item=>item.tokenHash===member.tokenHash);
@@ -143,7 +144,12 @@ export class SteelArcRoomService{
           check(SLOTS.includes(wanted),400,'error');
           check(!active(room).some(item=>item.slot===wanted&&item.id!==member.id)&&!room.aiSlots.includes(wanted),409,'该位置已被占用。');
           if(member.slot!==wanted){member.slot=wanted;member.ready=member.id===room.ownerId;room.version++;changed=true;syncAi(room);}
-        }else if(operation==='ai'){check(room.status==='waiting',409,'只能在等待阶段设置 AI。');check(member.id===room.ownerId,403,'只有房主可以设置 AI。');const wanted=typeof input.slot==='string'?input.slot:'';check(SLOTS.includes(wanted),400,'请选择有效位置。');check(!active(room).some(item=>item.slot===wanted),409,'该位置已被占用。');check(input.difficulty===undefined||Object.hasOwn(AI_LEVELS,input.difficulty),400,'AI 难度无效。');room.aiDifficulties??={};room.aiDifficulties[wanted]=input.difficulty||room.aiDifficulties[wanted]||'normal';const enabled=input.enabled!==false;room.aiSlots=room.aiSlots||[];room.aiSlots=enabled?[...new Set([...room.aiSlots,wanted])]:room.aiSlots.filter(slot=>slot!==wanted);room.version++;changed=true;syncAi(room);}else if(operation==='ready'){
+        }else if(operation==='ai'){check(room.status==='waiting',409,'只能在等待阶段设置 AI。');check(member.id===room.ownerId,403,'只有房主可以设置 AI。');const wanted=typeof input.slot==='string'?input.slot:'';check(SLOTS.includes(wanted),400,'请选择有效位置。');check(!active(room).some(item=>item.slot===wanted),409,'该位置已被占用。');check(input.difficulty===undefined||Object.hasOwn(AI_LEVELS,input.difficulty),400,'AI 难度无效。');room.aiDifficulties??={};room.aiDifficulties[wanted]=input.difficulty||room.aiDifficulties[wanted]||'normal';const enabled=input.enabled!==false;room.aiSlots=room.aiSlots||[];room.aiSlots=enabled?[...new Set([...room.aiSlots,wanted])]:room.aiSlots.filter(slot=>slot!==wanted);room.version++;changed=true;syncAi(room);}else if(operation==='map'){
+          check(['waiting','finished'].includes(room.status),409,'战斗中不能更换地图。');
+          check(member.id===room.ownerId,403,'只有房主可以选择地图。');
+          check(input.mapChoice==='random'||BIOME_IDS.includes(input.mapChoice),400,'请选择有效的战场地图。');
+          room.mapChoice=input.mapChoice;room.version++;changed=true;
+        }else if(operation==='ready'){
           check(room.status==='waiting',409,'只能在等待阶段准备。');check(typeof input.ready==='boolean',400,'准备状态无效。');member.ready=input.ready;room.version++;changed=true;
         }else if(operation==='duel-ready'){
           check(room.status==='playing'&&room.engine.phase==='aim',409,'校准尚未完成。');
@@ -170,7 +176,7 @@ export class SteelArcRoomService{
           check(member.id===room.ownerId,403,'只有房主可以开始。');check(['waiting','finished'].includes(room.status),409,'本局已经开始。');
           check(active(room).every(item=>item.ready),409,'所有真人玩家必须准备');
           syncAi(room);const selected=new Set([...active(room).map(item=>item.slot),...room.aiSlots]);check(selected.size>=2,409,'至少需要启用 2 个行动位');check([...selected].some(slot=>slot[0]==='A')&&[...selected].some(slot=>slot[0]==='B'),409,'双方都需要至少一个行动位');const roster=Object.fromEntries(SLOTS.map(slot=>{const human=active(room).find(item=>item.slot===slot),ai=room.aiSlots.includes(slot);return[slot,{name:human?.name||`AI-${slot}`,ai,difficulty:room.aiDifficulties?.[slot]||'normal',active:Boolean(human||ai)}];}));
-          room.engine=createTeamMatch({seed:(now^Math.floor(random()*0xffffffff))>>>0,roster,previousRangeDistance:room.engine?.calibration?.distance,previousBattleWidth:(room.engine?.battleTerrain||room.engine?.terrain)?.width});room.status='playing';room.duelReadyUntil=null;room.log=['战场已部署，请按顺序完成地面靶校准。'];room.members.forEach(item=>{item.ready=false;item.surrendered=false;item.processed=[];});room.version++;nextAiTurn(room,now);changed=true;
+          room.engine=createTeamMatch({seed:(now^Math.floor(random()*0xffffffff))>>>0,roster,themeId:room.mapChoice==='random'?undefined:room.mapChoice,previousRangeDistance:room.engine?.calibration?.distance,previousBattleWidth:(room.engine?.battleTerrain||room.engine?.terrain)?.width});room.status='playing';room.duelReadyUntil=null;room.log=['战场已部署，请按顺序完成地面靶校准。'];room.members.forEach(item=>{item.ready=false;item.surrendered=false;item.processed=[];});room.version++;nextAiTurn(room,now);changed=true;
         }else if(operation==='action'){
           check(typeof input.requestId==='string'&&/^[a-zA-Z0-9_-]{8,80}$/.test(input.requestId),400,'行动编号无效。');
           if(member.processed.includes(input.requestId))return view(room,member,now);
@@ -195,6 +201,11 @@ export class SteelArcRoomService{
           }else if(input.type==='select'){
             check(typeof input.weaponId==='string',400,'弹药类型无效。');check(selectWeapon(room.engine,member.slot,input.weaponId),409,'弹药尚未解锁或已用完。');
           }else if(input.type==='fire'){
+            if(input.steps!==undefined){
+              check(Array.isArray(input.steps)&&input.steps.length<=MAX_FIRE_MOVE_STEPS&&input.steps.every(Number.isFinite)&&input.steps.reduce((sum,value)=>sum+Math.abs(value),0)<=MAX_FIRE_MOVE_DISTANCE,400,'开火前移动距离无效。');
+              for(const distance of input.steps)moveTank(room.engine,member.slot,distance);
+              check(room.engine.phase==='aim'&&room.engine.turn===member.slot,409,'移动后已无法开火。');
+            }
             if(typeof input.weaponId==='string')check(selectWeapon(room.engine,member.slot,input.weaponId),409,'弹药尚未解锁或已用完。');
             check(setAim(room.engine,member.slot,{heading:Number(input.heading),power:Number(input.power)}),400,'瞄准参数无效。');
             check(resolveTeamShot(room.engine,member.slot),409,'当前无法开火。');

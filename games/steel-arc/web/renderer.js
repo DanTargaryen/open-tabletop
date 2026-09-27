@@ -201,11 +201,12 @@ function drawProjectiles(){
   }
 }
 function drawPreviousTrajectory(){
-  const paths=state.lastTrajectories?.[state.turn];if(!paths)return;
-  ctx.save();ctx.fillStyle='#fff4cf';ctx.globalAlpha=.38;
+  const paths=state.lastTrajectories?.[state.latestTrajectoryOwner];if(!paths)return;
+  const scale=Math.abs(ctx.getTransform().a)||1,dotRadius=Math.min(5,Math.max(1.5,1.5/scale)),landingRadius=Math.min(14,Math.max(5,5/scale));
+  ctx.save();ctx.fillStyle='#f3e9ca';ctx.globalAlpha=.42;
   for(const points of paths){
-    for(const point of points){if(point.x<cameraX-10||point.x>cameraX+VIEW_WIDTH/.88+10)continue;ctx.beginPath();ctx.arc(point.x,point.y,2.4,0,Math.PI*2);ctx.fill();}
-    const end=points.at(-1);if(end){ctx.strokeStyle='#fff4cf';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(end.x,end.y,6,0,Math.PI*2);ctx.stroke();}
+    for(const point of points){ctx.beginPath();ctx.arc(point.x,point.y,dotRadius,0,Math.PI*2);ctx.fill();}
+    const end=points.at(-1);if(end){ctx.globalAlpha=.64;ctx.beginPath();ctx.arc(end.x,end.y,dotRadius*1.7,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#f3e9ca';ctx.lineWidth=Math.max(.7,1/scale);ctx.beginPath();ctx.arc(end.x,end.y,landingRadius,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=.42;}
   }
   ctx.restore();
 }

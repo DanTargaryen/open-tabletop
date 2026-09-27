@@ -154,7 +154,6 @@ export function translateTank(state,tank,delta,{fuel=false}={}){
     const step=Math.min(2,remaining),nextX=clamp(tank.x+direction*step,46,state.terrain.width-46);
     const material=materialAt(state.terrain,nextX),cost=step*FUEL_COST_PER_UNIT*material.fuel;
     if(nextX===tank.x||material.blocked||materialAt(state.terrain,nextX+direction*40).blocked)break;
-    if(Math.abs(terrainHeightAt(state.terrain,nextX)-terrainHeightAt(state.terrain,tank.x))>Math.max(12,step*.8))break;
     if(fuel&&!state.practice&&tank.fuel+1e-8<cost)break;
     tank.x=nextX;moved+=step;remaining-=step;
     if(fuel&&!state.practice)tank.fuel=Math.max(0,tank.fuel-cost);

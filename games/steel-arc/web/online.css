@@ -33,3 +33,10 @@ body:has(#battle:not([hidden])) .battle-stage{width:min(100vw,calc(100vh * 16 / 
 .calibrating .weapon-rack{display:flex;align-items:center;gap:24px}.calibrating .weapon-rack .weapon{width:105px;flex:none}.calibrating .weapon-rack::after{content:'落点越接近信号烟，得分越高';color:#bdd6d9;font-size:13px}.calibrating .battle-log{opacity:.65}
 body:not(:has(#battle:not([hidden]))){background:linear-gradient(90deg,#06172275 0%,#06172230 42%,#06172254 100%),linear-gradient(180deg,#0617221f 0%,#0617223d 55%,#061722a8 100%),url('./assets/steel-expedition-friend-room-bg-v1.png') center center / cover fixed no-repeat #071722}
 .entry-copy h1{line-height:1.16}
+.map-choice,.result-map-choice{display:grid;gap:8px;margin:0 0 22px;padding:15px 17px;border:1px solid #9ccac347;border-radius:10px;background:#082635df;box-shadow:inset 3px 0 #eaa351}
+.map-choice label,.result-map-choice label{display:flex;justify-content:space-between;align-items:center;color:#fff0c8;font-size:14px;font-weight:800;letter-spacing:1px}
+.map-choice label small{color:#86abae;font-size:10px;font-weight:500;letter-spacing:0}
+.map-choice select,.result-map-choice select{width:100%;min-height:40px;padding:8px 12px;border:1px solid #9dc7c65c;border-radius:6px;background:#0b3042;color:#f7ead2;font:700 14px Bahnschrift,sans-serif;cursor:pointer}
+.map-choice select:disabled,.result-map-choice select:disabled{opacity:.72;cursor:default}
+.map-choice p,.result-map-choice p{min-height:18px;margin:0;color:#a9c8c8;font-size:11px;line-height:1.5}
+.result-map-choice{width:min(370px,82vw);margin-bottom:20px;text-align:left}

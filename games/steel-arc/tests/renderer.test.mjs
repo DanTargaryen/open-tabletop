@@ -34,6 +34,12 @@ test('drawing aim dots preserves the live projectile for the same frame',()=>{
   renderer.drawProjectiles();
   assert.ok(calls.some(([name,x,y])=>name==='translate'&&x===700&&y===200));
 });
+test('the previous complete shot remains visible after the turn changes',()=>{
+  const {renderer,calls}=harness(),state=createTeamMatch({seed:42});
+  state.turn='B1';state.latestTrajectoryOwner='A1';state.lastTrajectories={A1:[[{x:50,y:100},{x:400,y:280}]]};
+  renderer.setFrame({state,projectiles:[]});renderer.drawProjectiles();
+  assert.ok(calls.some(([method,x,y,r])=>method==='arc'&&x===400&&y===280&&r===5));
+});
 
 test('visual damage referencing a removed tank is safe',()=>{
   const {renderer}=harness();

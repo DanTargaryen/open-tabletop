@@ -33,7 +33,7 @@ export async function handleSteelArc(request,db,options={}){
     const service=new SteelArcRoomService(options.store||new D1SteelArcRoomStore(db)),limit=()=>options.limit?options.limit(request):rateLimit(db,request);
     if(path==='/health'&&request.method==='GET'){if(db)await db.prepare('SELECT 1 FROM steel_arc_rooms LIMIT 1').first();return json({ok:true,service:'steel-expedition-online',version:2});}
     if(path==='/rooms'&&request.method==='POST'){await limit();return json(await service.create(await readBody(request)),201);}
-    const match=path.match(/^\/rooms\/([A-Z2-9]{6})(?:\/(join|team|ai|ready|start|action|leave|surrender|rematch|duel-ready))?$/);
+    const match=path.match(/^\/rooms\/([A-Z2-9]{6})(?:\/(join|team|ai|map|ready|start|action|leave|surrender|rematch|duel-ready))?$/);
     if(!match)throw new SteelArcRoomError(404,'接口不存在。');
     const operation=match[2]||'state';
     if((operation==='state'&&request.method!=='GET')||(operation!=='state'&&request.method!=='POST'))throw new SteelArcRoomError(405,'请求方法不正确。');
