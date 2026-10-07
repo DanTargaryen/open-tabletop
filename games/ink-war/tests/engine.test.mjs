@@ -204,9 +204,9 @@ test('zero-army games preserve deterministic full-state combat snapshots', () =>
   // The zero-army starting rule is covered along with three terrains, all card
   // effects, production, fighting, movement, captures and faction elimination.
   const cases = [
-    { seed: 117, playerCount: 2, mapId: 'river', hashes: ['32817fa474351a6bcb47bbb306f02c34fefe614ce81b703e974d5ca99939b8c6', '3be1241020993c14ac2ee04ca1a368078e0c86cf98154c509a040b0d0147b59a', 'd832a217cc4f7db1c65f1bab866a747704eaf589616a1e9d3c216cef4c4f499a', '2b5e87f0d4d69bdbc113360fd5cb9d79c8a9b565580349fc36fc3a37c04b2a4c'] },
-    { seed: 912, playerCount: 4, mapId: 'passes', hashes: ['ec379ac2432d1ed025e568fc3448c99c3fdc5b63fde1acfd86bbf798bc178dd8', 'bd6f65f2259157c373be9b60a8871772b079b11ee7b57183e39842f6944b9ee2', 'def894739a4192c87c2bc67e010b9a55ffe8a50fb5b14220c37141dbb9175a24', '4dc0fbf90bcee08a54df9dda36b5dda56fbc456ae67d6c8ec979f6de6b88c3e5'] },
-    { seed: 117, playerCount: 7, mapId: 'plains', hashes: ['04fb3ba647e459d18de3265f7db496ccd4d7822c16ee1ed92f0c24c4be2fe48e', 'ec8e3ca9b24d812de7ea9c0cfe628f76a1c4bf97cecf271b90a65165276c2e7d', '83be4679ed4c5aa394e4b9354302592fb6b6ffd19e90a42b8998639ea6be7c4d', '542bb8a66c63e7e270046164ce59dde0760b1095d067df672a7bba81002c74dd'] },
+    { seed: 117, playerCount: 2, mapId: 'river', hashes: ['1ca22bd73eb179b6f51a58831b0ea7513c1216016d5fa8fad5b2a65c9f224bbb', '9f195d6bfcd248468b22a73865c5210b35c6d7452c036da1adfeb79d838d6585', '8122bd8e3c3d7605e206625ac0a96a9426d2955a92d73687360218f1bda7d9d0', '3513a22fedc154a43691cca7a4c679e5bf7833863ce7d8db3e6f26f6e1b3e8cf'] },
+    { seed: 912, playerCount: 4, mapId: 'passes', hashes: ['a01e7bc6e82160bb655f43d07c46c7dd74b91ae6d187d90845f0e9e66ca0390c', 'ce829350c61eb18fc970c988e6a33018942f48c9739dbdcf016ac906a541303b', '87780d90c5c600958186dfd8c88b022eae5fe9c4d7b98f5e5bc0ba5c39484773', '1009defb77e87b8fa4ec54e936f68f71f50f08d72b32be4a9fbdf4c590cc2794'] },
+    { seed: 117, playerCount: 7, mapId: 'plains', hashes: ['b5afd06d8855233a395abe53e26fcbf514ef44f227f39619db707e9f93235904', '5c144a2ad76026ea43344d89c3debfb98475ab897213c8e1803abf7f05641037', '689e6dd253fe1af1f31b53421fd86183c59ed761af0f81225ce608c373b3aad2', 'cc882638b1e8ddcb190e1c54b91be5c5bc23852530e5bd8fe1ce03ea8038d011'] },
   ];
   for (const { seed, playerCount, mapId, hashes } of cases) {
     const cards = Array.from({ length: playerCount }, (_, id) => chooseCards(seed + id, 3).map(card => card.id));
@@ -217,6 +217,25 @@ test('zero-army games preserve deterministic full-state combat snapshots', () =>
       if ([0, 99, 299, 599].includes(tick)) actual.push(createHash('sha256').update(JSON.stringify(state)).digest('hex'));
     }
     assert.deepEqual(actual, hashes, `${playerCount}-faction ${mapId} simulation must retain every state field`);
+  }
+});
+
+test('persisted combat state tolerates last-bit differences in native trigonometry across ARM and x64', () => {
+  const cases = [[117,2,'river'],[912,4,'passes'],[117,7,'plains']];
+  const run = ([seed,playerCount,mapId]) => {
+    const cards=Array.from({length:playerCount},(_,id)=>chooseCards(seed+id,3).map(c=>c.id));
+    return advance(createGame({seed,playerCount,mapId,cards}),60,true);
+  };
+  const baseline=cases.map(run),names=['sin','cos','atan2','hypot'];
+  const native=Object.fromEntries(names.map(name=>[name,Math[name]]));
+  for(const direction of [-1,1]) {
+    try {
+      for(const name of names)Math[name]=(...args)=>{
+        const value=native[name](...args);
+        return value===0?value:value+direction*Math.abs(value)*Number.EPSILON;
+      };
+      for(let i=0;i<cases.length;i++)assert.deepEqual(run(cases[i]),baseline[i],`${cases[i][1]} factions: every state field must match`);
+    } finally {for(const name of names)Math[name]=native[name];}
   }
 });
 

@@ -117,7 +117,7 @@ function garrisonPoint(state, city, slot) {
   const angle = city.id * 0.37 + offset * Math.PI * 2 / CITY_RING_SIZES[ring] + (ring % 2) * 0.085 + state.time * 0.28;
   const radius = cityRingRadius(city, ring), outer = cityRingRadius(city, (city.level || 1) - 1);
   const radiusX = radius * Math.min(1, (city.x - 12) / outer, (state.width - city.x - 12) / outer), radiusY = radius * Math.min(1, (city.y - 12) / outer, (state.height - city.y - 12) / outer);
-  return { x: round(city.x + Math.cos(angle) * radiusX), y: round(city.y + Math.sin(angle) * radiusY), angle };
+  return { x: round(city.x + Math.cos(angle) * radiusX), y: round(city.y + Math.sin(angle) * radiusY), angle: round(angle) };
 }
 function freeSlot(city, troops) {
   const occupied = new Set(troops.map(unit => unit.garrisonSlot));
@@ -251,7 +251,7 @@ export function createGame({ seed = 1, playerCount = 2, mapId = 'river', cards =
   locations.forEach(({ x, y }, id) => {
     const owner = id < playerCount ? id : -1;
     const maxHp = cityHp(state, owner);
-    state.cities.push({ id, name: CITY_NAMES[id] || `城${id + 1}`, country: owner >= 0 ? COUNTRIES[owner] : '城', x, y,
+    state.cities.push({ id, name: CITY_NAMES[id] || `城${id + 1}`, country: owner >= 0 ? COUNTRIES[owner] : '城', x: round(x), y: round(y),
       owner, hp: maxHp, maxHp, level: 1, maxLevel: limits[id], upgradeUnits: 0, spawnProgress: 0, attackCooldown: 0, spawnCount: 0, radius: 32 });
   });
   createTerrain(state);
@@ -328,7 +328,7 @@ function absorbArrivals(state) {
       } else {
         // A maxed city never consumes surplus troops; they wait outside its rings.
         const angle = (unit.id * 2.399963229728653), radius = cityRingRadius(city, city.level - 1) + 35;
-        unit.target = { x: clamp(city.x + Math.cos(angle) * radius, 12, state.width - 12), y: clamp(city.y + Math.sin(angle) * radius, 12, state.height - 12) };
+        unit.target = { x: round(clamp(city.x + Math.cos(angle) * radius, 12, state.width - 12)), y: round(clamp(city.y + Math.sin(angle) * radius, 12, state.height - 12)) };
       }
     }
   }
@@ -356,9 +356,9 @@ function arriveReinforcements(state){
     if(!city){wave.remaining=0;continue;}
     for(let i=0;i<(wave.burst||10)&&wave.remaining>0&&state.units.length<MAX_UNITS&&counts[wave.owner]<(wave.ownerLimit||300);i++){
       const type=TYPE_IDS[Math.floor(random(state)*TYPE_IDS.length)],stats=UNIT_TYPES[type],angle=wave.created*2.399963229728653,radius=cityRingRadius(city,(city.level||1)-1)+30+Math.floor(wave.created/24)*12;
-      const x=clamp(city.x+Math.cos(angle)*radius,12,state.width-12),y=clamp(city.y+Math.sin(angle)*radius,12,state.height-12),maxHp=stats.maxHp*(hasCard(state,wave.owner,'veteran')?1.2:1);
+      const x=round(clamp(city.x+Math.cos(angle)*radius,12,state.width-12)),y=round(clamp(city.y+Math.sin(angle)*radius,12,state.height-12)),maxHp=stats.maxHp*(hasCard(state,wave.owner,'veteran')?1.2:1);
       const objective=wave.objectives?.[wave.created%wave.objectives.length],destination=state.cities.find(c=>c.id===objective);
-      state.units.push({id:state.nextUnitId++,owner:wave.owner,type,glyph:stats.glyph,x,y,hp:maxHp,maxHp,target:destination?{x:destination.x,y:destination.y}:null,attackCooldown:random(state)*.3,facing:angle,attacking:false,reinforcement:true,...(wave.uncontrollable?{uncontrollable:true,assaultCityId:objective,expiresAt:wave.expiresAt,speedMultiplier:wave.speedMultiplier}:{})});
+      state.units.push({id:state.nextUnitId++,owner:wave.owner,type,glyph:stats.glyph,x,y,hp:maxHp,maxHp,target:destination?{x:destination.x,y:destination.y}:null,attackCooldown:random(state)*.3,facing:round(angle),attacking:false,reinforcement:true,...(wave.uncontrollable?{uncontrollable:true,assaultCityId:objective,expiresAt:wave.expiresAt,speedMultiplier:wave.speedMultiplier}:{})});
       wave.created++;wave.remaining--;counts[wave.owner]++;
     }
   }
@@ -420,12 +420,14 @@ function terrainSpeed(state, unit) {
   return 1;
 }
 function moveToward(state, unit, point, distance) {
-  const dx = point.x - unit.x, dy = point.y - unit.y, length = Math.hypot(dx, dy);
+  const dx = point.x - unit.x, dy = point.y - unit.y, length = round(Math.hypot(dx, dy));
   if (length <= 0.001) return true;
   const fraction = Math.min(1, distance / length);
   unit.x = round(clamp(unit.x + dx * fraction, 12, state.width - 12));
   unit.y = round(clamp(unit.y + dy * fraction, 12, state.height - 12));
-  unit.facing = Math.atan2(dy, dx);
+  // Native transcendental functions may differ in their last bits on ARM/x64.
+  // Quantize persisted angles just like coordinates for portable snapshots.
+  unit.facing = round(Math.atan2(dy, dx));
   return fraction === 1;
 }
 function attackDamage(state, unit, enemy) {
@@ -462,7 +464,7 @@ function simulateTick(state) {
       if (distanceSquared(unit, enemy) > range * range) moveToward(state, unit, enemy, speed * TICK_SECONDS);
       else {
         unit.attacking = true;
-        unit.facing = Math.atan2(enemy.y - unit.y, enemy.x - unit.x);
+        unit.facing = round(Math.atan2(enemy.y - unit.y, enemy.x - unit.x));
         if (unit.attackCooldown <= 0) { addDamage(enemy.id, attackDamage(state, unit, enemy)); unit.attackCooldown = stats.cooldown; }
       }
     } else {
