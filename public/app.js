@@ -72,6 +72,7 @@ const turningSanctuaryArt = (index, category) => `
   </div>`;
 
 const presentations = {
+  'ink-war': {className:'game-card--ink-war',art:(i,c)=>`<div class="game-art ink-war-art" aria-hidden="true"><img src="/games/ink-war/assets/ink-war-home-cover.png" width="1672" height="941" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover"><span class="art-index">水墨山河 / 同时指挥</span></div>`,extraTag:'划选调兵 / 汉字兵种',soloLabel:'单人征战',note:'自由选兵与移动，城池持续出兵。Node 好友房支持 2–7 人同时对战。'},
   'monopoly': {className:'game-card--monopoly', art:(i,c)=>`<div class="game-art monopoly-art" aria-hidden="true"><span class="art-caption">BUILD A LITTLE. DREAM A LOT.</span><div class="city-blocks"><i></i><i></i><i></i><i></i><i></i></div><span class="art-index">${String(i+1).padStart(2,'0')} / 地产交易</span></div>`,extraTag:'购地 / 交易 / 地产建设',soloLabel:'单人 / 同屏',note:'每人 15000，从第一条街开始。好友房空位由本地策略 AI 补齐。'},
   'anime-campus': {className:'game-card--campus', art:(i,c)=>`<div class="game-art aeroplane-art" aria-hidden="true"><img src="/games/anime-campus/assets/board.svg" alt="" loading="lazy"><span class="art-index">CAMPUS FESTIVAL / 60 格</span></div>`, extraTag:'六作品校园祭 / 事件与道具', note:'选择一位角色，和 AI 或好友走完一段放学旅程。'},
   'aeroplane-chess': {

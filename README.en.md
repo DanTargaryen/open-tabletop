@@ -1,5 +1,9 @@
 # Open Tabletop
 
+## Ink War (new development version)
+
+A browser adaptation of publicly documented ink-style real-time strategy: original paper/calligraphy visuals, free unit selection and movement, automatic battles, city capture and recruitment, three maps and eight pre-match cards. Includes local AI and simultaneous 2–7-player Node friend rooms with readiness, invitations, reconnection and rematches. Open `/games/ink-war/index.html` or `/games/ink-war/online.html` after starting the root server. Maps, cards and combat values are project-authored; this is not an exact reproduction of the original game's full content or progression. This new game's multiplayer is not deployed or wired into the Cloudflare adapter. See [scope and operation](games/ink-war/README.md).
+
 ## City Ledger
 
 An unofficial digital adaptation of classic Monopoly: 40 spaces, optional purchases upon landing, no auctions, confirmed trades, even building, limited building stock, mortgages and bankruptcy. Supports solo AI, 2–6 local seats and 1–6 human players in online rooms with AI fill. Start the root server and open `/games/monopoly/index.html` or `/games/monopoly/online.html`. A single die is rolled once per turn; buying and building require landing on the property. See [rules and adaptation boundaries](games/monopoly/README.md). Cloudflare requires migration `0008_monopoly_rooms.sql`; Node uses its own private `monopoly-rooms.json` file.
