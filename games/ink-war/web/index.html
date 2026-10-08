@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f0eee7">
+  <title>墨战 · 水墨征伐</title>
+  <link rel="icon" href="./mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="back-link" href="/" aria-label="返回游戏大厅">← <span>游戏大厅</span></a>
+    <a class="wordmark" href="./index.html"><b>墨战</b><span class="seal">征伐</span></a>
+    <div class="top-actions"><button id="sound-button" class="quiet" aria-pressed="false">音效：关</button><button id="music-button" class="quiet" aria-pressed="true">音乐：开</button><button id="help-button" class="quiet">玩法</button></div>
+  </header>
+
+  <main id="home" class="home">
+    <section class="hero-copy">
+      <h1>墨战<span class="title-seal">征伐</span></h1>
+      <p class="intro">以字为兵，落墨攻城。</p>
+      <div class="mode-switch" role="tablist" aria-label="对战模式"><button id="solo-tab" class="active" role="tab" aria-selected="true">单人征战</button><button id="online-tab" role="tab" aria-selected="false">好友对战 <span>2–7 人</span></button></div>
+
+      <form id="solo-form" class="setup-form">
+        <div class="form-row"><label>战场<select id="solo-map"></select></label><label>参战阵营<select id="solo-count"><option value="2">两军对垒</option><option value="3" selected>三足鼎立</option><option value="4">四方逐鹿</option><option value="5">五国纷争</option><option value="6">六国征战</option><option value="7">七国争霸</option></select></label></div>
+        <label>人机难度<select id="solo-difficulty"><option value="beginner" selected>入门 · 从容扩张</option><option value="normal">标准 · 攻守较量</option><option value="hard">挑战 · 快速调兵</option></select></label>
+        <div class="card-heading"><span>本局兵法 <small>三选一</small></span><button id="reroll" type="button" class="quiet">换一组 ↻</button></div>
+        <div id="solo-cards" class="card-options"></div>
+        <button id="solo-start" class="primary start-button" type="submit">开战</button>
+        <p class="setup-note" id="difficulty-note">入门：AI 开局12秒后出征，至少6秒才下达一次调兵令，并保留较多守军。</p>
+      </form>
+
+      <section id="online-form" class="setup-form" hidden>
+        <label>你的称呼<input id="nickname" maxlength="16" placeholder="请输入昵称" autocomplete="nickname" value="秦国城主"></label>
+        <div class="form-row"><label>战场<select id="room-map"></select></label><label>参战阵营<select id="room-count"><option value="2">2 个阵营</option><option value="3">3 个阵营</option><option value="4">4 个阵营</option><option value="5">5 个阵营</option><option value="6">6 个阵营</option><option value="7">7 个阵营</option></select></label></div>
+        <label class="ai-label">AI 阵营<select id="room-ai"><option value="0">不添加，全部真人</option><option value="1">添加 1 个 AI</option><option value="2">添加 2 个 AI</option><option value="3">添加 3 个 AI</option><option value="4">添加 4 个 AI</option><option value="5">添加 5 个 AI</option><option value="6">添加 6 个 AI</option></select></label>
+        <button id="create-room" class="primary" type="button">创建好友房 <span>↗</span></button>
+        <div class="or-line"><span>或凭房间码加入</span></div>
+        <div class="join-row"><input id="room-code" placeholder="六位房间码" aria-label="六位房间码" maxlength="6" autocomplete="off" spellcheck="false"><button id="join-room" class="secondary" type="button">加入</button></div>
+        <p class="setup-note">所有人打开同一服务器地址，即可同时对战。</p>
+      </section>
+      <p id="home-error" role="alert" class="error" hidden></p>
+    </section>
+    <section class="hero-art" aria-label="水墨战场预览">
+      <canvas id="preview" aria-hidden="true"></canvas>
+      <div class="art-caption"><span>七国列阵</span><span>划选调兵 · 自由攻城</span></div>
+    </section>
+    <footer class="home-footer"><span>水墨即时战略 · 浏览器即玩</span><span>非官方玩法复现 · 原创绘制</span></footer>
+  </main>
+
+  <main id="lobby" class="lobby" hidden>
+    <div class="lobby-header"><div><div class="eyebrow">集结 · 等待开战</div><h1>好友战场</h1></div><button id="leave-lobby" class="quiet">退出房间 ↗</button></div>
+    <div class="lobby-layout"><section class="lobby-main"><div class="invite-strip"><div><small>房间码</small><strong id="invite-code"></strong></div><button id="copy-invite" class="secondary">复制邀请链接</button></div>
+      <div id="room-details" class="room-details"></div><div id="roster" class="roster"></div>
+      <div class="card-heading">选择本局兵法 <small>所有人选好并准备后，由房主开战</small></div><div id="lobby-cards" class="card-options"></div>
+      <div class="lobby-actions"><button id="ready-button" class="secondary">准备</button><button id="room-start" class="primary">开始对战 ↗</button></div><p id="lobby-error" class="error" role="alert" hidden></p>
+    </section><aside class="lobby-aside"><span class="large-character">合</span><h2>落墨，同争天下。</h2><p>把邀请链接发给朋友。每位城主选择一张兵法，确认准备后开始。</p><p>秦、齐、楚、赵、韩、燕、魏，各执一方。联机对局无法暂停，刷新页面可回到原来的阵营。</p><a href="./index.html" class="text-link">单人征战 →</a></aside></div>
+  </main>
+
+  <main id="battle" class="battle" hidden>
+    <div class="battle-header"><div class="battle-title"><span class="seal">战</span><strong id="battle-map">山河战场</strong><span id="battle-mode">单人征战</span></div><div class="battle-clock"><span id="connection-status">战事进行中</span><time id="battle-time">00:00</time><button id="pause-button" class="quiet">暂停</button><button id="battle-exit" class="quiet">退回</button></div></div>
+    <div id="factions" class="factions"></div>
+    <div class="battlefield"><canvas id="board" tabindex="0" aria-label="水墨战场。拖动划选己方士兵，点击位置移动。滚轮缩放，中键或拖图模式平移。A 全选，Escape 取消选择。"></canvas><div id="selection-indicator" class="selection-indicator">划选士兵 · 点击位置出征</div><div class="map-controls" aria-label="查看地图"><button id="zoom-in" title="放大地图" aria-label="放大地图">＋</button><button id="zoom-out" title="缩小地图" aria-label="缩小地图">−</button><button id="map-fit">全图</button><button id="home-city">归营</button><button id="pan-map" aria-pressed="false">拖图</button></div><div id="battle-notice" class="battle-notice" role="status" hidden></div><div id="paused-overlay" class="paused-overlay" hidden><span>休兵</span><button id="resume-button" class="primary">继续征战</button></div></div>
+    <div class="battle-controls"><div class="command-buttons"><button id="select-all" class="secondary">全军出击 <kbd>A</kbd></button><button id="select-city" class="secondary">选中城中兵</button><button id="clear-selection" class="quiet">取消选择</button></div><div class="battle-hint" id="battle-hint">选兵点战场出征 · 点己方城池回血或升级</div><div id="active-card" class="active-card"></div></div>
+    <div class="battle-log"><span class="log-title">战报</span><span id="last-event">战鼓已响，各军入场。</span><span id="army-total"></span></div>
+  </main>
+
+  <dialog id="help-dialog"><button class="dialog-close" data-close="help-dialog" aria-label="关闭玩法">×</button><div class="eyebrow">兵法 · 指挥指南</div><h2>一笔，定山河。</h2><ol class="help-list"><li><b>选兵</b><span>鼠标或手指拖动框选己方士兵。未选兵时点击己方城池，选中驻军。A 或“全军出击”选中全部。</span></li><li><b>出征</b><span>选好后点击战场，士兵会列阵前往，遇到敌人自动交战。靠近敌方城池即可攻城。</span></li><li><b>养城</b><span>选兵后点击己方城池，士兵到城后被吞掉：未满血时每兵回复20血；满血时吞兵扩建，每兵增加8点基础血量上限、城池变大。吞16兵升二级，再吞24兵升三级。已达最高等级且满血时不吞兵。</span></li><li><b>屯兵</b><span>每城最高等级随机为1–3级，一级上限没有虚线圈，二级上限一个圈，三级上限两个圈；墨团吞兵时逐渐长到目标圈大小，圈的位置固定。一、二、三级分别驻守一、二、三圈，最多16、40、72兵；驻军满额停产，调走或损失后恢复。城池大小体现当前等级，地图上不显示地名和等级文字。</span></li><li><b>兵种</b><span>刀、枪、剑、盾、弓各有速度、射程和生命差异。战前兵法会改变本局优势。</span></li><li><b>反击</b><span>持续落后自动触发一级、二级、三级技能，每档每局一次，间隔至少20秒。2–7个阵营同规则；新占城整备5秒才产兵，多城的总产兵增幅逐步递减。急行军与奇兵不可控制、不可吞兵，限时消散；神兵天降援军可控制、可吞兵。从多座城失守到仅剩一城时，必定触发一次“神凌”，降下200名永久可控将士，独立于随机反击等级和冷却；开局一城不触发。音乐可独立开关。</span></li><li><b>胜负</b><span>占领全部城池获胜，失去全部城池失败。好友房中，每位玩家同时指挥自己的军队。</span></li></ol><p class="small-print">基于原版公开玩法制作。当前地图、兵法效果与数值由本项目实现，仍需与原版逐项核对。</p><button class="primary" data-close="help-dialog">知晓 · 入阵</button></dialog>
+  <dialog id="result-dialog"><div class="eyebrow">战事已定</div><span id="result-glyph" class="result-glyph">胜</span><h2 id="result-title">天下归一</h2><p id="result-summary"></p><div class="result-actions"><button id="play-again" class="primary">再战一局 ↗</button><button id="result-home" class="secondary">返回</button></div></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script type="module" src="./ui.js"></script>
+</body>
+</html>

@@ -88,3 +88,5 @@
 .city-blocks{position:absolute;inset:55px 45px 35px;display:flex;align-items:end;justify-content:center;gap:12px;border-bottom:2px solid #74886b}
 .city-blocks i{display:block;width:48px;height:65%;border:2px solid #74886b;background:repeating-linear-gradient(0deg,transparent 0 13px,#74886b55 14px 16px,transparent 17px 23px),#dce3cd}
 .city-blocks i:nth-child(2){height:85%;width:60px}.city-blocks i:nth-child(3){height:100%;width:66px;border-radius:20px 20px 0 0}.city-blocks i:nth-child(4){height:72%;width:50px}.city-blocks i:nth-child(5){height:50%}
+
+.ink-war-art img{object-position:center 52%}.ink-war-art .art-index{color:#25231f;background:#eee9dfd9;border:1px solid #37332c25;border-radius:4px;padding:4px 8px}

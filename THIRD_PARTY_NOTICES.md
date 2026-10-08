@@ -65,3 +65,8 @@ The campus board layout, rules engine, UI, and synthesized sound are project cod
 ## City Ledger / Monopoly rules reference
 
 The `games/monopoly` game is an unofficial digital adaptation referencing Hasbro's classic Monopoly rules. Monopoly and related marks remain the property of their respective owners; no affiliation or endorsement is claimed. The game uses original Chinese place names, event descriptions, architectural line art, 40 AI-generated 3D tile illustrations, and CSS, with no scanned boards, logos, commercial character assets or recordings. Rule sources and explicit adaptation differences are recorded in `games/monopoly/SOURCES.md` and its README.
+## Ink War / 墨战参考说明
+
+`games/ink-war/` 根据蜜獾工坊《墨战》的公开介绍与官方截图研究玩法。墨战名称与原版素材的权利属于原权利人。本项目使用原创 Canvas/SVG 绘制和合成音效，没有包含原版截图、游戏音画文件、源码或品牌标识。参考链接见 `games/ink-war/SOURCES.md`；本游戏为非官方玩法复现，不表示原开发商参与或背书。
+
+`games/ink-war/web/assets/ink-brush.woff2` is a subset of Ma Shan Zheng, Copyright 2018 The Ma Shan Zheng Project Authors ([upstream](https://github.com/googlefonts/mashanzheng)), distributed under the SIL Open Font License 1.1. The complete license is preserved in `games/ink-war/licenses/MaShanZheng-OFL.txt`. The font's license is independent of the project's MIT license.

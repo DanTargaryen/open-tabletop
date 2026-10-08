@@ -20,10 +20,12 @@ import {handleCampus} from '../games/anime-campus/server/api.mjs';
 import {CampusRoomError} from '../games/anime-campus/server/rooms.mjs';
 import {handleMonopoly} from '../games/monopoly/server/api.mjs';
 import {MonopolyRoomError} from '../games/monopoly/server/rooms.mjs';
+import {handleInkWar} from '../games/ink-war/server/api.mjs';
+import {InkWarRoomError} from '../games/ink-war/server/rooms.mjs';
 import {FileRoomStore} from './room-store.mjs';
 
 const projectRoot=resolve(dirname(fileURLToPath(import.meta.url)),'..');
-const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.mp3':'audio/mpeg','.ogg':'audio/ogg','.wav':'audio/wav','.gltf':'model/gltf+json','.glb':'model/gltf-binary','.bin':'application/octet-stream','.wasm':'application/wasm','.pck':'application/octet-stream','.json':'application/json; charset=utf-8'};
+const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.woff2':'font/woff2','.svg':'image/svg+xml','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.mp3':'audio/mpeg','.ogg':'audio/ogg','.wav':'audio/wav','.gltf':'model/gltf+json','.glb':'model/gltf-binary','.bin':'application/octet-stream','.wasm':'application/wasm','.pck':'application/octet-stream','.json':'application/json; charset=utf-8'};
 const safeHeaders={'X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin'};
 
 export async function createTabletopServer({dataDir=resolve(projectRoot,'.data'),publicOrigin=null}={}){
@@ -36,6 +38,7 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
  const steelArcStore=await new FileRoomStore(resolve(dataDir,'steel-arc-rooms.json')).init();
  const campusStore=await new FileRoomStore(resolve(dataDir,'anime-campus-rooms.json')).init();
  const monopolyStore=await new FileRoomStore(resolve(dataDir,'monopoly-rooms.json')).init();
+ const inkWarStore=await new FileRoomStore(resolve(dataDir,'ink-war-rooms.json')).init();
  const catalog=JSON.parse(await readFile(resolve(projectRoot,'games/catalog.json'),'utf8'));
  const staticGames=new Map(catalog.map(game=>[`/games/${game.id}/`,resolve(projectRoot,'games',game.id,'web')]));
  const vendorFiles=new Map([
@@ -56,7 +59,8 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
   try{
    if(!req.url?.startsWith('/')||req.url.startsWith('//')){res.writeHead(400);res.end();return;}
    const url=new URL(req.url,publicOrigin||'http://'+req.headers.host);
-   if(url.pathname.startsWith('/api/monopoly/')||url.pathname.startsWith('/api/anime-campus/')||url.pathname.startsWith('/api/aeroplane/')||url.pathname.startsWith('/api/poker/')||url.pathname.startsWith('/api/abracada/')||url.pathname.startsWith('/api/splendor/')||url.pathname.startsWith('/api/buckshot/')||url.pathname.startsWith('/api/steel-arc/')){
+   if(url.pathname.startsWith('/api/ink-war/')||url.pathname.startsWith('/api/monopoly/')||url.pathname.startsWith('/api/anime-campus/')||url.pathname.startsWith('/api/aeroplane/')||url.pathname.startsWith('/api/poker/')||url.pathname.startsWith('/api/abracada/')||url.pathname.startsWith('/api/splendor/')||url.pathname.startsWith('/api/buckshot/')||url.pathname.startsWith('/api/steel-arc/')){
+    const inkWar=url.pathname.startsWith('/api/ink-war/');
     const monopoly=url.pathname.startsWith('/api/monopoly/');
     const campus=url.pathname.startsWith('/api/anime-campus/');
     const aeroplane=url.pathname.startsWith('/api/aeroplane/');
@@ -64,9 +68,9 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
     const abracada=url.pathname.startsWith('/api/abracada/');
     const buckshot=url.pathname.startsWith('/api/buckshot/');
     const steelArc=url.pathname.startsWith('/api/steel-arc/');
-    const handler=monopoly?handleMonopoly:campus?handleCampus:aeroplane?handleAeroplane:abracada?handleAbracada:buckshot?handleBuckshot:steelArc?handleSteelArc:handlePoker;
-    const roomStore=monopoly?monopolyStore:campus?campusStore:aeroplane?aeroplaneStore:abracada?abracadaStore:buckshot?buckshotStore:steelArc?steelArcStore:pokerStore;
-    const ErrorType=monopoly?MonopolyRoomError:campus?CampusRoomError:aeroplane?AeroplaneRoomError:splendor?SplendorError:abracada?AbracadaRoomError:buckshot?BuckshotError:steelArc?SteelArcRoomError:RoomError;
+    const handler=inkWar?handleInkWar:monopoly?handleMonopoly:campus?handleCampus:aeroplane?handleAeroplane:abracada?handleAbracada:buckshot?handleBuckshot:steelArc?handleSteelArc:handlePoker;
+    const roomStore=inkWar?inkWarStore:monopoly?monopolyStore:campus?campusStore:aeroplane?aeroplaneStore:abracada?abracadaStore:buckshot?buckshotStore:steelArc?steelArcStore:pokerStore;
+    const ErrorType=inkWar?InkWarRoomError:monopoly?MonopolyRoomError:campus?CampusRoomError:aeroplane?AeroplaneRoomError:splendor?SplendorError:abracada?AbracadaRoomError:buckshot?BuckshotError:steelArc?SteelArcRoomError:RoomError;
     const headers=new Headers();for(const[k,v]of Object.entries(req.headers))if(v)headers.set(k,Array.isArray(v)?v.join(','):v);
     // Untrusted forwarded IPs cannot evade the local create/join limiter.
     headers.set('cf-connecting-ip',req.socket.remoteAddress||'local');
@@ -110,7 +114,7 @@ export async function createTabletopServer({dataDir=resolve(projectRoot,'.data')
   }
  });
  server.requestTimeout=15000;server.headersTimeout=10000;
- return {server,store:pokerStore,splendorStore,stores:{poker:pokerStore,splendor:splendorStore,abracada:abracadaStore,aeroplane:aeroplaneStore,buckshot:buckshotStore,steelArc:steelArcStore,campus:campusStore,monopoly:monopolyStore},catalog,async close(){await new Promise((done,fail)=>server.close(error=>error?fail(error):done()));await Promise.all([pokerStore.close(),splendorStore.close(),abracadaStore.close(),aeroplaneStore.close(),buckshotStore.close(),steelArcStore.close(),campusStore.close(),monopolyStore.close()]);}};
+ return {server,store:pokerStore,splendorStore,stores:{poker:pokerStore,splendor:splendorStore,abracada:abracadaStore,aeroplane:aeroplaneStore,buckshot:buckshotStore,steelArc:steelArcStore,campus:campusStore,monopoly:monopolyStore,inkWar:inkWarStore},catalog,async close(){await new Promise((done,fail)=>server.close(error=>error?fail(error):done()));await Promise.all([pokerStore.close(),splendorStore.close(),abracadaStore.close(),aeroplaneStore.close(),buckshotStore.close(),steelArcStore.close(),campusStore.close(),monopolyStore.close(),inkWarStore.close()]);}};
 }
 
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){

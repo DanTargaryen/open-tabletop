@@ -1,5 +1,11 @@
 # Open Tabletop
 
+## 墨战 · 水墨征伐（新增开发版本）
+
+水墨即时战略的非官方玩法复现：原创宣纸地图与汉字兵种、自由框选、任意位置移动、自动战斗与攻城、城池产兵、三张地图及八张战前兵法。支持单人 AI 与 2–7 人同时对战好友房，含准备、房间码邀请、刷新恢复与重赛。根目录启动后进入 `/games/ink-war/index.html` 或 `/games/ink-war/online.html`。
+
+当前联机接入 Node 服务，尚未发布到现有演示域名，也未接入 Cloudflare 新游戏 API。地图、卡牌与数值仍需对照原版核验；战后累积养成、军衔与皮肤等系统尚未实现。参阅 [玩法与还原边界](games/ink-war/README.md) 和 [官方参考资料](games/ink-war/SOURCES.md)。
+
 ## 地产大亨 · City Ledger
 
 经典 Monopoly 规则的非官方数字改编：40 格地产棋盘、落地后购买或跳过、双边交易、均匀建房、有限建筑库存、抵押和破产清算。支持单人 AI、2–6 人同屏、1–6 人好友房及刷新恢复。根目录启动后打开 `/games/monopoly/index.html` 或 `/games/monopoly/online.html`。单颗骰子每回合掷一次，购地和建设均需走到对应地产；不设拍卖。

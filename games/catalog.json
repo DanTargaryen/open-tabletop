@@ -96,5 +96,16 @@
     "version": "0.1.0",
     "solo": "/games/monopoly/index.html",
     "online": "/games/monopoly/online.html"
+  },
+  {
+    "id": "ink-war",
+    "title": "墨战 · 水墨征伐",
+    "subtitle": "INK WAR",
+    "description": "以汉字为兵，在宣纸山河间划选调兵、争夺城池。选择兵法，与 AI 或朋友同时指挥各自的军队。",
+    "players": "1 人 AI / 2–7 人好友房",
+    "category": "水墨即时战略",
+    "version": "0.1.0",
+    "solo": "/games/ink-war/index.html",
+    "online": "/games/ink-war/online.html"
   }
 ]
