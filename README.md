@@ -4,7 +4,7 @@
 
 水墨即时战略的非官方玩法复现：原创宣纸地图与汉字兵种、自由框选、任意位置移动、自动战斗与攻城、城池产兵、三张地图及八张战前兵法。支持单人 AI 与 2–7 人同时对战好友房，含准备、房间码邀请、刷新恢复与重赛。根目录启动后进入 `/games/ink-war/index.html` 或 `/games/ink-war/online.html`。
 
-当前联机接入 Node 服务，尚未发布到现有演示域名，也未接入 Cloudflare 新游戏 API。地图、卡牌与数值仍需对照原版核验；战后累积养成、军衔与皮肤等系统尚未实现。参阅 [玩法与还原边界](games/ink-war/README.md) 和 [官方参考资料](games/ink-war/SOURCES.md)。
+联机支持 Node 服务和 Cloudflare Worker + D1；Worker 需应用 `0009_ink_war_rooms.sql`，使用独立房间与限流表。地图、卡牌与数值仍需对照原版核验；战后累积养成、军衔与皮肤等系统尚未实现。参阅 [玩法与还原边界](games/ink-war/README.md) 和 [官方参考资料](games/ink-war/SOURCES.md)。
 
 ## 地产大亨 · City Ledger
 
